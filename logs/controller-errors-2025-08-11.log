@@ -1,0 +1,2 @@
+{"timestamp":"11\/08\/2025 01:54:00","message":"Test error message","context":{"test":"context"},"user_id":null,"ip":"::1","user_agent":"Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/138.0.0.0 Safari\/537.36"}
+{"timestamp":"11\/08\/2025 01:55:45","message":"Test error message","context":{"test":"context"},"user_id":null,"ip":"::1","user_agent":"Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/138.0.0.0 Safari\/537.36"}
