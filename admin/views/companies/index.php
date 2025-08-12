@@ -157,6 +157,21 @@ function generateReport() {
 function showAdvancedFilters() {
     $('#advancedFiltersCollapse').collapse('toggle');
 }
+
+// Función para verificar RUC duplicado
+function checkDuplicateRuc(ruc) {
+    // Esta es una función ejemplo que podrías implementar con AJAX
+    $.ajax({
+        url: PLAYMI.baseUrl + 'api/companies/check-ruc.php',
+        method: 'POST',
+        data: { ruc: ruc },
+        success: function(response) {
+            if (response.exists && response.company.estado === 'activo') {
+                toastr.warning('RUC ya registrado en: ' + response.company.nombre);
+            }
+        }
+    });
+}
 ";
 
 // Generar contenido
@@ -232,7 +247,7 @@ ob_start();
                         class="form-control"
                         id="search"
                         name="search"
-                        placeholder="Nombre o email..."
+                        placeholder="Nombre, RUC o email..."
                         value="<?php echo htmlspecialchars($filters['search'] ?? ''); ?>">
                 </div>
             </div>
@@ -311,6 +326,7 @@ ob_start();
                     <tr>
                         <th>Logo</th>
                         <th>Empresa</th>
+                        <th>RUC</th>
                         <th>Contacto</th>
                         <th>Paquete</th>
                         <th>Vencimiento</th>
@@ -347,6 +363,31 @@ ob_start();
                                     <small class="text-muted">
                                         <?php echo $company['total_buses']; ?> buses
                                     </small>
+                                </td>
+                                <td>
+                                    <code><?php echo htmlspecialchars($company['ruc'] ?? 'Sin RUC'); ?></code>
+                                    <?php
+                                    // Verificar si hay otras empresas con el mismo RUC
+                                    $duplicateRuc = false;
+                                    if ($company['ruc']) {
+                                        foreach ($companies as $otherCompany) {
+                                            if (
+                                                $otherCompany['id'] !== $company['id'] &&
+                                                $otherCompany['ruc'] === $company['ruc'] &&
+                                                $otherCompany['estado'] === 'activo'
+                                            ) {
+                                                $duplicateRuc = true;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    ?>
+                                    <?php if ($duplicateRuc): ?>
+                                        <br>
+                                        <small class="text-danger">
+                                            <i class="fas fa-exclamation-triangle"></i> RUC duplicado
+                                        </small>
+                                    <?php endif; ?>
                                 </td>
                                 <td>
                                     <div><?php echo htmlspecialchars($company['persona_contacto'] ?? 'N/A'); ?></div>
@@ -451,7 +492,7 @@ ob_start();
                         <?php endforeach; ?>
                     <?php else: ?>
                         <tr>
-                            <td colspan="7" class="text-center text-muted">
+                            <td colspan="8" class="text-center text-muted">
                                 <i class="fas fa-info-circle mr-1"></i>
                                 No se encontraron empresas con los filtros aplicados
                             </td>
@@ -461,118 +502,51 @@ ob_start();
             </table>
         </div>
     </div>
-    <?php if (!empty($companies)): ?>
-        <div class="card-footer">
-            <div class="row align-items-center">
-                <div class="col-sm-6">
-                    <small class="text-muted">
-                        Mostrando <?php echo count($companies); ?> de <?php echo $pagination['total']; ?> empresas
-                        (Página <?php echo $pagination['current_page']; ?> de <?php echo $pagination['total_pages']; ?>)
-                    </small>
+
+
+    <!-- Modal para import masivo -->
+    <div class="modal fade" id="importModal" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Importar Empresas</h5>
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
                 </div>
-                <div class="col-sm-6">
-                    <div class="float-right">
-                        <!-- Paginación -->
-                        <?php if ($pagination['total_pages'] > 1): ?>
-                            <nav aria-label="Paginación de empresas">
-                                <ul class="pagination pagination-sm mb-0">
-                                    <!-- Anterior -->
-                                    <?php if ($pagination['has_previous']): ?>
-                                        <li class="page-item">
-                                            <a class="page-link" href="?<?php echo http_build_query(array_merge($_GET, ['page' => $pagination['previous_page']])); ?>">
-                                                <i class="fas fa-chevron-left"></i>
-                                            </a>
-                                        </li>
-                                    <?php else: ?>
-                                        <li class="page-item disabled">
-                                            <span class="page-link"><i class="fas fa-chevron-left"></i></span>
-                                        </li>
-                                    <?php endif; ?>
-
-                                    <!-- Números de página -->
-                                    <?php
-                                    $start = max(1, $pagination['current_page'] - 2);
-                                    $end = min($pagination['total_pages'], $pagination['current_page'] + 2);
-
-                                    for ($i = $start; $i <= $end; $i++):
-                                    ?>
-                                        <li class="page-item <?php echo $i === $pagination['current_page'] ? 'active' : ''; ?>">
-                                            <a class="page-link" href="?<?php echo http_build_query(array_merge($_GET, ['page' => $i])); ?>">
-                                                <?php echo $i; ?>
-                                            </a>
-                                        </li>
-                                    <?php endfor; ?>
-
-                                    <!-- Siguiente -->
-                                    <?php if ($pagination['has_next']): ?>
-                                        <li class="page-item">
-                                            <a class="page-link" href="?<?php echo http_build_query(array_merge($_GET, ['page' => $pagination['next_page']])); ?>">
-                                                <i class="fas fa-chevron-right"></i>
-                                            </a>
-                                        </li>
-                                    <?php else: ?>
-                                        <li class="page-item disabled">
-                                            <span class="page-link"><i class="fas fa-chevron-right"></i></span>
-                                        </li>
-                                    <?php endif; ?>
-                                </ul>
-                            </nav>
-                        <?php endif; ?>
-
-                        <a href="<?php echo BASE_URL; ?>views/companies/create.php" class="btn btn-primary btn-sm ml-2">
-                            <i class="fas fa-plus"></i> Nueva Empresa
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    <?php endif; ?>
-</div>
-
-
-<!-- Modal para import masivo -->
-<div class="modal fade" id="importModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Importar Empresas</h5>
-                <button type="button" class="close" data-dismiss="modal">
-                    <span>&times;</span>
-                </button>
-            </div>
-            <form id="importForm" enctype="multipart/form-data">
-                <div class="modal-body">
-                    <div class="form-group">
-                        <label>Archivo CSV</label>
-                        <div class="custom-file">
-                            <input type="file" class="custom-file-input" name="csv_file" accept=".csv" required>
-                            <label class="custom-file-label">Seleccionar archivo CSV...</label>
+                <form id="importForm" enctype="multipart/form-data">
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label>Archivo CSV</label>
+                            <div class="custom-file">
+                                <input type="file" class="custom-file-input" name="csv_file" accept=".csv" required>
+                                <label class="custom-file-label">Seleccionar archivo CSV...</label>
+                            </div>
+                            <small class="text-muted">
+                                Formato: nombre,email_contacto,tipo_paquete,fecha_inicio,fecha_vencimiento
+                            </small>
                         </div>
-                        <small class="text-muted">
-                            Formato: nombre,email_contacto,tipo_paquete,fecha_inicio,fecha_vencimiento
-                        </small>
+                        <div class="form-group">
+                            <a href="<?php echo BASE_URL; ?>assets/templates/empresas_template.csv" class="btn btn-sm btn-outline-info">
+                                <i class="fas fa-download"></i> Descargar Template
+                            </a>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <a href="<?php echo BASE_URL; ?>assets/templates/empresas_template.csv" class="btn btn-sm btn-outline-info">
-                            <i class="fas fa-download"></i> Descargar Template
-                        </a>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Importar</button>
                     </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Importar</button>
-                </div>
-            </form>
+                </form>
+            </div>
         </div>
     </div>
-</div>
 
 
-<?php
-$content = ob_get_clean();
+    <?php
+    $content = ob_get_clean();
 
 
 
-// Incluir el layout base
-include '../layouts/base.php';
-?>
+    // Incluir el layout base
+    include '../layouts/base.php';
+    ?>

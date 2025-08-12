@@ -48,9 +48,9 @@ class CompanyController extends BaseController
             // Obtener estadísticas
             $stats = [
                 'total' => $this->companyModel->count(),
-                'active' => $this->companyModel->count("estado = 'activo'"),
-                'suspended' => $this->companyModel->count("estado = 'suspendido'"),
-                'expired' => $this->companyModel->count("estado = 'vencido'")
+                'activo' => $this->companyModel->count("estado = 'activo'"),
+                'suspendido' => $this->companyModel->count("estado = 'suspendido'"),
+                'vencido' => $this->companyModel->count("estado = 'vencido'")
             ];
 
             // Información de paginación
@@ -493,13 +493,9 @@ class CompanyController extends BaseController
             }
 
             // Verificar que la empresa existe
-            $existingCompany = $this->companyModel->findById($companyId);
-            if (!$existingCompany) {
-                echo json_encode([
-                    'success' => false,
-                    'error' => 'Empresa no encontrada'
-                ]);
-                exit;
+            $existingCompany = $this->companyModel->rucExistsActive($data['ruc']);
+            if ($existingCompany) {
+                $errors['ruc'] = 'Ya existe una empresa ACTIVA con este RUC: ' . $existingCompany['nombre'];
             }
 
             // Validar datos de entrada
@@ -539,7 +535,7 @@ class CompanyController extends BaseController
             if ($result) {
                 // Registrar en log
                 $currentUser = $this->getCurrentUser();
-                
+
                 require_once __DIR__ . '/../models/ActivityLog.php';
                 $activityLog = new ActivityLog();
                 $activityLog->create([
@@ -592,7 +588,7 @@ class CompanyController extends BaseController
             require_once __DIR__ . '/../models/Package.php';
             $packageModel = new Package();
             $activePackages = $packageModel->count("empresa_id = $id AND estado IN ('listo', 'instalado')");
-            
+
             if ($activePackages > 0) {
                 $this->jsonResponse([
                     'error' => 'No se puede eliminar la empresa porque tiene paquetes activos'
@@ -735,7 +731,7 @@ class CompanyController extends BaseController
             if ($result) {
                 // Registrar en log
                 $currentUser = $this->getCurrentUser();
-                
+
                 require_once __DIR__ . '/../models/ActivityLog.php';
                 $activityLog = new ActivityLog();
                 $activityLog->create([

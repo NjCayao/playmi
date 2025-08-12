@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 12-08-2025 a las 18:36:12
+-- Tiempo de generación: 12-08-2025 a las 22:08:20
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.1.25
 
@@ -52,6 +52,7 @@ CREATE TABLE `companies` (
   `id` int(11) NOT NULL,
   `nombre` varchar(100) NOT NULL,
   `email_contacto` varchar(100) NOT NULL,
+  `ruc` varchar(11) DEFAULT NULL,
   `persona_contacto` varchar(100) DEFAULT NULL,
   `telefono` varchar(20) DEFAULT NULL,
   `logo_path` varchar(255) DEFAULT NULL,
@@ -67,20 +68,20 @@ CREATE TABLE `companies` (
   `notas` text DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Tabla principal de empresas clientes del sistema PLAYMI';
 
 --
 -- Volcado de datos para la tabla `companies`
 --
 
-INSERT INTO `companies` (`id`, `nombre`, `email_contacto`, `persona_contacto`, `telefono`, `logo_path`, `color_primario`, `color_secundario`, `nombre_servicio`, `tipo_paquete`, `total_buses`, `costo_mensual`, `fecha_inicio`, `fecha_vencimiento`, `estado`, `notas`, `created_at`, `updated_at`) VALUES
-(1, 'Transportes San Martín', 'contacto@sanmartin.com', 'Carlos Rodríguez', '+51 987 654 321', NULL, '#000000', '#FFFFFF', NULL, 'premium', 25, 299.99, '2024-01-01', '2024-12-31', 'activo', NULL, '2025-08-11 08:31:10', '2025-08-11 08:31:10'),
-(2, 'Empresa Turismo Norte', 'admin@turismonorte.com', 'María González', '+51 456 789 123', NULL, '#000000', '#FFFFFF', NULL, 'intermedio', 15, 199.99, '2024-02-15', '2024-11-15', 'activo', NULL, '2025-08-11 08:31:10', '2025-08-11 08:31:10'),
-(3, 'Líneas Express', 'info@lineasexpress.com', 'Juan Pérez', '+51 123 456 789', NULL, '#000000', '#FFFFFF', NULL, 'basico', 8, 99.99, '2024-03-01', '2024-09-01', 'suspendido', NULL, '2025-08-11 08:31:10', '2025-08-11 08:31:10'),
-(4, 'Buses del Centro', 'contacto@busescentro.com', 'Ana López', '+51 789 123 456', NULL, '#000000', '#FFFFFF', NULL, 'premium', 30, 349.99, '2023-12-01', '2024-08-15', 'vencido', NULL, '2025-08-11 08:31:10', '2025-08-11 08:31:10'),
-(5, 'Transportes San Martín', 'contacto@sanmartin.com', 'Carlos Rodríguez', '+51 987 654 321', NULL, '#000000', '#FFFFFF', NULL, 'premium', 25, 299.99, '2024-01-01', '2024-12-31', 'activo', NULL, '2025-08-11 08:41:13', '2025-08-11 08:41:13'),
-(6, 'Empresa Turismo Norte', 'admin@turismonorte.com', 'María González', '+51 456 789 123', NULL, '#000000', '#FFFFFF', NULL, 'intermedio', 15, 199.99, '2024-02-15', '2024-11-15', 'activo', NULL, '2025-08-11 08:41:13', '2025-08-11 08:41:13'),
-(7, 'Líneas Express', 'info@lineasexpress.com', 'Juan Pérez', '+51 123 456 789', NULL, '#000000', '#FFFFFF', NULL, 'basico', 8, 99.99, '2024-03-01', '2024-09-01', 'suspendido', NULL, '2025-08-11 08:41:13', '2025-08-11 08:41:13');
+INSERT INTO `companies` (`id`, `nombre`, `email_contacto`, `ruc`, `persona_contacto`, `telefono`, `logo_path`, `color_primario`, `color_secundario`, `nombre_servicio`, `tipo_paquete`, `total_buses`, `costo_mensual`, `fecha_inicio`, `fecha_vencimiento`, `estado`, `notas`, `created_at`, `updated_at`) VALUES
+(1, 'Transportes San Martín', 'contacto@sanmartin.com', '20100123456', 'Carlos Rodríguez', '+51 987 654 321', NULL, '#000000', '#FFFFFF', NULL, 'premium', 25, 299.99, '2024-01-01', '2024-12-31', 'activo', NULL, '2025-08-11 08:31:10', '2025-08-12 19:36:47'),
+(2, 'Empresa Turismo Norte', 'admin@turismonorte.com', '20100123457', 'María González', '+51 456 789 123', NULL, '#000000', '#FFFFFF', NULL, 'intermedio', 15, 199.99, '2024-02-15', '2024-11-15', 'activo', NULL, '2025-08-11 08:31:10', '2025-08-12 19:36:47'),
+(3, 'Líneas Express', 'info@lineasexpress.com', '20100123458', 'Juan Pérez', '+51 123 456 789', NULL, '#000000', '#FFFFFF', NULL, 'basico', 8, 99.99, '2024-03-01', '2024-09-01', 'suspendido', NULL, '2025-08-11 08:31:10', '2025-08-12 19:36:47'),
+(4, 'Buses del Centro', 'contacto@busescentro.com', '20100123459', 'Ana López', '+51 789 123 456', NULL, '#000000', '#FFFFFF', NULL, 'premium', 30, 349.99, '2023-12-01', '2024-08-15', 'vencido', NULL, '2025-08-11 08:31:10', '2025-08-12 19:36:47'),
+(5, 'Transportes San Martín', 'contacto@sanmartin.com', '20100123460', 'Carlos Rodríguez', '+51 987 654 321', NULL, '#000000', '#FFFFFF', NULL, 'premium', 25, 299.99, '2024-01-01', '2024-12-31', 'activo', NULL, '2025-08-11 08:41:13', '2025-08-12 19:36:47'),
+(6, 'Empresa Turismo Norte', 'admin@turismonorte.com', '20100123461', 'María González', '+51 456 789 123', NULL, '#000000', '#FFFFFF', NULL, 'intermedio', 15, 199.99, '2024-02-15', '2024-11-15', 'activo', NULL, '2025-08-11 08:41:13', '2025-08-12 19:36:47'),
+(7, 'Líneas Express', 'info@lineasexpress.com', '20100123462', 'Juan Pérez', '+51 123 456 789', NULL, '#000000', '#FFFFFF', NULL, 'basico', 8, 99.99, '2024-03-01', '2024-09-01', 'suspendido', NULL, '2025-08-11 08:41:13', '2025-08-12 19:36:47');
 
 -- --------------------------------------------------------
 
@@ -155,33 +156,6 @@ INSERT INTO `contenido` (`id`, `titulo`, `descripcion`, `archivo_path`, `tamanio
 (1, 'Contenido de Ejemplo - Película', NULL, 'placeholder.mp4', NULL, NULL, 'pelicula', 'accion', NULL, NULL, NULL, NULL, NULL, 'inactivo', 0, NULL, '2025-08-11 06:41:28', '2025-08-11 06:41:28'),
 (2, 'Contenido de Ejemplo - Música', NULL, 'placeholder.mp3', NULL, NULL, 'musica', 'pop', NULL, NULL, NULL, NULL, NULL, 'inactivo', 0, NULL, '2025-08-11 06:41:28', '2025-08-11 06:41:28'),
 (3, 'Contenido de Ejemplo - Juego', 'Descripción actualizada', 'placeholder.html', NULL, NULL, 'juego', 'puzzle', NULL, NULL, NULL, NULL, NULL, 'inactivo', 0, NULL, '2025-08-11 06:41:28', '2025-08-12 16:00:27');
-
--- --------------------------------------------------------
-
---
--- Estructura de tabla para la tabla `empresas`
---
-
-CREATE TABLE `empresas` (
-  `id` int(11) NOT NULL,
-  `nombre` varchar(100) NOT NULL,
-  `email_contacto` varchar(100) NOT NULL,
-  `telefono` varchar(20) DEFAULT NULL,
-  `persona_contacto` varchar(100) DEFAULT NULL,
-  `logo_path` varchar(255) DEFAULT NULL,
-  `color_primario` varchar(7) DEFAULT '#000000',
-  `color_secundario` varchar(7) DEFAULT '#FFFFFF',
-  `nombre_servicio` varchar(100) DEFAULT NULL,
-  `tipo_paquete` enum('basico','intermedio','premium') DEFAULT 'basico',
-  `fecha_inicio` date NOT NULL,
-  `fecha_vencimiento` date NOT NULL,
-  `estado` enum('activo','suspendido','vencido') DEFAULT 'activo',
-  `total_buses` int(11) DEFAULT 0,
-  `costo_mensual` decimal(10,2) DEFAULT 0.00,
-  `notas` text DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -296,11 +270,13 @@ ALTER TABLE `banners_empresa`
 --
 ALTER TABLE `companies`
   ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `ruc` (`ruc`),
   ADD KEY `idx_nombre` (`nombre`),
   ADD KEY `idx_email` (`email_contacto`),
   ADD KEY `idx_estado` (`estado`),
   ADD KEY `idx_fecha_vencimiento` (`fecha_vencimiento`),
-  ADD KEY `idx_tipo_paquete` (`tipo_paquete`);
+  ADD KEY `idx_tipo_paquete` (`tipo_paquete`),
+  ADD KEY `idx_ruc` (`ruc`);
 
 --
 -- Indices de la tabla `configuracion_sistema`
@@ -317,14 +293,6 @@ ALTER TABLE `contenido`
   ADD KEY `idx_tipo` (`tipo`),
   ADD KEY `idx_estado` (`estado`),
   ADD KEY `idx_categoria` (`categoria`);
-
---
--- Indices de la tabla `empresas`
---
-ALTER TABLE `empresas`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `idx_estado` (`estado`),
-  ADD KEY `idx_vencimiento` (`fecha_vencimiento`);
 
 --
 -- Indices de la tabla `logs_sistema`
@@ -385,12 +353,6 @@ ALTER TABLE `contenido`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
--- AUTO_INCREMENT de la tabla `empresas`
---
-ALTER TABLE `empresas`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
---
 -- AUTO_INCREMENT de la tabla `logs_sistema`
 --
 ALTER TABLE `logs_sistema`
@@ -422,7 +384,7 @@ ALTER TABLE `usuarios`
 -- Filtros para la tabla `banners_empresa`
 --
 ALTER TABLE `banners_empresa`
-  ADD CONSTRAINT `banners_empresa_ibfk_1` FOREIGN KEY (`empresa_id`) REFERENCES `empresas` (`id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `banners_empresa_ibfk_1` FOREIGN KEY (`empresa_id`) REFERENCES `companies` (`id`) ON DELETE CASCADE;
 
 --
 -- Filtros para la tabla `logs_sistema`
@@ -434,14 +396,14 @@ ALTER TABLE `logs_sistema`
 -- Filtros para la tabla `paquetes_generados`
 --
 ALTER TABLE `paquetes_generados`
-  ADD CONSTRAINT `paquetes_generados_ibfk_1` FOREIGN KEY (`empresa_id`) REFERENCES `empresas` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `paquetes_generados_ibfk_1` FOREIGN KEY (`empresa_id`) REFERENCES `companies` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `paquetes_generados_ibfk_2` FOREIGN KEY (`generado_por`) REFERENCES `usuarios` (`id`);
 
 --
 -- Filtros para la tabla `publicidad_empresa`
 --
 ALTER TABLE `publicidad_empresa`
-  ADD CONSTRAINT `publicidad_empresa_ibfk_1` FOREIGN KEY (`empresa_id`) REFERENCES `empresas` (`id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `publicidad_empresa_ibfk_1` FOREIGN KEY (`empresa_id`) REFERENCES `companies` (`id`) ON DELETE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

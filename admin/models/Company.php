@@ -448,6 +448,213 @@ class Company extends BaseModel
     }
 
     /**
+     * Obtener estadísticas de paquetes
+     */
+    public function getPackageStats()
+    {
+        try {
+            $sql = "SELECT 
+                tipo_paquete,
+                COUNT(*) as total,
+                SUM(CASE WHEN estado = 'activo' THEN 1 ELSE 0 END) as activos
+            FROM companies 
+            GROUP BY tipo_paquete";
+
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute();
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Formatear para gráficos
+            $stats = [
+                'labels' => [],
+                'totals' => [],
+                'activos' => []
+            ];
+
+            $packageNames = [
+                'basico' => 'Básico',
+                'intermedio' => 'Intermedio',
+                'premium' => 'Premium'
+            ];
+
+            foreach ($results as $result) {
+                $stats['labels'][] = $packageNames[$result['tipo_paquete']] ?? $result['tipo_paquete'];
+                $stats['totals'][] = (int)$result['total'];
+                $stats['activos'][] = (int)$result['activos'];
+            }
+
+            return $stats;
+        } catch (Exception $e) {
+            $this->logError("Error en getPackageStats: " . $e->getMessage());
+            return [
+                'labels' => ['Básico', 'Intermedio', 'Premium'],
+                'totals' => [0, 0, 0],
+                'activos' => [0, 0, 0]
+            ];
+        }
+    }
+
+    /**
+     * Obtener crecimiento mensual
+     */
+    public function getMonthlyGrowth($months = 6)
+    {
+        try {
+            $sql = "SELECT 
+                DATE_FORMAT(created_at, '%Y-%m') as mes,
+                COUNT(*) as nuevas_empresas
+            FROM companies 
+            WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL :months MONTH)
+            GROUP BY DATE_FORMAT(created_at, '%Y-%m')
+            ORDER BY mes ASC";
+
+            $stmt = $this->db->prepare($sql);
+            $stmt->bindParam(':months', $months, PDO::PARAM_INT);
+            $stmt->execute();
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Formatear para gráficos
+            $stats = [
+                'labels' => [],
+                'data' => []
+            ];
+
+            $monthNames = [
+                '01' => 'Ene',
+                '02' => 'Feb',
+                '03' => 'Mar',
+                '04' => 'Abr',
+                '05' => 'May',
+                '06' => 'Jun',
+                '07' => 'Jul',
+                '08' => 'Ago',
+                '09' => 'Sep',
+                '10' => 'Oct',
+                '11' => 'Nov',
+                '12' => 'Dic'
+            ];
+
+            foreach ($results as $result) {
+                $parts = explode('-', $result['mes']);
+                $monthNum = $parts[1];
+                $year = $parts[0];
+
+                $stats['labels'][] = $monthNames[$monthNum] . ' ' . $year;
+                $stats['data'][] = (int)$result['nuevas_empresas'];
+            }
+
+            return $stats;
+        } catch (Exception $e) {
+            $this->logError("Error en getMonthlyGrowth: " . $e->getMessage());
+            return [
+                'labels' => [],
+                'data' => []
+            ];
+        }
+    }
+
+    /**
+     * Obtener ingresos por tipo de paquete
+     */
+    public function getRevenueByPackage()
+    {
+        try {
+            $sql = "SELECT 
+                tipo_paquete,
+                COUNT(*) as cantidad,
+                SUM(costo_mensual) as ingresos_mensuales
+            FROM companies 
+            WHERE estado = 'activo'
+            GROUP BY tipo_paquete";
+
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute();
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Formatear para gráficos
+            $stats = [
+                'labels' => [],
+                'data' => []
+            ];
+
+            $packageNames = [
+                'basico' => 'Básico',
+                'intermedio' => 'Intermedio',
+                'premium' => 'Premium'
+            ];
+
+            foreach ($results as $result) {
+                $stats['labels'][] = $packageNames[$result['tipo_paquete']] ?? $result['tipo_paquete'];
+                $stats['data'][] = (float)$result['ingresos_mensuales'];
+            }
+
+            return $stats;
+        } catch (Exception $e) {
+            $this->logError("Error en getRevenueByPackage: " . $e->getMessage());
+            return [
+                'labels' => [],
+                'data' => []
+            ];
+        }
+    }
+
+    /**
+     * Obtener estadísticas generales para dashboard
+     */
+    public function getDashboardStats()
+    {
+        try {
+            $stats = [];
+
+            // Total de empresas
+            $stats['total_companies'] = $this->count();
+
+            // Empresas activas
+            $stats['active_companies'] = $this->count("estado = 'activo'");
+
+            // Empresas suspendidas
+            $stats['suspended_companies'] = $this->count("estado = 'suspendido'");
+
+            // Empresas vencidas
+            $stats['expired_companies'] = $this->count("estado = 'vencido'");
+
+            // Ingresos mensuales totales
+            $sql = "SELECT SUM(costo_mensual) as total FROM companies WHERE estado = 'activo'";
+            $stmt = $this->db->query($sql);
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            $stats['monthly_revenue'] = (float)($result['total'] ?? 0);
+
+            // Empresas próximas a vencer (30 días)
+            $sql = "SELECT COUNT(*) as total FROM companies 
+                WHERE estado = 'activo' 
+                AND fecha_vencimiento BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY)";
+            $stmt = $this->db->query($sql);
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            $stats['expiring_soon'] = (int)($result['total'] ?? 0);
+
+            // Total de buses
+            $sql = "SELECT SUM(total_buses) as total FROM companies WHERE estado = 'activo'";
+            $stmt = $this->db->query($sql);
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            $stats['total_buses'] = (int)($result['total'] ?? 0);
+
+            return $stats;
+        } catch (Exception $e) {
+            $this->logError("Error en getDashboardStats: " . $e->getMessage());
+            return [
+                'total_companies' => 0,
+                'active_companies' => 0,
+                'suspended_companies' => 0,
+                'expired_companies' => 0,
+                'monthly_revenue' => 0,
+                'expiring_soon' => 0,
+                'total_buses' => 0
+            ];
+        }
+    }
+
+
+    /**
      * Contar empresas con filtros
      */
     public function countWithFilters($filters = [])
@@ -503,7 +710,7 @@ class Company extends BaseModel
             if (!empty($condition)) {
                 $sql .= " WHERE " . $condition;
             }
-            
+
             $stmt = $this->db->prepare($sql);
             $stmt->execute();
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -553,6 +760,31 @@ class Company extends BaseModel
     }
 
     /**
+     * Verificar si el RUC ya existe en empresas activas
+     */
+    public function rucExistsActive($ruc, $excludeId = null)
+    {
+        try {
+            $sql = "SELECT id, nombre, estado FROM companies WHERE ruc = ? AND estado = 'activo'";
+            $params = [$ruc];
+
+            if ($excludeId) {
+                $sql .= " AND id != ?";
+                $params[] = $excludeId;
+            }
+
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($params);
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            return $result !== false ? $result : null;
+        } catch (Exception $e) {
+            $this->logError("Error en rucExistsActive: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
      * Validar RUC peruano
      */
     public function validateRuc($ruc)
@@ -571,14 +803,14 @@ class Company extends BaseModel
         // Validación del dígito verificador (módulo 11)
         $suma = 0;
         $pesos = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2];
-        
+
         for ($i = 0; $i < 10; $i++) {
             $suma += $ruc[$i] * $pesos[$i];
         }
-        
+
         $resto = 11 - ($suma % 11);
         $digitoVerificador = $resto == 10 ? 0 : ($resto == 11 ? 1 : $resto);
-        
+
         return $digitoVerificador == $ruc[10];
     }
 }
