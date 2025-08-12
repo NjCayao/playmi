@@ -104,6 +104,34 @@ function showFormErrors(errors) {
     });
 }
 
+// Validación del RUC
+$('#ruc').on('input', function() {
+    const ruc = $(this).val();
+    $(this).val(ruc.replace(/[^0-9]/g, '')); // Solo números
+    
+    if (ruc.length === 11) {
+        validateRuc(ruc);
+    }
+});
+
+function validateRuc(ruc) {
+    // Validación básica del RUC peruano
+    if (!/^[0-9]{11}$/.test(ruc)) {
+        $('#ruc').addClass('is-invalid');
+        return false;
+    }
+    
+    const tipoEmpresa = ruc.substring(0, 2);
+    if (!['10', '15', '17', '20'].includes(tipoEmpresa)) {
+        $('#ruc').addClass('is-invalid');
+        $('#ruc-feedback').text('RUC inválido: debe comenzar con 10, 15, 17 o 20');
+        return false;
+    }
+    
+    $('#ruc').removeClass('is-invalid').addClass('is-valid');
+    return true;
+}
+
 // Calcular fecha de vencimiento automáticamente
 $('#fecha_inicio, #duracion_meses').on('change', function() {
     const fechaInicio = $('#fecha_inicio').val();
@@ -199,6 +227,28 @@ ob_start();
                         
                         <div class="col-md-6">
                             <div class="form-group">
+                                <label for="ruc">RUC <span class="text-danger">*</span></label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="ruc" 
+                                       name="ruc" 
+                                       required
+                                       maxlength="11"
+                                       pattern="[0-9]{11}"
+                                       value="<?php echo htmlspecialchars($company['ruc'] ?? ''); ?>"
+                                       placeholder="20123456789"
+                                       data-msg-pattern="El RUC debe tener 11 dígitos numéricos">
+                                <div class="invalid-feedback" id="ruc-feedback">
+                                    El RUC debe tener 11 dígitos numéricos
+                                </div>
+                                <small class="text-muted">RUC de 11 dígitos de la empresa</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
                                 <label for="email_contacto">Email de Contacto <span class="text-danger">*</span></label>
                                 <input type="email" 
                                        class="form-control" 
@@ -208,21 +258,6 @@ ob_start();
                                        maxlength="100"
                                        value="<?php echo htmlspecialchars($company['email_contacto']); ?>"
                                        placeholder="contacto@empresa.com">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="persona_contacto">Persona de Contacto</label>
-                                <input type="text" 
-                                       class="form-control" 
-                                       id="persona_contacto" 
-                                       name="persona_contacto" 
-                                       maxlength="100"
-                                       value="<?php echo htmlspecialchars($company['persona_contacto'] ?? ''); ?>"
-                                       placeholder="Nombre del responsable">
                             </div>
                         </div>
                         
@@ -236,6 +271,21 @@ ob_start();
                                        maxlength="20"
                                        value="<?php echo htmlspecialchars($company['telefono'] ?? ''); ?>"
                                        placeholder="+51 999 999 999">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="form-group">
+                                <label for="persona_contacto">Persona de Contacto</label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="persona_contacto" 
+                                       name="persona_contacto" 
+                                       maxlength="100"
+                                       value="<?php echo htmlspecialchars($company['persona_contacto'] ?? ''); ?>"
+                                       placeholder="Nombre del responsable">
                             </div>
                         </div>
                     </div>

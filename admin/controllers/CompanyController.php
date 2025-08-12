@@ -34,9 +34,9 @@ class CompanyController extends BaseController
                 'proximas_vencer' => isset($_GET['proximas_vencer']) ? true : false
             ];
 
-            // PAGINACIÓN
+            // PAGINACIÓN - Usar la constante PAGINATION_LIMIT
             $page = max(1, (int)($_GET['page'] ?? 1));
-            $perPage = 10; // 10 empresas por página
+            $perPage = PAGINATION_LIMIT; // Ahora usa 25 de la constante
             $offset = ($page - 1) * $perPage;
 
             // Obtener total de empresas (para calcular páginas)
@@ -79,7 +79,7 @@ class CompanyController extends BaseController
                 'companies' => [],
                 'filters' => [],
                 'stats' => ['total' => 0, 'active' => 0, 'suspended' => 0, 'expired' => 0],
-                'pagination' => ['current_page' => 1, 'per_page' => 10, 'total' => 0, 'total_pages' => 0]
+                'pagination' => ['current_page' => 1, 'per_page' => $perPage ?? 25, 'total' => 0, 'total_pages' => 0]
             ];
         }
     }
@@ -139,6 +139,12 @@ class CompanyController extends BaseController
                     'label' => 'Nombre de la empresa',
                     'max_length' => 100
                 ],
+                'ruc' => [
+                    'required' => true,
+                    'label' => 'RUC',
+                    'pattern' => '/^[0-9]{11}$/',
+                    'message' => 'El RUC debe tener 11 dígitos numéricos'
+                ],
                 'email_contacto' => [
                     'required' => true,
                     'label' => 'Email de contacto',
@@ -179,6 +185,16 @@ class CompanyController extends BaseController
 
             // Validaciones adicionales
             if (empty($errors)) {
+                // Validar RUC formato correcto
+                if (!$this->companyModel->validateRuc($data['ruc'])) {
+                    $errors['ruc'] = 'El RUC ingresado no es válido';
+                }
+
+                // Verificar que RUC no exista
+                if ($this->companyModel->rucExists($data['ruc'])) {
+                    $errors['ruc'] = 'Ya existe una empresa registrada con este RUC';
+                }
+
                 // Verificar que nombre no exista
                 if ($this->companyModel->nameExists($data['nombre'])) {
                     $errors['nombre'] = 'Ya existe una empresa con este nombre';
@@ -226,7 +242,7 @@ class CompanyController extends BaseController
 
             if ($companyId) {
                 // Registrar actividad
-                $this->logActivity('create', 'empresas', $companyId, null, $data);
+                $this->logActivity('create', 'companies', $companyId, null, $data);
 
                 $this->jsonResponse([
                     'success' => true,
@@ -274,18 +290,20 @@ class CompanyController extends BaseController
             ];
 
             // Obtener logs de actividad
-            $logs = $this->activityLog->getByRecord('companies', $companyId, 20);
+            require_once __DIR__ . '/../models/ActivityLog.php';
+            $activityLog = new ActivityLog();
+            $logs = $activityLog->getByRecord('companies', $companyId, 20);
 
             // Formatear logs para timeline
             $formattedLogs = [];
             foreach ($logs as $log) {
                 $formattedLogs[] = [
-                    'action' => $log['action'],
-                    'description' => $log['description'],
+                    'action' => $log['accion'],
+                    'description' => $log['descripcion'] ?? '',
                     'user' => $log['username'] ?? 'Sistema',
                     'created_at' => $log['created_at'],
-                    'icon' => $this->getActionIcon($log['action']),
-                    'color' => $this->getActionColor($log['action'])
+                    'icon' => $this->getActionIcon($log['accion']),
+                    'color' => $this->getActionColor($log['accion'])
                 ];
             }
 
@@ -317,6 +335,23 @@ class CompanyController extends BaseController
             $existing = $this->companyModel->findByName(trim($data['nombre']), $excludeId);
             if ($existing) {
                 $errors['nombre'] = 'Ya existe una empresa con este nombre';
+            }
+        }
+
+        // Validar RUC
+        if (empty(trim($data['ruc'] ?? ''))) {
+            $errors['ruc'] = 'El RUC es requerido';
+        } elseif (!preg_match('/^[0-9]{11}$/', trim($data['ruc']))) {
+            $errors['ruc'] = 'El RUC debe tener 11 dígitos numéricos';
+        } else {
+            // Validar formato RUC
+            if (!$this->companyModel->validateRuc(trim($data['ruc']))) {
+                $errors['ruc'] = 'El RUC ingresado no es válido';
+            }
+            // Verificar duplicados
+            $existing = $this->companyModel->findByRuc(trim($data['ruc']), $excludeId);
+            if ($existing) {
+                $errors['ruc'] = 'Ya existe una empresa con este RUC';
             }
         }
 
@@ -481,6 +516,7 @@ class CompanyController extends BaseController
             // Preparar datos para actualización
             $updateData = [
                 'nombre' => trim($_POST['nombre']),
+                'ruc' => trim($_POST['ruc']),
                 'email_contacto' => trim($_POST['email_contacto']),
                 'persona_contacto' => trim($_POST['persona_contacto'] ?? ''),
                 'telefono' => trim($_POST['telefono'] ?? ''),
@@ -503,7 +539,10 @@ class CompanyController extends BaseController
             if ($result) {
                 // Registrar en log
                 $currentUser = $this->getCurrentUser();
-                $this->activityLog->create([
+                
+                require_once __DIR__ . '/../models/ActivityLog.php';
+                $activityLog = new ActivityLog();
+                $activityLog->create([
                     'user_id' => $currentUser['id'],
                     'action' => 'update',
                     'table_name' => 'companies',
@@ -516,7 +555,7 @@ class CompanyController extends BaseController
                 echo json_encode([
                     'success' => true,
                     'message' => 'Empresa actualizada exitosamente',
-                    'redirect' => 'views/companies/view.php?id=' . $companyId
+                    'redirect' => BASE_URL . 'views/companies/view.php?id=' . $companyId
                 ]);
             } else {
                 echo json_encode([
@@ -550,7 +589,10 @@ class CompanyController extends BaseController
             }
 
             // Verificar si se puede eliminar (no tiene paquetes activos, etc.)
-            $activePackages = $this->packageModel->count("empresa_id = $id AND estado IN ('listo', 'instalado')");
+            require_once __DIR__ . '/../models/Package.php';
+            $packageModel = new Package();
+            $activePackages = $packageModel->count("empresa_id = $id AND estado IN ('listo', 'instalado')");
+            
             if ($activePackages > 0) {
                 $this->jsonResponse([
                     'error' => 'No se puede eliminar la empresa porque tiene paquetes activos'
@@ -569,7 +611,7 @@ class CompanyController extends BaseController
                 }
 
                 // Registrar actividad
-                $this->logActivity('delete', 'empresas', $id, $company, null);
+                $this->logActivity('delete', 'companies', $id, $company, null);
 
                 $this->jsonResponse([
                     'success' => true,
@@ -600,7 +642,7 @@ class CompanyController extends BaseController
             $result = $this->companyModel->updateStatus($id, $newStatus);
 
             if ($result['success'] ?? false) {
-                $this->logActivity('status_update', 'empresas', $id, null, ['new_status' => $newStatus]);
+                $this->logActivity('status_update', 'companies', $id, null, ['new_status' => $newStatus]);
                 $this->jsonResponse($result);
             } else {
                 $this->jsonResponse($result, 400);
@@ -627,7 +669,7 @@ class CompanyController extends BaseController
             $result = $this->companyModel->extendLicense($id, $months);
 
             if ($result['success'] ?? false) {
-                $this->logActivity('license_extended', 'empresas', $id, null, ['months' => $months]);
+                $this->logActivity('license_extended', 'companies', $id, null, ['months' => $months]);
                 $this->jsonResponse($result);
             } else {
                 $this->jsonResponse($result, 400);
@@ -639,32 +681,7 @@ class CompanyController extends BaseController
     }
 
     /**
-     * Obtener paquetes de una empresa
-     */
-    private function getCompanyPackages($companyId)
-    {
-        require_once __DIR__ . '/../models/Package.php';
-        $packageModel = new Package();
-        return $packageModel->getByCompany($companyId, 5); // Últimos 5 paquetes
-    }
-
-    /**
-     * Obtener publicidad de una empresa
-     */
-    private function getCompanyAds($companyId)
-    {
-        try {
-            $sql = "SELECT * FROM publicidad_empresa WHERE empresa_id = ? ORDER BY created_at DESC LIMIT 10";
-            $stmt = $this->db->prepare($sql);
-            $stmt->execute([$companyId]);
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (Exception $e) {
-            return [];
-        }
-    }
-
-    /**
-     * Eliminar empresa
+     * Eliminar empresa (método alternativo para compatibilidad)
      */
     public function destroy($id = null)
     {
@@ -718,7 +735,10 @@ class CompanyController extends BaseController
             if ($result) {
                 // Registrar en log
                 $currentUser = $this->getCurrentUser();
-                $this->activityLog->create([
+                
+                require_once __DIR__ . '/../models/ActivityLog.php';
+                $activityLog = new ActivityLog();
+                $activityLog->create([
                     'user_id' => $currentUser['id'],
                     'action' => 'delete',
                     'table_name' => 'companies',

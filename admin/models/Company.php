@@ -9,7 +9,7 @@ require_once 'BaseModel.php';
 
 class Company extends BaseModel
 {
-    protected $table = 'empresas';
+    protected $table = 'companies'; // Usar tabla companies
 
     /**
      * Obtener empresas activas
@@ -17,7 +17,7 @@ class Company extends BaseModel
     public function getActiveCompanies()
     {
         try {
-            $sql = "SELECT * FROM empresas WHERE estado = ? ORDER BY nombre";
+            $sql = "SELECT * FROM companies WHERE estado = ? ORDER BY nombre";
             $stmt = $this->db->prepare($sql);
             $stmt->execute([STATUS_ACTIVE]);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -34,7 +34,7 @@ class Company extends BaseModel
     {
         try {
             $sql = "SELECT *, DATEDIFF(fecha_vencimiento, CURDATE()) as dias_restantes 
-                    FROM empresas 
+                    FROM companies 
                     WHERE fecha_vencimiento <= DATE_ADD(CURDATE(), INTERVAL ? DAY) 
                     AND estado = ? 
                     ORDER BY fecha_vencimiento ASC";
@@ -97,6 +97,53 @@ class Company extends BaseModel
     }
 
     /**
+     * Buscar empresa por RUC (para validar duplicados)
+     */
+    public function findByRuc($ruc, $excludeId = null)
+    {
+        try {
+            $sql = "SELECT * FROM companies WHERE ruc = :ruc";
+            $params = [':ruc' => $ruc];
+
+            if ($excludeId) {
+                $sql .= " AND id != :exclude_id";
+                $params[':exclude_id'] = $excludeId;
+            }
+
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($params);
+
+            return $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Error finding company by RUC: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Verificar si el RUC ya existe
+     */
+    public function rucExists($ruc, $excludeId = null)
+    {
+        try {
+            $sql = "SELECT id FROM companies WHERE ruc = ?";
+            $params = [$ruc];
+
+            if ($excludeId) {
+                $sql .= " AND id != ?";
+                $params[] = $excludeId;
+            }
+
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($params);
+            return $stmt->fetch() !== false;
+        } catch (Exception $e) {
+            $this->logError("Error en rucExists: " . $e->getMessage());
+            return true;
+        }
+    }
+
+    /**
      * Obtener ingresos totales mensuales
      */
     public function getTotalRevenue()
@@ -152,30 +199,6 @@ class Company extends BaseModel
         }
     }
 
-
-    /**
-     * Obtener empresas por tipo de paquete
-     */
-    public function getPackageStats()
-    {
-        try {
-            $sql = "SELECT 
-                    tipo_paquete,
-                    COUNT(*) as cantidad,
-                    SUM(costo_mensual) as revenue
-                FROM companies 
-                WHERE estado = 'activo'
-                GROUP BY tipo_paquete";
-            $stmt = $this->db->prepare($sql);
-            $stmt->execute();
-
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (PDOException $e) {
-            error_log("Error getting package stats: " . $e->getMessage());
-            return [];
-        }
-    }
-
     /**
      * Buscar empresas con filtros
      */
@@ -187,8 +210,9 @@ class Company extends BaseModel
 
             // Filtro por nombre
             if (!empty($filters['search'])) {
-                $whereConditions[] = "(nombre LIKE ? OR email_contacto LIKE ? OR persona_contacto LIKE ?)";
+                $whereConditions[] = "(nombre LIKE ? OR email_contacto LIKE ? OR persona_contacto LIKE ? OR ruc LIKE ?)";
                 $searchTerm = '%' . $filters['search'] . '%';
+                $params[] = $searchTerm;
                 $params[] = $searchTerm;
                 $params[] = $searchTerm;
                 $params[] = $searchTerm;
@@ -215,7 +239,7 @@ class Company extends BaseModel
             $whereClause = !empty($whereConditions) ? 'WHERE ' . implode(' AND ', $whereConditions) : '';
 
             // Contar total de registros
-            $countSql = "SELECT COUNT(*) as total FROM empresas $whereClause";
+            $countSql = "SELECT COUNT(*) as total FROM companies $whereClause";
             $stmt = $this->db->prepare($countSql);
             $stmt->execute($params);
             $totalRecords = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
@@ -223,7 +247,7 @@ class Company extends BaseModel
             // Obtener registros paginados
             $offset = ($page - 1) * $limit;
             $sql = "SELECT *, DATEDIFF(fecha_vencimiento, CURDATE()) as dias_restantes 
-                    FROM empresas 
+                    FROM companies 
                     $whereClause 
                     ORDER BY created_at DESC 
                     LIMIT ? OFFSET ?";
@@ -260,7 +284,7 @@ class Company extends BaseModel
     public function emailExists($email, $excludeId = null)
     {
         try {
-            $sql = "SELECT id FROM empresas WHERE email_contacto = ?";
+            $sql = "SELECT id FROM companies WHERE email_contacto = ?";
             $params = [$email];
 
             if ($excludeId) {
@@ -283,7 +307,7 @@ class Company extends BaseModel
     public function nameExists($name, $excludeId = null)
     {
         try {
-            $sql = "SELECT id FROM empresas WHERE nombre = ?";
+            $sql = "SELECT id FROM companies WHERE nombre = ?";
             $params = [$name];
 
             if ($excludeId) {
@@ -369,8 +393,9 @@ class Company extends BaseModel
 
             // Filtros (igual que antes)
             if (!empty($filters['search'])) {
-                $sql .= " AND (c.nombre LIKE :search OR c.email_contacto LIKE :search)";
+                $sql .= " AND (c.nombre LIKE :search OR c.email_contacto LIKE :search OR c.ruc LIKE :search2)";
                 $params[':search'] = '%' . $filters['search'] . '%';
+                $params[':search2'] = '%' . $filters['search'] . '%';
             }
 
             if (!empty($filters['estado'])) {
@@ -433,8 +458,10 @@ class Company extends BaseModel
 
             // Filtro por búsqueda
             if (!empty($filters['search'])) {
-                $sql .= " AND (c.nombre LIKE :search OR c.email_contacto LIKE :search)";
+                $sql .= " AND (c.nombre LIKE :search OR c.email_contacto LIKE :search2 OR c.ruc LIKE :search3)";
                 $params[':search'] = '%' . $filters['search'] . '%';
+                $params[':search2'] = '%' . $filters['search'] . '%';
+                $params[':search3'] = '%' . $filters['search'] . '%';
             }
 
             // Filtro por estado
@@ -469,10 +496,14 @@ class Company extends BaseModel
     /**
      * Contar total de empresas
      */
-    public function count()
+    public function count($condition = '')
     {
         try {
             $sql = "SELECT COUNT(*) as total FROM companies";
+            if (!empty($condition)) {
+                $sql .= " WHERE " . $condition;
+            }
+            
             $stmt = $this->db->prepare($sql);
             $stmt->execute();
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -503,7 +534,6 @@ class Company extends BaseModel
         }
     }
 
-
     /**
      * Obtener empresas por estado
      */
@@ -520,5 +550,35 @@ class Company extends BaseModel
             error_log("Error getting companies by status: " . $e->getMessage());
             return [];
         }
+    }
+
+    /**
+     * Validar RUC peruano
+     */
+    public function validateRuc($ruc)
+    {
+        // RUC debe tener 11 dígitos
+        if (!preg_match('/^[0-9]{11}$/', $ruc)) {
+            return false;
+        }
+
+        // Los dos primeros dígitos deben ser 10, 15, 17 o 20
+        $tipoEmpresa = substr($ruc, 0, 2);
+        if (!in_array($tipoEmpresa, ['10', '15', '17', '20'])) {
+            return false;
+        }
+
+        // Validación del dígito verificador (módulo 11)
+        $suma = 0;
+        $pesos = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2];
+        
+        for ($i = 0; $i < 10; $i++) {
+            $suma += $ruc[$i] * $pesos[$i];
+        }
+        
+        $resto = 11 - ($suma % 11);
+        $digitoVerificador = $resto == 10 ? 0 : ($resto == 11 ? 1 : $resto);
+        
+        return $digitoVerificador == $ruc[10];
     }
 }
