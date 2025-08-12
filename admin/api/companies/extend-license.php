@@ -1,46 +1,62 @@
 <?php
-/**
- * API para extender licencia de empresa
- */
-
-// Headers para API JSON
 header('Content-Type: application/json');
-header('Cache-Control: no-cache, must-revalidate');
 
-// Solo permitir POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     echo json_encode(['error' => 'Método no permitido']);
     exit;
 }
 
-// Incluir configuración
 require_once __DIR__ . '/../../config/system.php';
-require_once __DIR__ . '/../../controllers/CompanyController.php';
+require_once __DIR__ . '/../../models/Company.php';
 
 try {
-    // Crear instancia del controlador
-    $companyController = new CompanyController();
+    session_start();
+    if (!isset($_SESSION['user_id'])) {
+        echo json_encode(['success' => false, 'error' => 'No autorizado']);
+        exit;
+    }
     
-    // Verificar parámetros
     $companyId = (int)($_POST['company_id'] ?? 0);
     $months = (int)($_POST['months'] ?? 0);
     
     if (!$companyId || !$months) {
-        http_response_code(400);
-        echo json_encode(['error' => 'Parámetros requeridos faltantes']);
+        echo json_encode(['success' => false, 'error' => 'Datos incompletos']);
         exit;
     }
     
-    // Extender licencia
-    $companyController->extendLicense($companyId);
+    $companyModel = new Company();
+    $company = $companyModel->findById($companyId);
+    
+    if (!$company) {
+        echo json_encode(['success' => false, 'error' => 'Empresa no encontrada']);
+        exit;
+    }
+    
+    // Calcular nueva fecha de vencimiento
+    $currentExpiry = new DateTime($company['fecha_vencimiento']);
+    $today = new DateTime();
+    
+    // Si ya está vencida, extender desde hoy, sino desde fecha actual
+    $baseDate = $currentExpiry > $today ? $currentExpiry : $today;
+    $baseDate->add(new DateInterval('P' . $months . 'M'));
+    
+    $result = $companyModel->update($companyId, [
+        'fecha_vencimiento' => $baseDate->format('Y-m-d'),
+        'estado' => 'activo', // Reactivar
+        'updated_at' => date('Y-m-d H:i:s')
+    ]);
+    
+    if ($result) {
+        echo json_encode([
+            'success' => true, 
+            'message' => "Licencia extendida por $months meses hasta " . $baseDate->format('d/m/Y')
+        ]);
+    } else {
+        echo json_encode(['success' => false, 'error' => 'Error al extender la licencia']);
+    }
     
 } catch (Exception $e) {
-    // Error general
-    http_response_code(500);
-    echo json_encode([
-        'success' => false,
-        'error' => 'Error interno del servidor'
-    ]);
+    echo json_encode(['success' => false, 'error' => 'Error interno: ' . $e->getMessage()]);
 }
 ?>

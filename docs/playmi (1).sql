@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 11-08-2025 a las 23:02:48
+-- Tiempo de generación: 12-08-2025 a las 18:36:12
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.1.25
 
@@ -35,7 +35,7 @@ CREATE TABLE `banners_empresa` (
   `posicion` varchar(50) DEFAULT NULL,
   `ancho` int(11) DEFAULT NULL,
   `alto` int(11) DEFAULT NULL,
-  `tamaño_archivo` bigint(20) DEFAULT NULL,
+  `tamanio_archivo` bigint(20) DEFAULT NULL,
   `activo` tinyint(1) DEFAULT 1,
   `orden_visualizacion` int(11) DEFAULT 1,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
@@ -107,9 +107,9 @@ INSERT INTO `configuracion_sistema` (`id`, `clave_config`, `valor_config`, `tipo
 (1, 'nombre_sistema', 'PLAYMI Entertainment Admin', 'string', 'Nombre del sistema', 1, 'general', '2025-08-11 06:41:28'),
 (2, 'version_sistema', '1.0.0', 'string', 'Versión del sistema', 1, 'general', '2025-08-11 06:41:28'),
 (3, 'nombre_marca', 'PLAYMI', 'string', 'Nombre de la marca', 1, 'general', '2025-08-11 06:41:28'),
-(4, 'tamaño_max_video', '5368709120', 'number', 'Tamaño máximo de video en bytes (5GB)', 1, 'uploads', '2025-08-11 06:41:28'),
-(5, 'tamaño_max_audio', '524288000', 'number', 'Tamaño máximo de audio en bytes (500MB)', 1, 'uploads', '2025-08-11 06:41:28'),
-(6, 'tamaño_max_imagen', '10485760', 'number', 'Tamaño máximo de imagen en bytes (10MB)', 1, 'uploads', '2025-08-11 06:41:28'),
+(4, 'tamanio_max_video', '5368709120', 'number', 'Tamaño máximo de video en bytes (5GB)', 1, 'uploads', '2025-08-12 16:24:05'),
+(5, 'tamanio_max_audio', '524288000', 'number', 'Tamaño máximo de audio en bytes (500MB)', 1, 'uploads', '2025-08-12 16:24:05'),
+(6, 'tamanio_max_imagen', '10485760', 'number', 'Tamaño máximo de imagen en bytes (10MB)', 1, 'uploads', '2025-08-12 16:24:05'),
 (7, 'formatos_video_permitidos', '[\"mp4\",\"avi\",\"mkv\",\"mov\"]', 'json', 'Formatos de video permitidos', 1, 'uploads', '2025-08-11 06:41:28'),
 (8, 'formatos_audio_permitidos', '[\"mp3\",\"wav\",\"flac\",\"m4a\"]', 'json', 'Formatos de audio permitidos', 1, 'uploads', '2025-08-11 06:41:28'),
 (9, 'formatos_imagen_permitidos', '[\"jpg\",\"jpeg\",\"png\",\"gif\",\"webp\"]', 'json', 'Formatos de imagen permitidos', 1, 'uploads', '2025-08-11 06:41:28'),
@@ -131,12 +131,12 @@ CREATE TABLE `contenido` (
   `titulo` varchar(200) NOT NULL,
   `descripcion` text DEFAULT NULL,
   `archivo_path` varchar(500) NOT NULL,
-  `tamaño_archivo` bigint(20) DEFAULT NULL,
+  `tamanio_archivo` bigint(20) DEFAULT NULL,
   `duracion` int(11) DEFAULT NULL,
   `tipo` enum('pelicula','musica','juego') NOT NULL,
   `categoria` varchar(50) DEFAULT NULL,
   `genero` varchar(50) DEFAULT NULL,
-  `año_lanzamiento` year(4) DEFAULT NULL,
+  `anio_lanzamiento` year(4) DEFAULT NULL,
   `calificacion` varchar(10) DEFAULT NULL,
   `thumbnail_path` varchar(500) DEFAULT NULL,
   `trailer_path` varchar(500) DEFAULT NULL,
@@ -151,10 +151,10 @@ CREATE TABLE `contenido` (
 -- Volcado de datos para la tabla `contenido`
 --
 
-INSERT INTO `contenido` (`id`, `titulo`, `descripcion`, `archivo_path`, `tamaño_archivo`, `duracion`, `tipo`, `categoria`, `genero`, `año_lanzamiento`, `calificacion`, `thumbnail_path`, `trailer_path`, `estado`, `descargas_count`, `archivo_hash`, `created_at`, `updated_at`) VALUES
+INSERT INTO `contenido` (`id`, `titulo`, `descripcion`, `archivo_path`, `tamanio_archivo`, `duracion`, `tipo`, `categoria`, `genero`, `anio_lanzamiento`, `calificacion`, `thumbnail_path`, `trailer_path`, `estado`, `descargas_count`, `archivo_hash`, `created_at`, `updated_at`) VALUES
 (1, 'Contenido de Ejemplo - Película', NULL, 'placeholder.mp4', NULL, NULL, 'pelicula', 'accion', NULL, NULL, NULL, NULL, NULL, 'inactivo', 0, NULL, '2025-08-11 06:41:28', '2025-08-11 06:41:28'),
 (2, 'Contenido de Ejemplo - Música', NULL, 'placeholder.mp3', NULL, NULL, 'musica', 'pop', NULL, NULL, NULL, NULL, NULL, 'inactivo', 0, NULL, '2025-08-11 06:41:28', '2025-08-11 06:41:28'),
-(3, 'Contenido de Ejemplo - Juego', NULL, 'placeholder.html', NULL, NULL, 'juego', 'puzzle', NULL, NULL, NULL, NULL, NULL, 'inactivo', 0, NULL, '2025-08-11 06:41:28', '2025-08-11 06:41:28');
+(3, 'Contenido de Ejemplo - Juego', 'Descripción actualizada', 'placeholder.html', NULL, NULL, 'juego', 'puzzle', NULL, NULL, NULL, NULL, NULL, 'inactivo', 0, NULL, '2025-08-11 06:41:28', '2025-08-12 16:00:27');
 
 -- --------------------------------------------------------
 
@@ -207,7 +207,10 @@ CREATE TABLE `logs_sistema` (
 --
 
 INSERT INTO `logs_sistema` (`id`, `usuario_id`, `accion`, `tabla_afectada`, `registro_id`, `valores_anteriores`, `valores_nuevos`, `ip_address`, `user_agent`, `created_at`) VALUES
-(1, 1, 'login_success', 'usuarios', 1, NULL, '{\"username\":\"admin\",\"remember\":false}', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', '2025-08-11 07:31:23');
+(1, 1, 'login_success', 'usuarios', 1, NULL, '{\"username\":\"admin\",\"remember\":false}', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', '2025-08-11 07:31:23'),
+(2, 1, 'login_success', 'usuarios', 1, NULL, '{\"username\":\"admin\",\"remember\":false}', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', '2025-08-12 01:25:26'),
+(3, NULL, 'login_failed', 'usuarios', NULL, NULL, '{\"username\":\"admin\",\"ip\":\"::1\"}', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', '2025-08-12 15:58:27'),
+(4, 1, 'login_success', 'usuarios', 1, NULL, '{\"username\":\"admin\",\"remember\":false}', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', '2025-08-12 15:58:30');
 
 -- --------------------------------------------------------
 
@@ -221,7 +224,7 @@ CREATE TABLE `paquetes_generados` (
   `nombre_paquete` varchar(100) NOT NULL,
   `version_paquete` varchar(20) DEFAULT '1.0',
   `fecha_generacion` timestamp NOT NULL DEFAULT current_timestamp(),
-  `tamaño_paquete` bigint(20) DEFAULT NULL,
+  `tamanio_paquete` bigint(20) DEFAULT NULL,
   `cantidad_contenido` int(11) DEFAULT NULL,
   `fecha_vencimiento_licencia` date DEFAULT NULL,
   `ruta_paquete` varchar(500) DEFAULT NULL,
@@ -245,7 +248,7 @@ CREATE TABLE `publicidad_empresa` (
   `tipo_video` enum('inicio','mitad') NOT NULL,
   `archivo_path` varchar(500) NOT NULL,
   `duracion` int(11) NOT NULL,
-  `tamaño_archivo` bigint(20) DEFAULT NULL,
+  `tamanio_archivo` bigint(20) DEFAULT NULL,
   `activo` tinyint(1) DEFAULT 1,
   `orden_reproduccion` int(11) DEFAULT 1,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
@@ -275,7 +278,7 @@ CREATE TABLE `usuarios` (
 --
 
 INSERT INTO `usuarios` (`id`, `username`, `password`, `email`, `nombre_completo`, `activo`, `ultimo_acceso`, `created_at`, `updated_at`) VALUES
-(1, 'admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin@playmi.com', 'Administrador', 1, '2025-08-11 07:31:23', '2025-08-11 06:41:28', '2025-08-11 08:07:09');
+(1, 'admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin@playmi.com', 'Administrador', 1, '2025-08-12 15:58:30', '2025-08-11 06:41:28', '2025-08-12 15:58:30');
 
 --
 -- Índices para tablas volcadas
@@ -379,7 +382,7 @@ ALTER TABLE `configuracion_sistema`
 -- AUTO_INCREMENT de la tabla `contenido`
 --
 ALTER TABLE `contenido`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
 -- AUTO_INCREMENT de la tabla `empresas`
@@ -391,7 +394,7 @@ ALTER TABLE `empresas`
 -- AUTO_INCREMENT de la tabla `logs_sistema`
 --
 ALTER TABLE `logs_sistema`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT de la tabla `paquetes_generados`
@@ -403,7 +406,7 @@ ALTER TABLE `paquetes_generados`
 -- AUTO_INCREMENT de la tabla `publicidad_empresa`
 --
 ALTER TABLE `publicidad_empresa`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT de la tabla `usuarios`

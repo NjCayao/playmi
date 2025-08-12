@@ -147,7 +147,7 @@
 .form-control {
     border-radius: 6px;
     border: 1px solid #d1d5db;
-    padding: 10px 15px;
+    /* padding: 10px 15px; */
     transition: border-color 0.2s ease;
 }
 

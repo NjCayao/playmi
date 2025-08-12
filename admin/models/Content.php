@@ -59,7 +59,7 @@ class Content extends BaseModel {
      */
     public function getTotalSize($type = null) {
         try {
-            $sql = "SELECT SUM(tamaño_archivo) as total FROM contenido WHERE estado = ?";
+            $sql = "SELECT SUM(tamanio_archivo) as total FROM contenido WHERE estado = ?";
             $params = [STATUS_ACTIVE];
             
             if ($type) {
@@ -85,7 +85,7 @@ class Content extends BaseModel {
             $sql = "SELECT 
                         tipo,
                         COUNT(*) as cantidad,
-                        SUM(tamaño_archivo) as tamaño_total,
+                        SUM(tamanio_archivo) as tamanio_total,
                         AVG(duracion) as duracion_promedio
                     FROM contenido 
                     WHERE estado = ? 
@@ -138,6 +138,12 @@ class Content extends BaseModel {
             if (!empty($filters['genero'])) {
                 $whereConditions[] = "genero = ?";
                 $params[] = $filters['genero'];
+            }
+            
+            // Filtro por año
+            if (!empty($filters['anio_lanzamiento'])) {
+                $whereConditions[] = "anio_lanzamiento = ?";
+                $params[] = $filters['anio_lanzamiento'];
             }
             
             $whereClause = 'WHERE ' . implode(' AND ', $whereConditions);

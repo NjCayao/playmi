@@ -59,4 +59,5 @@ define('DATE_FORMAT', 'd/m/Y');
 define('DATETIME_FORMAT', 'd/m/Y H:i:s');
 define('DB_DATE_FORMAT', 'Y-m-d');
 define('DB_DATETIME_FORMAT', 'Y-m-d H:i:s');
+
 ?>

@@ -26,10 +26,14 @@ define('SESSION_TIMEOUT', 3600); // 1 hora
 define('SESSION_NAME', 'PLAYMI_ADMIN_SESSION');
 
 // Configuración de archivos
-define('MAX_VIDEO_SIZE', 5 * 1024 * 1024 * 1024); // 5GB
-define('MAX_AUDIO_SIZE', 500 * 1024 * 1024); // 500MB
-define('MAX_IMAGE_SIZE', 10 * 1024 * 1024); // 10MB
-define('MAX_UPLOAD_SIZE', 10 * 1024 * 1024); // 10MB por defecto
+define('MAX_VIDEO_SIZE', 15 * 1024 * 1024 * 1024);      // 15 GB para películas
+define('MAX_AUDIO_SIZE', 2 * 1024 * 1024 * 1024);       // 2 GB para música/videos musicales
+define('MAX_GAME_SIZE', 10 * 1024 * 1024 * 1024);       // 10 GB para juegos
+define('MAX_IMAGE_SIZE', 50 * 1024 * 1024);             // 50 MB para imágenes
+define('MAX_UPLOAD_SIZE', 15 * 1024 * 1024 * 1024);     // 15 GB límite general
+// Para publicidad (más restrictivo)
+define('MAX_AD_VIDEO_SIZE', 500 * 1024 * 1024);         // 500 MB para videos publicitarios
+define('MAX_BANNER_SIZE', 10 * 1024 * 1024);            // 10 MB para banners
 
 // Extensiones permitidas
 define('ALLOWED_VIDEO_EXT', ['mp4', 'avi', 'mkv', 'mov']);

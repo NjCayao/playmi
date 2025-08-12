@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Lista de Empresas PLAYMI Admin
  * Página principal para gestionar empresas
@@ -34,24 +35,6 @@ $stats = $companiesData['stats'] ?? [];
 
 // JavaScript específico de la página
 $pageScript = "
-// Configurar DataTables
-$('#companiesTable').DataTable({
-    responsive: true,
-    order: [[4, 'desc']], // Ordenar por fecha de creación
-    columnDefs: [
-        { targets: [-1], orderable: false }, // Última columna (acciones) no ordenable
-        { targets: [0], width: '5%' },
-        { targets: [1], width: '25%' },
-        { targets: [2], width: '15%' },
-        { targets: [3], width: '15%' },
-        { targets: [4], width: '15%' },
-        { targets: [5], width: '10%' },
-        { targets: [6], width: '15%' }
-    ],
-    language: {
-        url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json'
-    }
-});
 
 // Función para cambiar estado de empresa
 function changeStatus(companyId, newStatus) {
@@ -126,6 +109,54 @@ function extendLicense(companyId) {
         }
     });
 }
+
+// Función para exportar datos
+function exportData(format) {
+    const table = $('#companiesTable').DataTable();
+    
+    if (format === 'excel') {
+        table.button('.buttons-excel').trigger();
+    } else if (format === 'pdf') {
+        table.button('.buttons-pdf').trigger();
+    }
+}
+
+// Confirmar eliminación
+$(document).on('click', '.btn-delete', function(e) {
+    e.preventDefault();
+    const url = $(this).attr('href');
+    const message = $(this).data('message');
+    
+    Swal.fire({
+        title: '¿Eliminar empresa?',
+        text: message,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            window.location.href = url;
+        }
+    });
+});
+
+// Función para import masivo
+function showImportModal() {
+    $('#importModal').modal('show');
+}
+
+// Función para generar reporte
+function generateReport() {
+    window.open(PLAYMI.baseUrl + 'views/companies/report.php', '_blank');
+}
+
+// Función para filtros avanzados
+function showAdvancedFilters() {
+    $('#advancedFiltersCollapse').collapse('toggle');
+}
 ";
 
 // Generar contenido
@@ -183,6 +214,13 @@ ob_start();
             <a href="<?php echo BASE_URL; ?>views/companies/create.php" class="btn btn-primary btn-sm">
                 <i class="fas fa-plus"></i> Nueva Empresa
             </a>
+
+            <button type="button" class="btn btn-info btn-sm" onclick="showImportModal()">
+                <i class="fas fa-upload"></i> Importar
+            </button>
+            <button type="button" class="btn btn-success btn-sm" onclick="generateReport()">
+                <i class="fas fa-file-pdf"></i> Reporte
+            </button>
         </div>
     </div>
     <div class="card-body">
@@ -190,12 +228,12 @@ ob_start();
             <div class="col-md-3">
                 <div class="form-group">
                     <label for="search">Buscar:</label>
-                    <input type="text" 
-                           class="form-control" 
-                           id="search" 
-                           name="search" 
-                           placeholder="Nombre o email..."
-                           value="<?php echo htmlspecialchars($filters['search'] ?? ''); ?>">
+                    <input type="text"
+                        class="form-control"
+                        id="search"
+                        name="search"
+                        placeholder="Nombre o email..."
+                        value="<?php echo htmlspecialchars($filters['search'] ?? ''); ?>">
                 </div>
             </div>
             <div class="col-md-2">
@@ -224,12 +262,12 @@ ob_start();
                 <div class="form-group">
                     <label>&nbsp;</label>
                     <div class="form-check">
-                        <input class="form-check-input" 
-                               type="checkbox" 
-                               id="proximas_vencer" 
-                               name="proximas_vencer" 
-                               value="1"
-                               <?php echo isset($filters['proximas_vencer']) ? 'checked' : ''; ?>>
+                        <input class="form-check-input"
+                            type="checkbox"
+                            id="proximas_vencer"
+                            name="proximas_vencer"
+                            value="1"
+                            <?php echo isset($filters['proximas_vencer']) ? 'checked' : ''; ?>>
                         <label class="form-check-label" for="proximas_vencer">
                             Próximas a vencer
                         </label>
@@ -268,7 +306,7 @@ ob_start();
     </div>
     <div class="card-body">
         <div class="table-responsive">
-            <table id="companiesTable" class="table table-bordered table-striped">
+            <table class="table table-bordered table-striped table-hover">
                 <thead>
                     <tr>
                         <th>Logo</th>
@@ -292,13 +330,13 @@ ob_start();
                             <tr class="<?php echo $isExpiring ? 'table-warning' : ($isExpired ? 'table-danger' : ''); ?>">
                                 <td class="text-center">
                                     <?php if ($company['logo_path']): ?>
-                                        <img src="<?php echo BASE_URL; ?>../companies/data/<?php echo htmlspecialchars($company['logo_path']); ?>" 
-                                             alt="Logo" 
-                                             class="img-circle" 
-                                             style="width: 40px; height: 40px; object-fit: cover;">
+                                        <img src="<?php echo BASE_URL; ?>../companies/data/<?php echo htmlspecialchars($company['logo_path']); ?>"
+                                            alt="Logo"
+                                            class="img-circle"
+                                            style="width: 40px; height: 40px; object-fit: cover;">
                                     <?php else: ?>
-                                        <div class="bg-secondary rounded-circle d-inline-flex align-items-center justify-content-center" 
-                                             style="width: 40px; height: 40px;">
+                                        <div class="bg-secondary rounded-circle d-inline-flex align-items-center justify-content-center"
+                                            style="width: 40px; height: 40px;">
                                             <i class="fas fa-building text-white"></i>
                                         </div>
                                     <?php endif; ?>
@@ -325,10 +363,9 @@ ob_start();
                                     <?php endif; ?>
                                 </td>
                                 <td>
-                                    <span class="badge badge-<?php 
-                                        echo $company['tipo_paquete'] === 'basico' ? 'secondary' : 
-                                            ($company['tipo_paquete'] === 'intermedio' ? 'warning' : 'success'); 
-                                    ?>">
+                                    <span class="badge badge-<?php
+                                                                echo $company['tipo_paquete'] === 'basico' ? 'secondary' : ($company['tipo_paquete'] === 'intermedio' ? 'warning' : 'success');
+                                                                ?>">
                                         <?php echo ucfirst($company['tipo_paquete']); ?>
                                     </span>
                                     <br>
@@ -356,12 +393,11 @@ ob_start();
                                 </td>
                                 <td>
                                     <div class="dropdown">
-                                        <span class="badge badge-<?php 
-                                            echo $company['estado'] === 'activo' ? 'success' : 
-                                                ($company['estado'] === 'suspendido' ? 'warning' : 'danger'); 
-                                        ?> dropdown-toggle" 
-                                              data-toggle="dropdown" 
-                                              style="cursor: pointer;">
+                                        <span class="badge badge-<?php
+                                                                    echo $company['estado'] === 'activo' ? 'success' : ($company['estado'] === 'suspendido' ? 'warning' : 'danger');
+                                                                    ?> dropdown-toggle"
+                                            data-toggle="dropdown"
+                                            style="cursor: pointer;">
                                             <?php echo ucfirst($company['estado']); ?>
                                         </span>
                                         <div class="dropdown-menu">
@@ -385,28 +421,28 @@ ob_start();
                                 </td>
                                 <td>
                                     <div class="btn-group" role="group">
-                                        <a href="<?php echo BASE_URL; ?>views/companies/view.php?id=<?php echo $company['id']; ?>" 
-                                           class="btn btn-info btn-sm" 
-                                           title="Ver detalles">
+                                        <a href="<?php echo BASE_URL; ?>views/companies/view.php?id=<?php echo $company['id']; ?>"
+                                            class="btn btn-info btn-sm"
+                                            title="Ver detalles">
                                             <i class="fas fa-eye"></i>
                                         </a>
-                                        <a href="<?php echo BASE_URL; ?>views/companies/edit.php?id=<?php echo $company['id']; ?>" 
-                                           class="btn btn-warning btn-sm" 
-                                           title="Editar">
+                                        <a href="<?php echo BASE_URL; ?>views/companies/edit.php?id=<?php echo $company['id']; ?>"
+                                            class="btn btn-warning btn-sm"
+                                            title="Editar">
                                             <i class="fas fa-edit"></i>
                                         </a>
                                         <?php if ($isExpiring || $isExpired): ?>
-                                            <button type="button" 
-                                                    class="btn btn-success btn-sm" 
-                                                    onclick="extendLicense(<?php echo $company['id']; ?>)"
-                                                    title="Extender licencia">
+                                            <button type="button"
+                                                class="btn btn-success btn-sm"
+                                                onclick="extendLicense(<?php echo $company['id']; ?>)"
+                                                title="Extender licencia">
                                                 <i class="fas fa-calendar-plus"></i>
                                             </button>
                                         <?php endif; ?>
-                                        <a href="<?php echo BASE_URL; ?>api/companies/delete.php?id=<?php echo $company['id']; ?>" 
-                                           class="btn btn-danger btn-sm btn-delete" 
-                                           title="Eliminar"
-                                           data-message="¿Está seguro que desea eliminar la empresa '<?php echo htmlspecialchars($company['nombre']); ?>'?">
+                                        <a href="<?php echo BASE_URL; ?>api/companies/delete.php?id=<?php echo $company['id']; ?>"
+                                            class="btn btn-danger btn-sm btn-delete"
+                                            title="Eliminar"
+                                            data-message="¿Está seguro que desea eliminar la empresa '<?php echo htmlspecialchars($company['nombre']); ?>'?">
                                             <i class="fas fa-trash"></i>
                                         </a>
                                     </div>
@@ -430,12 +466,60 @@ ob_start();
             <div class="row align-items-center">
                 <div class="col-sm-6">
                     <small class="text-muted">
-                        Mostrando <?php echo count($companies); ?> de <?php echo $pagination['total'] ?? 0; ?> empresas
+                        Mostrando <?php echo count($companies); ?> de <?php echo $pagination['total']; ?> empresas
+                        (Página <?php echo $pagination['current_page']; ?> de <?php echo $pagination['total_pages']; ?>)
                     </small>
                 </div>
                 <div class="col-sm-6">
                     <div class="float-right">
-                        <a href="<?php echo BASE_URL; ?>views/companies/create.php" class="btn btn-primary">
+                        <!-- Paginación -->
+                        <?php if ($pagination['total_pages'] > 1): ?>
+                            <nav aria-label="Paginación de empresas">
+                                <ul class="pagination pagination-sm mb-0">
+                                    <!-- Anterior -->
+                                    <?php if ($pagination['has_previous']): ?>
+                                        <li class="page-item">
+                                            <a class="page-link" href="?<?php echo http_build_query(array_merge($_GET, ['page' => $pagination['previous_page']])); ?>">
+                                                <i class="fas fa-chevron-left"></i>
+                                            </a>
+                                        </li>
+                                    <?php else: ?>
+                                        <li class="page-item disabled">
+                                            <span class="page-link"><i class="fas fa-chevron-left"></i></span>
+                                        </li>
+                                    <?php endif; ?>
+
+                                    <!-- Números de página -->
+                                    <?php
+                                    $start = max(1, $pagination['current_page'] - 2);
+                                    $end = min($pagination['total_pages'], $pagination['current_page'] + 2);
+
+                                    for ($i = $start; $i <= $end; $i++):
+                                    ?>
+                                        <li class="page-item <?php echo $i === $pagination['current_page'] ? 'active' : ''; ?>">
+                                            <a class="page-link" href="?<?php echo http_build_query(array_merge($_GET, ['page' => $i])); ?>">
+                                                <?php echo $i; ?>
+                                            </a>
+                                        </li>
+                                    <?php endfor; ?>
+
+                                    <!-- Siguiente -->
+                                    <?php if ($pagination['has_next']): ?>
+                                        <li class="page-item">
+                                            <a class="page-link" href="?<?php echo http_build_query(array_merge($_GET, ['page' => $pagination['next_page']])); ?>">
+                                                <i class="fas fa-chevron-right"></i>
+                                            </a>
+                                        </li>
+                                    <?php else: ?>
+                                        <li class="page-item disabled">
+                                            <span class="page-link"><i class="fas fa-chevron-right"></i></span>
+                                        </li>
+                                    <?php endif; ?>
+                                </ul>
+                            </nav>
+                        <?php endif; ?>
+
+                        <a href="<?php echo BASE_URL; ?>views/companies/create.php" class="btn btn-primary btn-sm ml-2">
                             <i class="fas fa-plus"></i> Nueva Empresa
                         </a>
                     </div>
@@ -445,22 +529,49 @@ ob_start();
     <?php endif; ?>
 </div>
 
+
+<!-- Modal para import masivo -->
+<div class="modal fade" id="importModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Importar Empresas</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <form id="importForm" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Archivo CSV</label>
+                        <div class="custom-file">
+                            <input type="file" class="custom-file-input" name="csv_file" accept=".csv" required>
+                            <label class="custom-file-label">Seleccionar archivo CSV...</label>
+                        </div>
+                        <small class="text-muted">
+                            Formato: nombre,email_contacto,tipo_paquete,fecha_inicio,fecha_vencimiento
+                        </small>
+                    </div>
+                    <div class="form-group">
+                        <a href="<?php echo BASE_URL; ?>assets/templates/empresas_template.csv" class="btn btn-sm btn-outline-info">
+                            <i class="fas fa-download"></i> Descargar Template
+                        </a>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Importar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
 <?php
 $content = ob_get_clean();
 
-// CSS adicional
-$additionalCSS = [
-    ASSETS_URL . 'plugins/datatables-bs4/css/dataTables.bootstrap4.min.css',
-    ASSETS_URL . 'plugins/datatables-responsive/css/responsive.bootstrap4.min.css'
-];
 
-// JavaScript adicional
-$additionalJS = [
-    ASSETS_URL . 'plugins/datatables/jquery.dataTables.min.js',
-    ASSETS_URL . 'plugins/datatables-bs4/js/dataTables.bootstrap4.min.js',
-    ASSETS_URL . 'plugins/datatables-responsive/js/dataTables.responsive.min.js',
-    ASSETS_URL . 'plugins/datatables-responsive/js/responsive.bootstrap4.min.js'
-];
 
 // Incluir el layout base
 include '../layouts/base.php';

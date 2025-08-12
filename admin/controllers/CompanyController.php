@@ -19,45 +19,33 @@ class CompanyController extends BaseController
     }
 
     /**
-     * Listar empresas con filtros y paginación
+     * Mostrar lista de empresas con filtros
      */
     public function index()
     {
         try {
             $this->requireAuth();
 
-            // Obtener parámetros de filtro
-            $page = (int)$this->getParam('page', 1);
-            $search = $this->getParam('search', '');
-            $estado = $this->getParam('estado', '');
-            $tipoPaquete = $this->getParam('tipo_paquete', '');
-            $proximasVencer = $this->getParam('proximas_vencer', '');
+            // Obtener filtros de la URL
+            $filters = [
+                'search' => trim($_GET['search'] ?? ''),
+                'estado' => $_GET['estado'] ?? '',
+                'tipo_paquete' => $_GET['tipo_paquete'] ?? '',
+                'proximas_vencer' => isset($_GET['proximas_vencer']) ? true : false
+            ];
 
-            // Preparar filtros
-            $filters = [];
-            if (!empty($search)) $filters['search'] = $search;
-            if (!empty($estado)) $filters['estado'] = $estado;
-            if (!empty($tipoPaquete)) $filters['tipo_paquete'] = $tipoPaquete;
-            if (!empty($proximasVencer)) $filters['proximas_vencer'] = true;
+            // PAGINACIÓN
+            $page = max(1, (int)($_GET['page'] ?? 1));
+            $perPage = 10; // 10 empresas por página
+            $offset = ($page - 1) * $perPage;
 
-            // Obtener empresas con paginación
-            $result = $this->companyModel->searchCompanies($filters, $page, RECORDS_PER_PAGE);
+            // Obtener total de empresas (para calcular páginas)
+            $totalCompanies = $this->companyModel->countWithFilters($filters);
 
-            // Si es petición AJAX, devolver JSON
-            if ($this->isAjax()) {
-                $this->jsonResponse([
-                    'success' => true,
-                    'data' => $result['data'],
-                    'pagination' => [
-                        'current_page' => $result['page'],
-                        'total_pages' => $result['pages'],
-                        'total_records' => $result['total'],
-                        'per_page' => $result['limit']
-                    ]
-                ]);
-            }
+            // Obtener empresas con filtros y paginación
+            $companies = $this->companyModel->findWithFilters($filters, $perPage, $offset);
 
-            // Obtener estadísticas adicionales
+            // Obtener estadísticas
             $stats = [
                 'total' => $this->companyModel->count(),
                 'active' => $this->companyModel->count("estado = 'activo'"),
@@ -65,21 +53,34 @@ class CompanyController extends BaseController
                 'expired' => $this->companyModel->count("estado = 'vencido'")
             ];
 
+            // Información de paginación
+            $totalPages = ceil($totalCompanies / $perPage);
+            $pagination = [
+                'current_page' => $page,
+                'per_page' => $perPage,
+                'total' => $totalCompanies,
+                'total_pages' => $totalPages,
+                'has_previous' => $page > 1,
+                'has_next' => $page < $totalPages,
+                'previous_page' => $page > 1 ? $page - 1 : null,
+                'next_page' => $page < $totalPages ? $page + 1 : null
+            ];
+
             return [
-                'companies' => $result['data'],
-                'pagination' => $result,
+                'companies' => $companies,
                 'filters' => $filters,
-                'stats' => $stats
+                'stats' => $stats,
+                'pagination' => $pagination
             ];
         } catch (Exception $e) {
-            $this->logError("Error en companies index: " . $e->getMessage());
+            error_log("Error in CompanyController::index(): " . $e->getMessage());
 
-            if ($this->isAjax()) {
-                $this->jsonResponse(['error' => 'Error cargando empresas'], 500);
-            }
-
-            $this->setMessage('Error cargando las empresas', MSG_ERROR);
-            return ['error' => true];
+            return [
+                'companies' => [],
+                'filters' => [],
+                'stats' => ['total' => 0, 'active' => 0, 'suspended' => 0, 'expired' => 0],
+                'pagination' => ['current_page' => 1, 'per_page' => 10, 'total' => 0, 'total_pages' => 0]
+            ];
         }
     }
 
@@ -245,62 +246,183 @@ class CompanyController extends BaseController
     /**
      * Mostrar detalles de empresa
      */
-    public function show($id)
+    public function show()
     {
         try {
             $this->requireAuth();
 
-            $company = $this->companyModel->findById($id);
+            $companyId = (int)($_GET['id'] ?? 0);
+
+            if (!$companyId) {
+                $this->setMessage('ID de empresa requerido', MSG_ERROR);
+                $this->redirect('views/companies/index.php');
+            }
+
+            $company = $this->companyModel->findById($companyId);
 
             if (!$company) {
-                if ($this->isAjax()) {
-                    $this->jsonResponse(['error' => 'Empresa no encontrada'], 404);
-                }
-
                 $this->setMessage('Empresa no encontrada', MSG_ERROR);
                 $this->redirect('views/companies/index.php');
             }
 
-            // Obtener información adicional
-            $additionalInfo = [
-                'dias_restantes' => max(0, (strtotime($company['fecha_vencimiento']) - time()) / (60 * 60 * 24)),
-                'paquetes_generados' => $this->getCompanyPackages($id),
-                'historial_publicidad' => $this->getCompanyAds($id)
+            // Obtener estadísticas de la empresa
+            $stats = [
+                'total_content' => 0, // TODO: Implementar cuando tengamos ContentModel
+                'total_downloads' => 0,
+                'total_size' => 0,
+                'last_access' => null
             ];
 
-            if ($this->isAjax()) {
-                $this->jsonResponse([
-                    'success' => true,
-                    'company' => $company,
-                    'additional_info' => $additionalInfo
-                ]);
+            // Obtener logs de actividad
+            $logs = $this->activityLog->getByRecord('companies', $companyId, 20);
+
+            // Formatear logs para timeline
+            $formattedLogs = [];
+            foreach ($logs as $log) {
+                $formattedLogs[] = [
+                    'action' => $log['action'],
+                    'description' => $log['description'],
+                    'user' => $log['username'] ?? 'Sistema',
+                    'created_at' => $log['created_at'],
+                    'icon' => $this->getActionIcon($log['action']),
+                    'color' => $this->getActionColor($log['action'])
+                ];
             }
 
             return [
                 'company' => $company,
-                'additional_info' => $additionalInfo
+                'stats' => $stats,
+                'logs' => $formattedLogs
             ];
         } catch (Exception $e) {
-            $this->logError("Error en companies show: " . $e->getMessage());
-
-            if ($this->isAjax()) {
-                $this->jsonResponse(['error' => 'Error cargando empresa'], 500);
-            }
-
-            $this->setMessage('Error cargando la empresa', MSG_ERROR);
+            $this->setMessage('Error al cargar los detalles', MSG_ERROR);
             $this->redirect('views/companies/index.php');
         }
     }
 
     /**
-     * Mostrar formulario de editar empresa
+     * Validar datos de empresa (para create y update)
      */
-    public function edit($id)
+    private function validateCompanyData($data, $excludeId = null)
+    {
+        $errors = [];
+
+        // Validar nombre
+        if (empty(trim($data['nombre'] ?? ''))) {
+            $errors['nombre'] = 'El nombre es requerido';
+        } elseif (strlen(trim($data['nombre'])) < 3) {
+            $errors['nombre'] = 'El nombre debe tener al menos 3 caracteres';
+        } else {
+            // Verificar duplicados
+            $existing = $this->companyModel->findByName(trim($data['nombre']), $excludeId);
+            if ($existing) {
+                $errors['nombre'] = 'Ya existe una empresa con este nombre';
+            }
+        }
+
+        // Validar email
+        if (empty(trim($data['email_contacto'] ?? ''))) {
+            $errors['email_contacto'] = 'El email es requerido';
+        } elseif (!filter_var(trim($data['email_contacto']), FILTER_VALIDATE_EMAIL)) {
+            $errors['email_contacto'] = 'El email no es válido';
+        } else {
+            // Verificar duplicados
+            $existing = $this->companyModel->findByEmail(trim($data['email_contacto']), $excludeId);
+            if ($existing) {
+                $errors['email_contacto'] = 'Ya existe una empresa con este email';
+            }
+        }
+
+        // Validar tipo de paquete
+        if (empty($data['tipo_paquete'] ?? '')) {
+            $errors['tipo_paquete'] = 'El tipo de paquete es requerido';
+        } elseif (!in_array($data['tipo_paquete'], ['basico', 'intermedio', 'premium'])) {
+            $errors['tipo_paquete'] = 'Tipo de paquete inválido';
+        }
+
+        // Validar fechas
+        if (empty($data['fecha_inicio'] ?? '')) {
+            $errors['fecha_inicio'] = 'La fecha de inicio es requerida';
+        }
+
+        if (empty($data['fecha_vencimiento'] ?? '')) {
+            $errors['fecha_vencimiento'] = 'La fecha de vencimiento es requerida';
+        }
+
+        // Validar que fecha de vencimiento sea posterior a fecha de inicio
+        if (!empty($data['fecha_inicio']) && !empty($data['fecha_vencimiento'])) {
+            $fechaInicio = new DateTime($data['fecha_inicio']);
+            $fechaVencimiento = new DateTime($data['fecha_vencimiento']);
+
+            if ($fechaVencimiento <= $fechaInicio) {
+                $errors['fecha_vencimiento'] = 'La fecha de vencimiento debe ser posterior a la fecha de inicio';
+            }
+        }
+
+        // Validar costo mensual
+        if (!empty($data['costo_mensual']) && !is_numeric($data['costo_mensual'])) {
+            $errors['costo_mensual'] = 'El costo mensual debe ser un número válido';
+        }
+
+        // Validar total de buses
+        if (!empty($data['total_buses']) && (!is_numeric($data['total_buses']) || $data['total_buses'] < 0)) {
+            $errors['total_buses'] = 'El total de buses debe ser un número positivo';
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Obtener icono para acción del log
+     */
+    private function getActionIcon($action)
+    {
+        $icons = [
+            'create' => 'fas fa-plus',
+            'update' => 'fas fa-edit',
+            'delete' => 'fas fa-trash',
+            'update_logo' => 'fas fa-image',
+            'extend_license' => 'fas fa-calendar-plus',
+            'change_status' => 'fas fa-toggle-on'
+        ];
+
+        return $icons[$action] ?? 'fas fa-info';
+    }
+
+    /**
+     * Obtener color para acción del log
+     */
+    private function getActionColor($action)
+    {
+        $colors = [
+            'create' => 'success',
+            'update' => 'info',
+            'delete' => 'danger',
+            'update_logo' => 'warning',
+            'extend_license' => 'primary',
+            'change_status' => 'secondary'
+        ];
+
+        return $colors[$action] ?? 'info';
+    }
+
+
+    /**
+     * Mostrar formulario de edición
+     */
+    public function edit()
     {
         try {
             $this->requireAuth();
 
-            $company = $this->companyModel->findById($id);
+            $companyId = (int)($_GET['id'] ?? 0);
+
+            if (!$companyId) {
+                $this->setMessage('ID de empresa requerido', MSG_ERROR);
+                $this->redirect('views/companies/index.php');
+            }
+
+            $company = $this->companyModel->findById($companyId);
 
             if (!$company) {
                 $this->setMessage('Empresa no encontrada', MSG_ERROR);
@@ -308,21 +430,10 @@ class CompanyController extends BaseController
             }
 
             return [
-                'company' => $company,
-                'package_types' => [
-                    PACKAGE_BASIC => 'Básico',
-                    PACKAGE_INTERMEDIATE => 'Intermedio',
-                    PACKAGE_PREMIUM => 'Premium'
-                ],
-                'status_options' => [
-                    STATUS_ACTIVE => 'Activo',
-                    STATUS_SUSPENDED => 'Suspendido',
-                    STATUS_EXPIRED => 'Vencido'
-                ]
+                'company' => $company
             ];
         } catch (Exception $e) {
-            $this->logError("Error en companies edit: " . $e->getMessage());
-            $this->setMessage('Error cargando empresa para editar', MSG_ERROR);
+            $this->setMessage('Error al cargar la empresa', MSG_ERROR);
             $this->redirect('views/companies/index.php');
         }
     }
@@ -330,96 +441,94 @@ class CompanyController extends BaseController
     /**
      * Procesar actualización de empresa
      */
-    public function update($id)
+    public function update()
     {
         try {
             $this->requireAuth();
 
-            if (!$this->isPost()) {
-                $this->jsonResponse(['error' => 'Método no permitido'], 405);
+            // Obtener ID de la empresa
+            $companyId = (int)($_POST['company_id'] ?? 0);
+
+            if (!$companyId) {
+                echo json_encode([
+                    'success' => false,
+                    'error' => 'ID de empresa requerido'
+                ]);
+                exit;
             }
 
             // Verificar que la empresa existe
-            $existingCompany = $this->companyModel->findById($id);
+            $existingCompany = $this->companyModel->findById($companyId);
             if (!$existingCompany) {
-                $this->jsonResponse(['error' => 'Empresa no encontrada'], 404);
+                echo json_encode([
+                    'success' => false,
+                    'error' => 'Empresa no encontrada'
+                ]);
+                exit;
             }
 
-            // Sanitizar datos
-            $data = $this->sanitizeInput($_POST);
-
-            // Validar datos (similar a store pero excluyendo el ID actual)
-            $errors = $this->validateInput($data, [
-                'nombre' => [
-                    'required' => true,
-                    'label' => 'Nombre de la empresa',
-                    'max_length' => 100
-                ],
-                'email_contacto' => [
-                    'required' => true,
-                    'label' => 'Email de contacto',
-                    'email' => true,
-                    'max_length' => 100
-                ],
-                // ... resto de validaciones
-            ]);
-
-            // Validaciones adicionales excluyendo el registro actual
-            if (empty($errors)) {
-                if ($this->companyModel->nameExists($data['nombre'], $id)) {
-                    $errors['nombre'] = 'Ya existe otra empresa con este nombre';
-                }
-
-                if ($this->companyModel->emailExists($data['email_contacto'], $id)) {
-                    $errors['email_contacto'] = 'Ya existe otra empresa con este email';
-                }
-            }
-
+            // Validar datos de entrada
+            $errors = $this->validateCompanyData($_POST, $companyId);
             if (!empty($errors)) {
-                $this->jsonResponse(['error' => 'Datos inválidos', 'errors' => $errors], 400);
+                echo json_encode([
+                    'success' => false,
+                    'error' => 'Datos inválidos',
+                    'errors' => $errors
+                ]);
+                exit;
             }
 
-            // Manejar nuevo logo si se subió
-            if (isset($_FILES['logo']) && $_FILES['logo']['error'] !== UPLOAD_ERR_NO_FILE) {
-                $uploadResult = $this->handleFileUpload(
-                    $_FILES['logo'],
-                    COMPANIES_PATH,
-                    ALLOWED_IMAGE_EXT,
-                    MAX_IMAGE_SIZE
-                );
-
-                if ($uploadResult['success']) {
-                    // Eliminar logo anterior si existe
-                    if ($existingCompany['logo_path']) {
-                        $oldLogoPath = COMPANIES_PATH . $existingCompany['logo_path'];
-                        if (file_exists($oldLogoPath)) {
-                            unlink($oldLogoPath);
-                        }
-                    }
-
-                    $data['logo_path'] = $uploadResult['filename'];
-                } else {
-                    $this->jsonResponse(['error' => 'Error subiendo logo: ' . $uploadResult['error']], 400);
-                }
-            }
+            // Preparar datos para actualización
+            $updateData = [
+                'nombre' => trim($_POST['nombre']),
+                'email_contacto' => trim($_POST['email_contacto']),
+                'persona_contacto' => trim($_POST['persona_contacto'] ?? ''),
+                'telefono' => trim($_POST['telefono'] ?? ''),
+                'color_primario' => $_POST['color_primario'] ?? '#000000',
+                'color_secundario' => $_POST['color_secundario'] ?? '#FFFFFF',
+                'nombre_servicio' => trim($_POST['nombre_servicio'] ?? ''),
+                'tipo_paquete' => $_POST['tipo_paquete'],
+                'total_buses' => (int)($_POST['total_buses'] ?? 0),
+                'costo_mensual' => (float)($_POST['costo_mensual'] ?? 0),
+                'fecha_inicio' => $_POST['fecha_inicio'],
+                'fecha_vencimiento' => $_POST['fecha_vencimiento'],
+                'estado' => $_POST['estado'] ?? 'activo',
+                'notas' => trim($_POST['notas'] ?? ''),
+                'updated_at' => date('Y-m-d H:i:s')
+            ];
 
             // Actualizar empresa
-            $result = $this->companyModel->update($id, $data);
+            $result = $this->companyModel->update($companyId, $updateData);
 
             if ($result) {
-                // Registrar actividad
-                $this->logActivity('update', 'empresas', $id, $existingCompany, $data);
+                // Registrar en log
+                $currentUser = $this->getCurrentUser();
+                $this->activityLog->create([
+                    'user_id' => $currentUser['id'],
+                    'action' => 'update',
+                    'table_name' => 'companies',
+                    'record_id' => $companyId,
+                    'description' => 'Empresa actualizada: ' . $updateData['nombre'],
+                    'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
+                    'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? ''
+                ]);
 
-                $this->jsonResponse([
+                echo json_encode([
                     'success' => true,
-                    'message' => 'Empresa actualizada exitosamente'
+                    'message' => 'Empresa actualizada exitosamente',
+                    'redirect' => 'views/companies/view.php?id=' . $companyId
                 ]);
             } else {
-                $this->jsonResponse(['error' => 'Error actualizando la empresa'], 500);
+                echo json_encode([
+                    'success' => false,
+                    'error' => 'Error al actualizar la empresa'
+                ]);
             }
         } catch (Exception $e) {
-            $this->logError("Error en companies update: " . $e->getMessage());
-            $this->jsonResponse(['error' => 'Error interno del sistema'], 500);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Error interno del servidor'
+            ]);
         }
     }
 

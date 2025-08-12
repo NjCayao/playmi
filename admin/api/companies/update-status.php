@@ -1,46 +1,57 @@
 <?php
-/**
- * API para cambiar estado de empresa
- */
-
-// Headers para API JSON
 header('Content-Type: application/json');
-header('Cache-Control: no-cache, must-revalidate');
 
-// Solo permitir POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     echo json_encode(['error' => 'Método no permitido']);
     exit;
 }
 
-// Incluir configuración
 require_once __DIR__ . '/../../config/system.php';
-require_once __DIR__ . '/../../controllers/CompanyController.php';
+require_once __DIR__ . '/../../models/Company.php';
 
 try {
-    // Crear instancia del controlador
-    $companyController = new CompanyController();
-    
-    // Verificar parámetros
-    $companyId = (int)($_POST['company_id'] ?? 0);
-    $newStatus = $_POST['status'] ?? '';
-    
-    if (!$companyId || !$newStatus) {
-        http_response_code(400);
-        echo json_encode(['error' => 'Parámetros requeridos faltantes']);
+    // Verificar sesión de admin
+    session_start();
+    if (!isset($_SESSION['user_id'])) {
+        echo json_encode(['success' => false, 'error' => 'No autorizado']);
         exit;
     }
     
-    // Actualizar estado
-    $companyController->updateStatus($companyId);
+    $companyId = (int)($_POST['company_id'] ?? 0);
+    $newStatus = trim($_POST['status'] ?? '');
+    
+    if (!$companyId || !$newStatus) {
+        echo json_encode(['success' => false, 'error' => 'Datos incompletos']);
+        exit;
+    }
+    
+    $validStates = ['activo', 'suspendido', 'vencido'];
+    if (!in_array($newStatus, $validStates)) {
+        echo json_encode(['success' => false, 'error' => 'Estado inválido']);
+        exit;
+    }
+    
+    $companyModel = new Company();
+    $company = $companyModel->findById($companyId);
+    
+    if (!$company) {
+        echo json_encode(['success' => false, 'error' => 'Empresa no encontrada']);
+        exit;
+    }
+    
+    $result = $companyModel->update($companyId, [
+        'estado' => $newStatus,
+        'updated_at' => date('Y-m-d H:i:s')
+    ]);
+    
+    if ($result) {
+        echo json_encode(['success' => true, 'message' => 'Estado actualizado correctamente']);
+    } else {
+        echo json_encode(['success' => false, 'error' => 'Error al actualizar el estado']);
+    }
     
 } catch (Exception $e) {
-    // Error general
-    http_response_code(500);
-    echo json_encode([
-        'success' => false,
-        'error' => 'Error interno del servidor'
-    ]);
+    echo json_encode(['success' => false, 'error' => 'Error interno: ' . $e->getMessage()]);
 }
 ?>

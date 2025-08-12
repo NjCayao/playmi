@@ -125,23 +125,7 @@ class BaseModel {
         }
     }
     
-    /**
-     * Contar registros
-     */
-    public function count($where = '') {
-        try {
-            $sql = "SELECT COUNT(*) as total FROM {$this->table}";
-            if ($where) {
-                $sql .= " WHERE $where";
-            }
-            $stmt = $this->db->query($sql);
-            $result = $stmt->fetch(PDO::FETCH_ASSOC);
-            return $result['total'] ?? 0;
-        } catch(Exception $e) {
-            $this->logError("Error en count: " . $e->getMessage());
-            return 0;
-        }
-    }
+    
     
     /**
      * Obtener registros con paginación

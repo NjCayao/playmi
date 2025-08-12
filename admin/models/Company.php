@@ -49,41 +49,129 @@ class Company extends BaseModel
     }
 
     /**
-     * Obtener total de ingresos mensuales
+     * Buscar empresa por nombre (para validar duplicados)
+     */
+    public function findByName($nombre, $excludeId = null)
+    {
+        try {
+            $sql = "SELECT * FROM companies WHERE nombre = :nombre";
+            $params = [':nombre' => $nombre];
+
+            if ($excludeId) {
+                $sql .= " AND id != :exclude_id";
+                $params[':exclude_id'] = $excludeId;
+            }
+
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($params);
+
+            return $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Error finding company by name: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Buscar empresa por email (para validar duplicados)
+     */
+    public function findByEmail($email, $excludeId = null)
+    {
+        try {
+            $sql = "SELECT * FROM companies WHERE email_contacto = :email";
+            $params = [':email' => $email];
+
+            if ($excludeId) {
+                $sql .= " AND id != :exclude_id";
+                $params[':exclude_id'] = $excludeId;
+            }
+
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($params);
+
+            return $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Error finding company by email: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Obtener ingresos totales mensuales
      */
     public function getTotalRevenue()
     {
         try {
-            $sql = "SELECT SUM(costo_mensual) as total FROM empresas WHERE estado = ?";
+            $sql = "SELECT SUM(costo_mensual) as total 
+                FROM companies 
+                WHERE estado = 'activo'";
             $stmt = $this->db->prepare($sql);
-            $stmt->execute([STATUS_ACTIVE]);
+            $stmt->execute();
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
-            return floatval($result['total'] ?? 0);
-        } catch (Exception $e) {
-            $this->logError("Error en getTotalRevenue: " . $e->getMessage());
+
+            return (float)($result['total'] ?? 0);
+        } catch (PDOException $e) {
+            error_log("Error getting total revenue: " . $e->getMessage());
             return 0;
         }
     }
 
     /**
-     * Obtener estadísticas por tipo de paquete
+     * Obtener estadísticas de empresas por estado
+     */
+    public function getStatusStats()
+    {
+        try {
+            $sql = "SELECT 
+                    estado,
+                    COUNT(*) as total,
+                    SUM(costo_mensual) as revenue
+                FROM companies 
+                GROUP BY estado";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute();
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $stats = [
+                'activo' => ['total' => 0, 'revenue' => 0],
+                'suspendido' => ['total' => 0, 'revenue' => 0],
+                'vencido' => ['total' => 0, 'revenue' => 0]
+            ];
+
+            foreach ($results as $result) {
+                $stats[$result['estado']] = [
+                    'total' => (int)$result['total'],
+                    'revenue' => (float)$result['revenue']
+                ];
+            }
+
+            return $stats;
+        } catch (PDOException $e) {
+            error_log("Error getting status stats: " . $e->getMessage());
+            return [];
+        }
+    }
+
+
+    /**
+     * Obtener empresas por tipo de paquete
      */
     public function getPackageStats()
     {
         try {
             $sql = "SELECT 
-                        tipo_paquete,
-                        COUNT(*) as cantidad,
-                        SUM(costo_mensual) as ingresos
-                    FROM empresas 
-                    WHERE estado = ? 
-                    GROUP BY tipo_paquete";
-
+                    tipo_paquete,
+                    COUNT(*) as cantidad,
+                    SUM(costo_mensual) as revenue
+                FROM companies 
+                WHERE estado = 'activo'
+                GROUP BY tipo_paquete";
             $stmt = $this->db->prepare($sql);
-            $stmt->execute([STATUS_ACTIVE]);
+            $stmt->execute();
+
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (Exception $e) {
-            $this->logError("Error en getPackageStats: " . $e->getMessage());
+        } catch (PDOException $e) {
+            error_log("Error getting package stats: " . $e->getMessage());
             return [];
         }
     }
@@ -242,34 +330,179 @@ class Company extends BaseModel
     public function extendLicense($companyId, $months)
     {
         try {
+            // Obtener fecha actual de vencimiento
             $company = $this->findById($companyId);
             if (!$company) {
-                return ['error' => 'Empresa no encontrada'];
+                return false;
             }
 
-            // Calcular nueva fecha de vencimiento
-            $currentExpiry = $company['fecha_vencimiento'];
-            $newExpiry = date('Y-m-d', strtotime($currentExpiry . " +$months months"));
+            $currentExpiry = new DateTime($company['fecha_vencimiento']);
+            $today = new DateTime();
 
-            $result = $this->update($companyId, [
-                'fecha_vencimiento' => $newExpiry,
-                'estado' => STATUS_ACTIVE
-            ]);
+            // Si ya está vencida, extender desde hoy, sino desde la fecha actual
+            $baseDate = $currentExpiry > $today ? $currentExpiry : $today;
+            $baseDate->add(new DateInterval('P' . $months . 'M'));
 
-            if ($result) {
-                return [
-                    'success' => true,
-                    'message' => "Licencia extendida hasta $newExpiry",
-                    'new_expiry' => $newExpiry
-                ];
-            }
+            $updateData = [
+                'fecha_vencimiento' => $baseDate->format('Y-m-d'),
+                'estado' => 'activo', // Reactivar si estaba vencida
+                'updated_at' => date('Y-m-d H:i:s')
+            ];
 
-            return ['error' => 'Error al extender la licencia'];
+            return $this->update($companyId, $updateData);
         } catch (Exception $e) {
-            $this->logError("Error en extendLicense: " . $e->getMessage());
-            return ['error' => 'Error interno del sistema'];
+            error_log("Error extending license: " . $e->getMessage());
+            return false;
         }
     }
+
+    /**
+     * Buscar empresas con filtros Y PAGINACIÓN
+     */
+    public function findWithFilters($filters = [], $limit = null, $offset = null)
+    {
+        try {
+            $sql = "SELECT c.*, 
+                DATEDIFF(c.fecha_vencimiento, CURDATE()) as dias_restantes
+                FROM companies c WHERE 1=1";
+            $params = [];
+
+            // Filtros (igual que antes)
+            if (!empty($filters['search'])) {
+                $sql .= " AND (c.nombre LIKE :search OR c.email_contacto LIKE :search)";
+                $params[':search'] = '%' . $filters['search'] . '%';
+            }
+
+            if (!empty($filters['estado'])) {
+                $sql .= " AND c.estado = :estado";
+                $params[':estado'] = $filters['estado'];
+            }
+
+            if (!empty($filters['tipo_paquete'])) {
+                $sql .= " AND c.tipo_paquete = :tipo_paquete";
+                $params[':tipo_paquete'] = $filters['tipo_paquete'];
+            }
+
+            if (!empty($filters['proximas_vencer'])) {
+                $sql .= " AND c.fecha_vencimiento <= DATE_ADD(CURDATE(), INTERVAL 30 DAY)";
+                $sql .= " AND c.fecha_vencimiento >= CURDATE()";
+            }
+
+            // Ordenamiento (más nuevos primero)
+            $sql .= " ORDER BY c.id DESC";
+
+            // PAGINACIÓN
+            if ($limit !== null) {
+                $sql .= " LIMIT :limit";
+                $params[':limit'] = (int)$limit;
+
+                if ($offset !== null) {
+                    $sql .= " OFFSET :offset";
+                    $params[':offset'] = (int)$offset;
+                }
+            }
+
+            $stmt = $this->db->prepare($sql);
+
+            // Bind parámetros
+            foreach ($params as $key => $value) {
+                if ($key === ':limit' || $key === ':offset') {
+                    $stmt->bindValue($key, $value, PDO::PARAM_INT);
+                } else {
+                    $stmt->bindValue($key, $value);
+                }
+            }
+
+            $stmt->execute();
+
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Error finding companies with filters: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Contar empresas con filtros
+     */
+    public function countWithFilters($filters = [])
+    {
+        try {
+            $sql = "SELECT COUNT(*) as total FROM companies c WHERE 1=1";
+            $params = [];
+
+            // Filtro por búsqueda
+            if (!empty($filters['search'])) {
+                $sql .= " AND (c.nombre LIKE :search OR c.email_contacto LIKE :search)";
+                $params[':search'] = '%' . $filters['search'] . '%';
+            }
+
+            // Filtro por estado
+            if (!empty($filters['estado'])) {
+                $sql .= " AND c.estado = :estado";
+                $params[':estado'] = $filters['estado'];
+            }
+
+            // Filtro por tipo de paquete
+            if (!empty($filters['tipo_paquete'])) {
+                $sql .= " AND c.tipo_paquete = :tipo_paquete";
+                $params[':tipo_paquete'] = $filters['tipo_paquete'];
+            }
+
+            // Filtro por próximas a vencer
+            if (!empty($filters['proximas_vencer'])) {
+                $sql .= " AND c.fecha_vencimiento <= DATE_ADD(CURDATE(), INTERVAL 30 DAY)";
+                $sql .= " AND c.fecha_vencimiento >= CURDATE()";
+            }
+
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($params);
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            return (int)($result['total'] ?? 0);
+        } catch (PDOException $e) {
+            error_log("Error counting companies with filters: " . $e->getMessage());
+            return 0;
+        }
+    }
+
+    /**
+     * Contar total de empresas
+     */
+    public function count()
+    {
+        try {
+            $sql = "SELECT COUNT(*) as total FROM companies";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            return (int)($result['total'] ?? 0);
+        } catch (PDOException $e) {
+            error_log("Error counting companies: " . $e->getMessage());
+            return 0;
+        }
+    }
+
+    /**
+     * Contar empresas por estado
+     */
+    public function countByStatus($status)
+    {
+        try {
+            $sql = "SELECT COUNT(*) as total FROM companies WHERE estado = :estado";
+            $stmt = $this->db->prepare($sql);
+            $stmt->bindParam(':estado', $status);
+            $stmt->execute();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            return (int)($result['total'] ?? 0);
+        } catch (PDOException $e) {
+            error_log("Error counting companies by status: " . $e->getMessage());
+            return 0;
+        }
+    }
+
 
     /**
      * Obtener empresas por estado
