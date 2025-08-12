@@ -8,7 +8,8 @@
 date_default_timezone_set('America/Lima');
 
 // URLs y rutas principales
-define('BASE_URL', 'http://localhost/PLAYMI/admin/');
+define('SITE_URL', 'http://localhost/playmi/'); // URL del sitio principal
+define('BASE_URL', SITE_URL . 'admin/'); // URL del panel admin
 define('ASSETS_URL', BASE_URL . 'assets/');
 define('API_URL', BASE_URL . 'api/');
 
@@ -28,28 +29,24 @@ define('SESSION_NAME', 'PLAYMI_ADMIN_SESSION');
 define('MAX_VIDEO_SIZE', 5 * 1024 * 1024 * 1024); // 5GB
 define('MAX_AUDIO_SIZE', 500 * 1024 * 1024); // 500MB
 define('MAX_IMAGE_SIZE', 10 * 1024 * 1024); // 10MB
+define('MAX_UPLOAD_SIZE', 10 * 1024 * 1024); // 10MB por defecto
 
 // Extensiones permitidas
 define('ALLOWED_VIDEO_EXT', ['mp4', 'avi', 'mkv', 'mov']);
 define('ALLOWED_AUDIO_EXT', ['mp3', 'wav', 'flac', 'm4a']);
 define('ALLOWED_IMAGE_EXT', ['jpg', 'jpeg', 'png', 'gif', 'webp']);
 
-// Configuración de paginación
-define('RECORDS_PER_PAGE', 25);
+// Tipos MIME permitidos
+define('ALLOWED_IMAGE_TYPES', ['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
+define('ALLOWED_VIDEO_TYPES', ['video/mp4', 'video/avi', 'video/mkv', 'video/mov']);
+define('ALLOWED_AUDIO_TYPES', ['audio/mp3', 'audio/wav', 'audio/ogg', 'audio/m4a']);
 
 // Configuración de logs
 define('LOG_LEVEL', 'INFO');
 define('LOG_MAX_SIZE', 10 * 1024 * 1024); // 10MB
 
-// Configuración de subida de archivos
-define('MAX_UPLOAD_SIZE', 10 * 1024 * 1024); // 10MB en bytes
-define('ALLOWED_IMAGE_TYPES', ['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
-define('ALLOWED_VIDEO_TYPES', ['video/mp4', 'video/avi', 'video/mkv', 'video/mov']);
-define('ALLOWED_AUDIO_TYPES', ['audio/mp3', 'audio/wav', 'audio/ogg', 'audio/m4a']);
-
 // Configuración de notificaciones
 define('DAYS_BEFORE_EXPIRY_WARNING', 30); // Días antes del vencimiento para mostrar alerta
-
 
 // Configuración de desarrollo/producción
 define('DEVELOPMENT_MODE', true);
@@ -60,6 +57,14 @@ if (DEVELOPMENT_MODE) {
 } else {
     error_reporting(0);
     ini_set('display_errors', 0);
+}
+
+// Incluir archivo de constantes
+require_once __DIR__ . '/constants.php';
+
+// Alias para compatibilidad (si PAGINATION_LIMIT está definido en constants.php)
+if (!defined('RECORDS_PER_PAGE') && defined('PAGINATION_LIMIT')) {
+    define('RECORDS_PER_PAGE', PAGINATION_LIMIT);
 }
 
 // Inicializar sesión si no existe
@@ -86,6 +91,8 @@ $required_dirs = [
     UPLOADS_PATH . 'music/',
     UPLOADS_PATH . 'games/',
     UPLOADS_PATH . 'advertising/',
+    UPLOADS_PATH . 'banners/',
+    UPLOADS_PATH . 'thumbnails/',
     COMPANIES_PATH,
     PACKAGES_PATH,
     LOGS_PATH
