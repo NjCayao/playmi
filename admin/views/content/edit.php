@@ -1,4 +1,5 @@
 <?php
+
 /**
  * MÓDULO 2.2.6: Editar metadatos de contenido existente
  * Propósito: Formulario para actualizar información del contenido
@@ -17,11 +18,18 @@ if (!$contentId) {
     $controller->redirect('views/content/index.php');
 }
 
+// Obtener ID del contenido
+$contentId = (int)($_GET['id'] ?? 0);
+
 // Obtener datos del contenido
 $editData = $controller->edit($contentId);
 $content = $editData['content'] ?? null;
-$categories = $editData['categories'] ?? [];
-$genres = $editData['genres'] ?? [];
+
+// Obtener datos para los selects
+$uploadData = $controller->upload();
+$genres = $uploadData['genres'] ?? [];
+$categories = $uploadData['categories'] ?? [];
+$ratings = $uploadData['ratings'] ?? [];
 
 if (!$content) {
     $controller->setMessage('Contenido no encontrado', MSG_ERROR);
@@ -57,7 +65,7 @@ ob_start();
     <div class="container-fluid">
         <form id="editForm" enctype="multipart/form-data">
             <input type="hidden" name="id" value="<?php echo $content['id']; ?>">
-            
+
             <div class="row">
                 <!-- Información principal -->
                 <div class="col-md-8">
@@ -75,9 +83,9 @@ ob_start();
                             <!-- Título -->
                             <div class="form-group">
                                 <label>Título <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" name="titulo" 
-                                       value="<?php echo htmlspecialchars($content['titulo']); ?>" 
-                                       required maxlength="200">
+                                <input type="text" class="form-control" name="titulo"
+                                    value="<?php echo htmlspecialchars($content['titulo']); ?>"
+                                    required maxlength="200">
                             </div>
 
                             <!-- Descripción -->
@@ -91,46 +99,40 @@ ob_start();
                                 <div class="row">
                                     <div class="col-md-6">
                                         <div class="form-group">
-                                            <label>Director</label>
-                                            <input type="text" class="form-control" name="director" 
-                                                   value="<?php echo htmlspecialchars($content['director'] ?? ''); ?>">
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="form-group">
-                                            <label>Año</label>
-                                            <input type="number" class="form-control" name="anio_lanzamiento" 
-                                                   value="<?php echo $content['anio_lanzamiento'] ?? ''; ?>"
-                                                   min="1900" max="<?php echo date('Y'); ?>">
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="form-group">
-                                            <label>Categoría</label>
-                                            <select class="form-control" name="categoria">
+                                            <label>Género</label>
+                                            <select class="form-control" name="genero">
                                                 <option value="">Seleccionar...</option>
-                                                <option value="accion" <?php echo $content['categoria'] === 'accion' ? 'selected' : ''; ?>>Acción</option>
-                                                <option value="comedia" <?php echo $content['categoria'] === 'comedia' ? 'selected' : ''; ?>>Comedia</option>
-                                                <option value="drama" <?php echo $content['categoria'] === 'drama' ? 'selected' : ''; ?>>Drama</option>
-                                                <option value="terror" <?php echo $content['categoria'] === 'terror' ? 'selected' : ''; ?>>Terror</option>
-                                                <option value="ciencia-ficcion" <?php echo $content['categoria'] === 'ciencia-ficcion' ? 'selected' : ''; ?>>Ciencia Ficción</option>
+                                                <?php
+                                                $movieGenres = $uploadData['genres']['pelicula'] ?? [];
+                                                foreach ($movieGenres as $value => $label):
+                                                ?>
+                                                    <option value="<?php echo $value; ?>" <?php echo $content['genero'] === $value ? 'selected' : ''; ?>>
+                                                        <?php echo $label; ?>
+                                                    </option>
+                                                <?php endforeach; ?>
                                             </select>
                                         </div>
                                     </div>
-                                    <div class="col-md-6">
+                                    <div class="col-md-6">                                       
                                         <div class="form-group">
                                             <label>Clasificación</label>
                                             <select class="form-control" name="calificacion">
                                                 <option value="">Seleccionar...</option>
-                                                <option value="G" <?php echo $content['calificacion'] === 'G' ? 'selected' : ''; ?>>G</option>
-                                                <option value="PG" <?php echo $content['calificacion'] === 'PG' ? 'selected' : ''; ?>>PG</option>
-                                                <option value="PG-13" <?php echo $content['calificacion'] === 'PG-13' ? 'selected' : ''; ?>>PG-13</option>
-                                                <option value="R" <?php echo $content['calificacion'] === 'R' ? 'selected' : ''; ?>>R</option>
+                                                <?php foreach ($ratings as $value => $label): ?>
+                                                    <option value="<?php echo $value; ?>" <?php echo $content['calificacion'] === $value ? 'selected' : ''; ?>>
+                                                        <?php echo $label; ?>
+                                                    </option>
+                                                <?php endforeach; ?>
                                             </select>
                                         </div>
                                     </div>
+                                </div>
+                                <!-- Año -->
+                                <div class="form-group">
+                                    <label>Año</label>
+                                    <input type="number" class="form-control" name="anio_lanzamiento"
+                                        value="<?php echo $content['anio_lanzamiento'] ?? ''; ?>"
+                                        min="1900" max="<?php echo date('Y'); ?>">
                                 </div>
 
                             <?php elseif ($content['tipo'] === 'musica'): ?>
@@ -138,15 +140,15 @@ ob_start();
                                     <div class="col-md-6">
                                         <div class="form-group">
                                             <label>Artista</label>
-                                            <input type="text" class="form-control" name="artista" 
-                                                   value="<?php echo htmlspecialchars($content['artista'] ?? ''); ?>">
+                                            <input type="text" class="form-control" name="artista"
+                                                value="<?php echo htmlspecialchars($content['artista'] ?? ''); ?>">
                                         </div>
                                     </div>
                                     <div class="col-md-6">
                                         <div class="form-group">
                                             <label>Álbum</label>
-                                            <input type="text" class="form-control" name="album" 
-                                                   value="<?php echo htmlspecialchars($content['album'] ?? ''); ?>">
+                                            <input type="text" class="form-control" name="album"
+                                                value="<?php echo htmlspecialchars($content['album'] ?? ''); ?>">
                                         </div>
                                     </div>
                                 </div>
@@ -154,22 +156,25 @@ ob_start();
                                     <div class="col-md-6">
                                         <div class="form-group">
                                             <label>Género</label>
-                                            <select class="form-control" name="categoria">
+                                            <select class="form-control" name="genero">
                                                 <option value="">Seleccionar...</option>
-                                                <option value="pop" <?php echo $content['categoria'] === 'pop' ? 'selected' : ''; ?>>Pop</option>
-                                                <option value="rock" <?php echo $content['categoria'] === 'rock' ? 'selected' : ''; ?>>Rock</option>
-                                                <option value="salsa" <?php echo $content['categoria'] === 'salsa' ? 'selected' : ''; ?>>Salsa</option>
-                                                <option value="cumbia" <?php echo $content['categoria'] === 'cumbia' ? 'selected' : ''; ?>>Cumbia</option>
-                                                <option value="reggaeton" <?php echo $content['categoria'] === 'reggaeton' ? 'selected' : ''; ?>>Reggaeton</option>
+                                                <?php
+                                                $musicGenres = $uploadData['genres']['musica'] ?? [];
+                                                foreach ($musicGenres as $value => $label):
+                                                ?>
+                                                    <option value="<?php echo $value; ?>" <?php echo $content['genero'] === $value ? 'selected' : ''; ?>>
+                                                        <?php echo $label; ?>
+                                                    </option>
+                                                <?php endforeach; ?>
                                             </select>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
                                         <div class="form-group">
                                             <label>Año</label>
-                                            <input type="number" class="form-control" name="anio_lanzamiento" 
-                                                   value="<?php echo $content['anio_lanzamiento'] ?? ''; ?>"
-                                                   min="1900" max="<?php echo date('Y'); ?>">
+                                            <input type="number" class="form-control" name="anio_lanzamiento"
+                                                value="<?php echo $content['anio_lanzamiento'] ?? ''; ?>"
+                                                min="1900" max="<?php echo date('Y'); ?>">
                                         </div>
                                     </div>
                                 </div>
@@ -179,11 +184,14 @@ ob_start();
                                     <label>Categoría</label>
                                     <select class="form-control" name="categoria">
                                         <option value="">Seleccionar...</option>
-                                        <option value="puzzle" <?php echo $content['categoria'] === 'puzzle' ? 'selected' : ''; ?>>Puzzle</option>
-                                        <option value="arcade" <?php echo $content['categoria'] === 'arcade' ? 'selected' : ''; ?>>Arcade</option>
-                                        <option value="aventura" <?php echo $content['categoria'] === 'aventura' ? 'selected' : ''; ?>>Aventura</option>
-                                        <option value="estrategia" <?php echo $content['categoria'] === 'estrategia' ? 'selected' : ''; ?>>Estrategia</option>
-                                        <option value="educativo" <?php echo $content['categoria'] === 'educativo' ? 'selected' : ''; ?>>Educativo</option>
+                                        <?php
+                                        $gameCategories = $uploadData['categories']['juego'] ?? [];
+                                        foreach ($gameCategories as $cat):
+                                        ?>
+                                            <option value="<?php echo $cat; ?>" <?php echo $content['categoria'] === $cat ? 'selected' : ''; ?>>
+                                                <?php echo $cat; ?>
+                                            </option>
+                                        <?php endforeach; ?>
                                     </select>
                                 </div>
                                 <div class="form-group">
@@ -192,9 +200,9 @@ ob_start();
                                 </div>
                                 <div class="form-group">
                                     <label>Controles</label>
-                                    <input type="text" class="form-control" name="controles" 
-                                           value="<?php echo htmlspecialchars($content['controles'] ?? ''); ?>"
-                                           placeholder="Ej: Flechas para mover, Espacio para saltar">
+                                    <input type="text" class="form-control" name="controles"
+                                        value="<?php echo htmlspecialchars($content['controles'] ?? ''); ?>"
+                                        placeholder="Ej: Flechas para mover, Espacio para saltar">
                                 </div>
                             <?php endif; ?>
 
@@ -216,37 +224,37 @@ ob_start();
                     <!-- Información del archivo -->
                     <div class="card card-info">
                         <div class="card-header">
-                            <h3 class="card-title">Información del Archivo</h3>
+                            <h3 class="card-title">Información de la película</h3>
                         </div>
                         <div class="card-body">
                             <dl>
                                 <dt>Archivo actual:</dt>
                                 <dd class="text-truncate"><?php echo basename($content['archivo_path']); ?></dd>
-                                
+
                                 <dt>Tamaño:</dt>
                                 <dd><?php echo formatFileSize($content['tamanio_archivo'] ?? 0); ?></dd>
-                                
-                                <?php if ($content['duracion']): ?>
-                                <dt>Duración:</dt>
-                                <dd><?php echo gmdate("H:i:s", $content['duracion']); ?></dd>
+
+                                <?php if ($content['duracion'] > 0): ?>
+                                    <dt>Duración:</dt>
+                                    <dd><?php echo gmdate("H:i:s", $content['duracion']); ?></dd>
                                 <?php endif; ?>
-                                
+
                                 <dt>Subido:</dt>
                                 <dd><?php echo date('d/m/Y H:i', strtotime($content['created_at'])); ?></dd>
-                                
+
                                 <dt>Última actualización:</dt>
                                 <dd><?php echo date('d/m/Y H:i', strtotime($content['updated_at'])); ?></dd>
                             </dl>
 
                             <!-- Cambiar archivo -->
                             <div class="form-group">
-                                <label>Cambiar archivo (opcional)</label>
+                                <label>Subir archivo de película</label>
                                 <div class="custom-file">
                                     <input type="file" class="custom-file-input" id="archivo" name="archivo">
                                     <label class="custom-file-label" for="archivo">Seleccionar archivo</label>
                                 </div>
                                 <small class="form-text text-muted">
-                                    Deja vacío para mantener el archivo actual
+                                    Deja vacío para mantener el archivo de la película actual
                                 </small>
                             </div>
                         </div>
@@ -259,10 +267,10 @@ ob_start();
                         </div>
                         <div class="card-body text-center">
                             <?php if ($content['thumbnail_path']): ?>
-                                <img src="<?php echo SITE_URL . 'content/' . $content['thumbnail_path']; ?>" 
-                                     alt="Thumbnail actual" 
-                                     class="img-fluid mb-3"
-                                     style="max-height: 200px;">
+                                <img src="<?php echo SITE_URL . 'content/' . $content['thumbnail_path']; ?>"
+                                    alt="Thumbnail actual"
+                                    class="img-fluid mb-3"
+                                    style="max-height: 200px;">
                             <?php else: ?>
                                 <div class="bg-gray p-5 mb-3">
                                     <i class="fas fa-image fa-3x text-muted"></i>
@@ -292,7 +300,7 @@ ob_start();
                         <div class="card-body">
                             <button type="submit" class="btn btn-primary btn-block">
                                 <i class="fas fa-save"></i> Guardar Cambios
-                            </button>                            
+                            </button>
                             <a href="<?php echo BASE_URL; ?>views/content/index.php" class="btn btn-default btn-block">
                                 <i class="fas fa-times"></i> Cancelar
                             </a>
@@ -314,7 +322,7 @@ ob_start();
             </div>
             <div class="card-body">
                 <div class="timeline">
-                    <?php 
+                    <?php
                     // Aquí se cargaría el historial real desde logs_sistema
                     $changes = []; // Simulado
                     ?>
@@ -336,60 +344,66 @@ require_once '../layouts/base.php';
 
 <!-- Scripts específicos -->
 <script>
-$(document).ready(function() {
-    // Preview de thumbnail
-    $('#thumbnail').on('change', function(e) {
-        const file = e.target.files[0];
-        if (file && file.type.startsWith('image/')) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                $('#thumbnailPreview img').attr('src', e.target.result);
-                $('#thumbnailPreview').show();
-            };
-            reader.readAsDataURL(file);
-        }
-    });
-
-    // Actualizar label de archivos
-    $('.custom-file-input').on('change', function(e) {
-        const fileName = e.target.files[0]?.name || 'Seleccionar archivo';
-        $(this).next('.custom-file-label').text(fileName);
-    });
-
-    // Enviar formulario
-    $('#editForm').on('submit', function(e) {
-        e.preventDefault();
-        
-        const formData = new FormData(this);
-        const $submitBtn = $(this).find('button[type="submit"]');
-        
-        $submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Guardando...');
-        
-        $.ajax({
-            url: '../../api/content/update-content.php',
-            type: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
-            success: function(response) {
-                toastr.success('Contenido actualizado exitosamente');
-                setTimeout(() => {
-                    window.location.href = 'index.php';
-                }, 1500);
-            },
-            error: function(xhr) {
-                const error = xhr.responseJSON?.error || 'Error al actualizar';
-                toastr.error(error);
-                $submitBtn.prop('disabled', false).html('<i class="fas fa-save"></i> Guardar Cambios');
+    $(document).ready(function() {
+        // Preview de thumbnail
+        $('#thumbnail').on('change', function(e) {
+            const file = e.target.files[0];
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    $('#thumbnailPreview img').attr('src', e.target.result);
+                    $('#thumbnailPreview').show();
+                };
+                reader.readAsDataURL(file);
             }
         });
+
+        // Actualizar label de archivos
+        $('.custom-file-input').on('change', function(e) {
+            const fileName = e.target.files[0]?.name || 'Seleccionar archivo';
+            $(this).next('.custom-file-label').text(fileName);
+        });
+
+        // Enviar formulario
+        $('#editForm').on('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const $submitBtn = $(this).find('button[type="submit"]');
+
+
+            $submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Guardando...');
+
+            for (let pair of formData.entries()) {
+                console.log(pair[0] + ': ' + pair[1]);
+            }
+
+            $.ajax({
+                url: '../../api/content/update-content.php',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(response) {
+                    toastr.success('Contenido actualizado exitosamente');
+                    setTimeout(() => {
+                        window.location.href = 'index.php';
+                    }, 1500);
+                },
+                error: function(xhr) {
+                    const error = xhr.responseJSON?.error || 'Error al actualizar';
+                    toastr.error(error);
+                    $submitBtn.prop('disabled', false).html('<i class="fas fa-save"></i> Guardar Cambios');
+                }
+            });
+        });
     });
-});
 </script>
 
 <?php
 // Helper function
-function formatFileSize($bytes) {
+function formatFileSize($bytes)
+{
     $units = ['B', 'KB', 'MB', 'GB'];
     $i = 0;
     while ($bytes >= 1024 && $i < count($units) - 1) {

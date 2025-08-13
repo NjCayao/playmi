@@ -1,0 +1,9 @@
+# Aumentar límites
+php_value upload_max_filesize 15G
+php_value post_max_size 15G
+php_value max_execution_time 3600
+php_value max_input_time 3600
+php_value memory_limit 2G
+
+# Límite de Apache
+LimitRequestBody 16106127360

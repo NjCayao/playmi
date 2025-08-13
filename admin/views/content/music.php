@@ -1,4 +1,5 @@
 <?php
+
 /**
  * MÓDULO 2.2.4: Gestión específica de música
  * Propósito: Administrar música con reproductor integrado
@@ -10,12 +11,15 @@ require_once '../../controllers/ContentController.php';
 $controller = new ContentController();
 $controller->requireAuth();
 
+$uploadData = $controller->upload();
+$categories = $uploadData['categories']['musica'] ?? [];
+
 // Obtener solo música
 $filters = ['tipo' => 'musica'];
 $page = (int)($_GET['page'] ?? 1);
 
 $result = $controller->index();
-$music = array_filter($result['content'] ?? [], function($item) {
+$music = array_filter($result['content'] ?? [], function ($item) {
     return $item['tipo'] === 'musica';
 });
 
@@ -24,7 +28,7 @@ $musicByArtist = [];
 foreach ($music as $song) {
     $artist = $song['artista'] ?? 'Artista Desconocido';
     $album = $song['album'] ?? 'Álbum Desconocido';
-    
+
     if (!isset($musicByArtist[$artist])) {
         $musicByArtist[$artist] = [];
     }
@@ -76,7 +80,7 @@ ob_start();
                     </div>
                 </div>
             </div>
-            
+
             <div class="col-lg-3 col-6">
                 <div class="small-box bg-info">
                     <div class="inner">
@@ -88,17 +92,17 @@ ob_start();
                     </div>
                 </div>
             </div>
-            
+
             <div class="col-lg-3 col-6">
                 <div class="small-box bg-success">
                     <div class="inner">
-                        <h3><?php 
-                        $totalAlbums = 0;
-                        foreach ($musicByArtist as $albums) {
-                            $totalAlbums += count($albums);
-                        }
-                        echo $totalAlbums;
-                        ?></h3>
+                        <h3><?php
+                            $totalAlbums = 0;
+                            foreach ($musicByArtist as $albums) {
+                                $totalAlbums += count($albums);
+                            }
+                            echo $totalAlbums;
+                            ?></h3>
                         <p>Álbumes</p>
                     </div>
                     <div class="icon">
@@ -106,14 +110,14 @@ ob_start();
                     </div>
                 </div>
             </div>
-            
+
             <div class="col-lg-3 col-6">
                 <div class="small-box bg-danger">
                     <div class="inner">
-                        <h3><?php 
-                        $totalDuration = array_sum(array_column($music, 'duracion'));
-                        echo gmdate("H:i", $totalDuration);
-                        ?></h3>
+                        <h3><?php
+                            $totalDuration = array_sum(array_column($music, 'duracion'));
+                            echo gmdate("H:i", $totalDuration);
+                            ?></h3>
                         <p>Duración Total</p>
                     </div>
                     <div class="icon">
@@ -128,9 +132,9 @@ ob_start();
             <div class="card-body">
                 <div class="row align-items-center">
                     <div class="col-md-2 text-center">
-                        <img id="playerAlbumArt" src="<?php echo ASSETS_URL; ?>images/music-placeholder.jpg" 
-                             class="img-fluid rounded" 
-                             style="max-width: 120px;">
+                        <img id="playerAlbumArt" src="<?php echo ASSETS_URL; ?>images/music-placeholder.png"
+                            class="img-fluid rounded"
+                            style="max-width: 120px;">
                     </div>
                     <div class="col-md-7">
                         <h5 id="playerTitle" class="mb-1">Selecciona una canción</h5>
@@ -169,9 +173,9 @@ ob_start();
             <div class="card-body">
                 <form method="GET" class="form-row">
                     <div class="col-md-3">
-                        <input type="text" name="search" class="form-control" 
-                               placeholder="Buscar por título o artista..."
-                               value="<?php echo $_GET['search'] ?? ''; ?>">
+                        <input type="text" name="search" class="form-control"
+                            placeholder="Buscar por título o artista..."
+                            value="<?php echo $_GET['search'] ?? ''; ?>">
                     </div>
                     <div class="col-md-3">
                         <select name="genero" class="form-control">
@@ -204,26 +208,26 @@ ob_start();
             <div class="row">
                 <?php foreach ($musicByArtist as $artist => $albums): ?>
                     <?php foreach ($albums as $album => $songs): ?>
-                    <div class="col-md-3 mb-4">
-                        <div class="card h-100">
-                            <img src="<?php echo $songs[0]['thumbnail_path'] ? SITE_URL . 'content/' . $songs[0]['thumbnail_path'] : ASSETS_URL . 'images/album-placeholder.jpg'; ?>" 
-                                 class="card-img-top" 
-                                 alt="<?php echo htmlspecialchars($album); ?>"
-                                 style="height: 250px; object-fit: cover;">
-                            <div class="card-body">
-                                <h6 class="card-title"><?php echo htmlspecialchars($album); ?></h6>
-                                <p class="card-text">
-                                    <small class="text-muted"><?php echo htmlspecialchars($artist); ?></small><br>
-                                    <small><?php echo count($songs); ?> canciones</small>
-                                </p>
-                                <button class="btn btn-sm btn-primary btn-block play-album" 
+                        <div class="col-md-3 mb-4">
+                            <div class="card h-100">
+                                <img src="<?php echo $songs[0]['thumbnail_path'] ? SITE_URL . 'content/' . $songs[0]['thumbnail_path'] : ASSETS_URL . 'images/album-placeholder.jpg'; ?>"
+                                    class="card-img-top"
+                                    alt="<?php echo htmlspecialchars($album); ?>"
+                                    style="height: 250px; object-fit: cover;">
+                                <div class="card-body">
+                                    <h6 class="card-title"><?php echo htmlspecialchars($album); ?></h6>
+                                    <p class="card-text">
+                                        <small class="text-muted"><?php echo htmlspecialchars($artist); ?></small><br>
+                                        <small><?php echo count($songs); ?> canciones</small>
+                                    </p>
+                                    <button class="btn btn-sm btn-primary btn-block play-album"
                                         data-artist="<?php echo htmlspecialchars($artist); ?>"
                                         data-album="<?php echo htmlspecialchars($album); ?>">
-                                    <i class="fas fa-play"></i> Reproducir
-                                </button>
+                                        <i class="fas fa-play"></i> Reproducir
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
                     <?php endforeach; ?>
                 <?php endforeach; ?>
             </div>
@@ -246,56 +250,57 @@ ob_start();
                                 <th width="60">Cover</th>
                                 <th>Título</th>
                                 <th>Artista</th>
-                                <th>Álbum</th>
+                                <th>Estado</th>
                                 <th>Duración</th>
                                 <th>Género</th>
                                 <th width="120">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php $index = 1; foreach ($music as $song): ?>
-                            <tr class="song-row" data-id="<?php echo $song['id']; ?>">
-                                <td><?php echo $index++; ?></td>
-                                <td>
-                                    <img src="<?php echo $song['thumbnail_path'] ? SITE_URL . 'content/' . $song['thumbnail_path'] : ASSETS_URL . 'images/music-placeholder.jpg'; ?>" 
-                                         class="img-thumbnail"
-                                         style="width: 50px; height: 50px; object-fit: cover;">
-                                </td>
-                                <td>
-                                    <strong><?php echo htmlspecialchars($song['titulo']); ?></strong>
-                                    <?php if ($song['estado'] === 'activo'): ?>
-                                        <span class="badge badge-success float-right">Activo</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td><?php echo htmlspecialchars($song['artista'] ?? '-'); ?></td>
-                                <td><?php echo htmlspecialchars($song['album'] ?? '-'); ?></td>
-                                <td><?php echo $song['duracion'] ? gmdate("i:s", $song['duracion']) : '-'; ?></td>
-                                <td>
-                                    <span class="badge badge-info">
-                                        <?php echo htmlspecialchars($song['categoria'] ?? 'Sin género'); ?>
-                                    </span>
-                                </td>
-                                <td>
-                                    <div class="btn-group btn-group-sm">
-                                        <button class="btn btn-warning play-song" 
+                            <?php $index = 1;
+                            foreach ($music as $song): ?>
+                                <tr class="song-row" data-id="<?php echo $song['id']; ?>">
+                                    <td><?php echo $index++; ?></td>
+                                    <td>
+                                        <img src="<?php echo $song['thumbnail_path'] ? SITE_URL . 'content/' . $song['thumbnail_path'] : ASSETS_URL . 'images/music-placeholder.jpg'; ?>"
+                                            class="img-thumbnail"
+                                            style="width: 50px; height: 50px; object-fit: cover;">
+                                    </td>
+                                    <td>
+                                        <strong><?php echo htmlspecialchars($song['titulo']); ?></strong>                                        
+                                    </td>
+                                    <td><?php echo htmlspecialchars($song['artista'] ?? '-'); ?></td>
+                                    <td> <?php if ($song['estado'] === 'activo'): ?>
+                                            <span class="badge badge-success float-right">Activo</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td><?php echo $song['duracion'] ? gmdate("i:s", $song['duracion']) : '-'; ?></td>
+                                    <td>
+                                        <span class="badge badge-info">
+                                            <?php echo htmlspecialchars($song['genero'] ?? 'Sin género'); ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-warning play-song"
                                                 data-id="<?php echo $song['id']; ?>"
                                                 data-title="<?php echo htmlspecialchars($song['titulo']); ?>"
                                                 data-artist="<?php echo htmlspecialchars($song['artista'] ?? 'Desconocido'); ?>"
                                                 data-path="<?php echo $song['archivo_path']; ?>"
                                                 data-thumb="<?php echo $song['thumbnail_path'] ?? ''; ?>">
-                                            <i class="fas fa-play"></i>
-                                        </button>
-                                        <button class="btn btn-info edit-metadata" 
+                                                <i class="fas fa-play"></i>
+                                            </button>
+                                            <button class="btn btn-info edit-metadata"
                                                 data-id="<?php echo $song['id']; ?>">
-                                            <i class="fas fa-tags"></i>
-                                        </button>
-                                        <a href="edit.php?id=<?php echo $song['id']; ?>" 
-                                           class="btn btn-primary">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
-                                    </div>
-                                </td>
-                            </tr>
+                                                <i class="fas fa-tags"></i>
+                                            </button>
+                                            <a href="edit.php?id=<?php echo $song['id']; ?>"
+                                                class="btn btn-primary">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
                             <?php endforeach; ?>
                         </tbody>
                     </table>
@@ -329,7 +334,7 @@ ob_start();
                     <div class="form-group">
                         <label>Año</label>
                         <input type="number" class="form-control" name="anio_lanzamiento" id="metaYear"
-                               min="1900" max="<?php echo date('Y'); ?>">
+                            min="1900" max="<?php echo date('Y'); ?>">
                     </div>
                     <div class="form-group">
                         <label>Género</label>
@@ -358,125 +363,125 @@ require_once '../layouts/base.php';
 
 <!-- Scripts específicos -->
 <script>
-$(document).ready(function() {
-    let currentPlaylist = [];
-    let currentIndex = 0;
-    const audioPlayer = document.getElementById('audioPlayer');
-    
-    // DataTable
-    $('#musicTable').DataTable({
-        "responsive": true,
-        "language": {
-            "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Spanish.json"
-        }
-    });
+    $(document).ready(function() {
+        let currentPlaylist = [];
+        let currentIndex = 0;
+        const audioPlayer = document.getElementById('audioPlayer');
 
-    // Reproducir canción individual
-    $('.play-song').click(function() {
-        const $btn = $(this);
-        const songData = {
-            id: $btn.data('id'),
-            title: $btn.data('title'),
-            artist: $btn.data('artist'),
-            path: $btn.data('path'),
-            thumb: $btn.data('thumb')
-        };
-        
-        playSong(songData);
-    });
+        // DataTable
+        $('#musicTable').DataTable({
+            "responsive": true,
+            "language": {
+                "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Spanish.json"
+            }
+        });
 
-    // Función para reproducir canción
-    function playSong(song) {
-        $('#playerTitle').text(song.title);
-        $('#playerArtist').text(song.artist);
-        
-        if (song.thumb) {
-            $('#playerAlbumArt').attr('src', '<?php echo SITE_URL; ?>content/' + song.thumb);
-        } else {
-            $('#playerAlbumArt').attr('src', '<?php echo ASSETS_URL; ?>images/music-placeholder.jpg');
-        }
-        
-        audioPlayer.src = '<?php echo SITE_URL; ?>content/' + song.path;
-        audioPlayer.play();
-        
-        // Actualizar botón play/pause
-        $('#playPause i').removeClass('fa-play').addClass('fa-pause');
-    }
+        // Reproducir canción individual
+        $('.play-song').click(function() {
+            const $btn = $(this);
+            const songData = {
+                id: $btn.data('id'),
+                title: $btn.data('title'),
+                artist: $btn.data('artist'),
+                path: $btn.data('path'),
+                thumb: $btn.data('thumb')
+            };
 
-    // Control play/pause
-    $('#playPause').click(function() {
-        if (audioPlayer.paused) {
+            playSong(songData);
+        });
+
+        // Función para reproducir canción
+        function playSong(song) {
+            $('#playerTitle').text(song.title);
+            $('#playerArtist').text(song.artist);
+
+            if (song.thumb) {
+                $('#playerAlbumArt').attr('src', '<?php echo SITE_URL; ?>content/' + song.thumb);
+            } else {
+                $('#playerAlbumArt').attr('src', '<?php echo ASSETS_URL; ?>images/music-placeholder.jpg');
+            }
+
+            audioPlayer.src = '<?php echo SITE_URL; ?>content/' + song.path;
             audioPlayer.play();
-            $(this).find('i').removeClass('fa-play').addClass('fa-pause');
-        } else {
-            audioPlayer.pause();
-            $(this).find('i').removeClass('fa-pause').addClass('fa-play');
+
+            // Actualizar botón play/pause
+            $('#playPause i').removeClass('fa-play').addClass('fa-pause');
         }
-    });
 
-    // Siguiente canción
-    $('#nextTrack').click(function() {
-        if (currentPlaylist.length > 0 && currentIndex < currentPlaylist.length - 1) {
-            currentIndex++;
-            playSong(currentPlaylist[currentIndex]);
-        }
-    });
+        // Control play/pause
+        $('#playPause').click(function() {
+            if (audioPlayer.paused) {
+                audioPlayer.play();
+                $(this).find('i').removeClass('fa-play').addClass('fa-pause');
+            } else {
+                audioPlayer.pause();
+                $(this).find('i').removeClass('fa-pause').addClass('fa-play');
+            }
+        });
 
-    // Canción anterior
-    $('#prevTrack').click(function() {
-        if (currentPlaylist.length > 0 && currentIndex > 0) {
-            currentIndex--;
-            playSong(currentPlaylist[currentIndex]);
-        }
-    });
+        // Siguiente canción
+        $('#nextTrack').click(function() {
+            if (currentPlaylist.length > 0 && currentIndex < currentPlaylist.length - 1) {
+                currentIndex++;
+                playSong(currentPlaylist[currentIndex]);
+            }
+        });
 
-    // Reproducir álbum completo
-    $('.play-album').click(function() {
-        const artist = $(this).data('artist');
-        const album = $(this).data('album');
-        
-        // Aquí cargarías las canciones del álbum
-        toastr.info('Reproduciendo álbum: ' + album);
-    });
+        // Canción anterior
+        $('#prevTrack').click(function() {
+            if (currentPlaylist.length > 0 && currentIndex > 0) {
+                currentIndex--;
+                playSong(currentPlaylist[currentIndex]);
+            }
+        });
 
-    // Editar metadatos
-    $('.edit-metadata').click(function() {
-        const songId = $(this).data('id');
-        
-        // Cargar datos actuales (simulado)
-        $('#metaSongId').val(songId);
-        $('#metadataModal').modal('show');
-    });
+        // Reproducir álbum completo
+        $('.play-album').click(function() {
+            const artist = $(this).data('artist');
+            const album = $(this).data('album');
 
-    // Guardar metadatos
-    $('#metadataForm').submit(function(e) {
-        e.preventDefault();
-        
-        const formData = $(this).serialize();
-        
-        $.ajax({
-            url: '../../api/content/update-metadata.php',
-            method: 'POST',
-            data: formData,
-            success: function(response) {
-                toastr.success('Metadatos actualizados');
-                $('#metadataModal').modal('hide');
-                setTimeout(() => location.reload(), 1500);
-            },
-            error: function() {
-                toastr.error('Error al actualizar metadatos');
+            // Aquí cargarías las canciones del álbum
+            toastr.info('Reproduciendo álbum: ' + album);
+        });
+
+        // Editar metadatos
+        $('.edit-metadata').click(function() {
+            const songId = $(this).data('id');
+
+            // Cargar datos actuales (simulado)
+            $('#metaSongId').val(songId);
+            $('#metadataModal').modal('show');
+        });
+
+        // Guardar metadatos
+        $('#metadataForm').submit(function(e) {
+            e.preventDefault();
+
+            const formData = $(this).serialize();
+
+            $.ajax({
+                url: '../../api/content/update-metadata.php',
+                method: 'POST',
+                data: formData,
+                success: function(response) {
+                    toastr.success('Metadatos actualizados');
+                    $('#metadataModal').modal('hide');
+                    setTimeout(() => location.reload(), 1500);
+                },
+                error: function() {
+                    toastr.error('Error al actualizar metadatos');
+                }
+            });
+        });
+
+        // Actualizar estado del reproductor cuando termine
+        audioPlayer.addEventListener('ended', function() {
+            $('#playPause i').removeClass('fa-pause').addClass('fa-play');
+
+            // Auto-reproducir siguiente si hay playlist
+            if (currentPlaylist.length > 0 && currentIndex < currentPlaylist.length - 1) {
+                $('#nextTrack').click();
             }
         });
     });
-
-    // Actualizar estado del reproductor cuando termine
-    audioPlayer.addEventListener('ended', function() {
-        $('#playPause i').removeClass('fa-pause').addClass('fa-play');
-        
-        // Auto-reproducir siguiente si hay playlist
-        if (currentPlaylist.length > 0 && currentIndex < currentPlaylist.length - 1) {
-            $('#nextTrack').click();
-        }
-    });
-});
 </script>

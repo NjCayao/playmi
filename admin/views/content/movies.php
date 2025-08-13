@@ -1,4 +1,5 @@
 <?php
+
 /**
  * MÓDULO 2.2.3: Gestión específica de películas
  * Propósito: Administrar películas con funciones especializadas
@@ -10,13 +11,18 @@ require_once '../../controllers/ContentController.php';
 $controller = new ContentController();
 $controller->requireAuth();
 
+// Obtener datos del controlador
+$uploadData = $controller->upload();
+$movieGenres = $uploadData['genres']['pelicula'] ?? [];
+$ratings = $uploadData['ratings'] ?? [];
+
 // Obtener solo películas
 $filters = ['tipo' => 'pelicula'];
 $page = (int)($_GET['page'] ?? 1);
 
 // Simular datos específicos de películas (ajustar cuando esté el método movies())
 $result = $controller->index();
-$movies = array_filter($result['content'] ?? [], function($item) {
+$movies = array_filter($result['content'] ?? [], function ($item) {
     return $item['tipo'] === 'pelicula';
 });
 
@@ -71,7 +77,7 @@ ob_start();
                     </div>
                 </div>
             </div>
-            
+
             <div class="col-lg-3 col-6">
                 <div class="small-box bg-info">
                     <div class="inner">
@@ -83,7 +89,7 @@ ob_start();
                     </div>
                 </div>
             </div>
-            
+
             <div class="col-lg-3 col-6">
                 <div class="small-box bg-warning">
                     <div class="inner">
@@ -95,7 +101,7 @@ ob_start();
                     </div>
                 </div>
             </div>
-            
+
             <div class="col-lg-3 col-6">
                 <div class="small-box bg-danger">
                     <div class="inner">
@@ -126,23 +132,20 @@ ob_start();
                             <label>Género</label>
                             <select name="genero" class="form-control">
                                 <option value="">Todos</option>
-                                <option value="accion">Acción</option>
-                                <option value="comedia">Comedia</option>
-                                <option value="drama">Drama</option>
-                                <option value="terror">Terror</option>
-                                <option value="ciencia-ficcion">Ciencia Ficción</option>
+                                <?php foreach ($movieGenres as $value => $label): ?>
+                                    <option value="<?php echo $value; ?>"><?php echo $label; ?></option>
+                                <?php endforeach; ?>
                             </select>
                         </div>
                     </div>
                     <div class="col-md-3">
                         <div class="form-group">
                             <label>Clasificación</label>
-                            <select name="clasificacion" class="form-control">
+                            <select name="calificacion" class="form-control"> 
                                 <option value="">Todas</option>
-                                <option value="G">G - General</option>
-                                <option value="PG">PG - Guía Parental</option>
-                                <option value="PG-13">PG-13</option>
-                                <option value="R">R - Restringido</option>
+                                <?php foreach ($ratings as $value => $label): ?>
+                                    <option value="<?php echo $value; ?>"><?php echo $label; ?></option>
+                                <?php endforeach; ?>
                             </select>
                         </div>
                     </div>
@@ -151,7 +154,7 @@ ob_start();
                             <label>Año</label>
                             <select name="anio" class="form-control">
                                 <option value="">Todos</option>
-                                <?php for($y = date('Y'); $y >= 2000; $y--): ?>
+                                <?php for ($y = date('Y'); $y >= 2000; $y--): ?>
                                     <option value="<?php echo $y; ?>"><?php echo $y; ?></option>
                                 <?php endfor; ?>
                             </select>
@@ -195,7 +198,6 @@ ob_start();
                             <tr>
                                 <th width="80">Poster</th>
                                 <th>Título</th>
-                                <th>Director</th>
                                 <th>Año</th>
                                 <th>Duración</th>
                                 <th>Calidad</th>
@@ -205,70 +207,59 @@ ob_start();
                         </thead>
                         <tbody>
                             <?php foreach ($movies as $movie): ?>
-                            <tr>
-                                <td>
-                                    <img src="<?php echo $movie['thumbnail_path'] ? SITE_URL . 'content/' . $movie['thumbnail_path'] : ASSETS_URL . 'images/movie-placeholder.jpg'; ?>" 
-                                         alt="Poster" 
-                                         class="img-thumbnail"
-                                         style="width: 60px; height: 90px; object-fit: cover;">
-                                </td>
-                                <td>
-                                    <strong><?php echo htmlspecialchars($movie['titulo']); ?></strong>
-                                    <br>
-                                    <small class="text-muted">
-                                        <span class="badge badge-secondary"><?php echo $movie['categoria'] ?? 'Sin categoría'; ?></span>
-                                        <span class="badge badge-info"><?php echo $movie['calificacion'] ?? 'NR'; ?></span>
-                                    </small>
-                                </td>
-                                <td><?php echo $movie['director'] ?? '-'; ?></td>
-                                <td><?php echo $movie['anio_lanzamiento'] ?? '-'; ?></td>
-                                <td>
-                                    <?php 
-                                    if ($movie['duracion']) {
-                                        echo gmdate("H:i:s", $movie['duracion']);
-                                    } else {
-                                        echo '-';
-                                    }
-                                    ?>
-                                </td>
-                                <td>
-                                    <span class="badge badge-primary">HD</span>
-                                </td>
-                                <td>
-                                    <?php if ($movie['estado'] === 'activo'): ?>
-                                        <span class="badge badge-success">Activo</span>
-                                    <?php elseif ($movie['estado'] === 'procesando'): ?>
-                                        <span class="badge badge-warning">Procesando</span>
-                                    <?php else: ?>
-                                        <span class="badge badge-secondary">Inactivo</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <div class="btn-group btn-group-sm">
-                                        <button class="btn btn-info play-movie" 
+                                <tr>
+                                    <td>
+                                        <img src="<?php echo $movie['thumbnail_path'] ? SITE_URL . 'content/' . $movie['thumbnail_path'] : ASSETS_URL . 'images/movie-placeholder.jpg'; ?>"
+                                            alt="Poster"
+                                            class="img-thumbnail"
+                                            style="width: 60px; height: 90px; object-fit: cover;">
+                                    </td>
+                                    <td>
+                                        <strong><?php echo htmlspecialchars($movie['titulo']); ?></strong>
+                                        <br>
+                                        <small class="text-muted">
+                                            <span class="badge badge-secondary"><?php echo $movie['genero'] ?? 'Sin genero'; ?></span>
+                                            <span class="badge badge-info"><?php echo $movie['calificacion'] ?? 'NR'; ?></span>
+                                        </small>
+                                    </td>
+                                    <td><?php echo $movie['anio_lanzamiento'] ?? '-'; ?></td>
+                                    <td>
+                                        <?php
+                                        if ($movie['duracion']) {
+                                            echo gmdate("H:i:s", $movie['duracion']);
+                                        } else {
+                                            echo '-';
+                                        }
+                                        ?>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-primary">HD</span>
+                                    </td>
+                                    <td>
+                                        <?php if ($movie['estado'] === 'activo'): ?>
+                                            <span class="badge badge-success">Activo</span>
+                                        <?php elseif ($movie['estado'] === 'procesando'): ?>
+                                            <span class="badge badge-warning">Procesando</span>
+                                        <?php else: ?>
+                                            <span class="badge badge-secondary">Inactivo</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-info play-movie"
                                                 data-id="<?php echo $movie['id']; ?>"
+                                                data-path="<?php echo $movie['archivo_path']; ?>"
                                                 title="Reproducir">
-                                            <i class="fas fa-play"></i>
-                                        </button>
-                                        <button class="btn btn-warning compress-video" 
-                                                data-id="<?php echo $movie['id']; ?>"
-                                                title="Recomprimir"
-                                                <?php echo $movie['estado'] === 'procesando' ? 'disabled' : ''; ?>>
-                                            <i class="fas fa-compress"></i>
-                                        </button>
-                                        <button class="btn btn-secondary regenerate-thumb" 
-                                                data-id="<?php echo $movie['id']; ?>"
-                                                title="Regenerar thumbnail">
-                                            <i class="fas fa-image"></i>
-                                        </button>
-                                        <a href="edit.php?id=<?php echo $movie['id']; ?>" 
-                                           class="btn btn-primary"
-                                           title="Editar">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
-                                    </div>
-                                </td>
-                            </tr>
+                                                <i class="fas fa-play"></i>
+                                            </button>
+                                            <a href="edit.php?id=<?php echo $movie['id']; ?>"
+                                                class="btn btn-primary"
+                                                title="Editar">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
                             <?php endforeach; ?>
                         </tbody>
                     </table>
@@ -278,30 +269,30 @@ ob_start();
                 <div id="gridView" style="display: none;">
                     <div class="row">
                         <?php foreach ($movies as $movie): ?>
-                        <div class="col-md-3 col-sm-6 mb-4">
-                            <div class="card movie-card">
-                                <img src="<?php echo $movie['thumbnail_path'] ? SITE_URL . 'content/' . $movie['thumbnail_path'] : ASSETS_URL . 'images/movie-placeholder.jpg'; ?>" 
-                                     class="card-img-top movie-poster" 
-                                     alt="<?php echo htmlspecialchars($movie['titulo']); ?>">
-                                <div class="card-body">
-                                    <h6 class="card-title text-truncate"><?php echo htmlspecialchars($movie['titulo']); ?></h6>
-                                    <p class="card-text">
-                                        <small class="text-muted">
-                                            <?php echo $movie['anio_lanzamiento'] ?? 'Año desconocido'; ?> • 
-                                            <?php echo $movie['duracion'] ? gmdate("H:i", $movie['duracion']) : 'Duración desconocida'; ?>
-                                        </small>
-                                    </p>
-                                    <div class="btn-group btn-group-sm w-100">
-                                        <button class="btn btn-info play-movie" data-id="<?php echo $movie['id']; ?>">
-                                            <i class="fas fa-play"></i>
-                                        </button>
-                                        <a href="edit.php?id=<?php echo $movie['id']; ?>" class="btn btn-primary">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
+                            <div class="col-md-3 col-sm-6 mb-4">
+                                <div class="card movie-card">
+                                    <img src="<?php echo $movie['thumbnail_path'] ? SITE_URL . 'content/' . $movie['thumbnail_path'] : ASSETS_URL . 'images/movie-placeholder.jpg'; ?>"
+                                        class="card-img-top movie-poster"
+                                        alt="<?php echo htmlspecialchars($movie['titulo']); ?>">
+                                    <div class="card-body">
+                                        <h6 class="card-title text-truncate"><?php echo htmlspecialchars($movie['titulo']); ?></h6>
+                                        <p class="card-text">
+                                            <small class="text-muted">
+                                                <?php echo $movie['anio_lanzamiento'] ?? 'Año desconocido'; ?> •
+                                                <?php echo $movie['duracion'] ? gmdate("H:i", $movie['duracion']) : 'Duración desconocida'; ?>
+                                            </small>
+                                        </p>
+                                        <div class="btn-group btn-group-sm w-100">
+                                            <button class="btn btn-info play-movie" data-id="<?php echo $movie['id']; ?>">
+                                                <i class="fas fa-play"></i>
+                                            </button>
+                                            <a href="edit.php?id=<?php echo $movie['id']; ?>" class="btn btn-primary">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
                         <?php endforeach; ?>
                     </div>
                 </div>
@@ -321,7 +312,9 @@ ob_start();
                 </button>
             </div>
             <div class="modal-body p-0">
-                <video id="videoPlayer" controls style="width: 100%; height: auto;">
+                <video id="videoPlayer" controls style="width: 100%; height: auto;"
+                    controlsList="nodownload"
+                    preload="metadata">
                     Tu navegador no soporta el elemento de video.
                 </video>
             </div>
@@ -336,118 +329,82 @@ require_once '../layouts/base.php';
 
 <!-- Estilos adicionales -->
 <style>
-.movie-card {
-    transition: transform 0.2s;
-    cursor: pointer;
-}
-.movie-card:hover {
-    transform: scale(1.05);
-}
-.movie-poster {
-    height: 300px;
-    object-fit: cover;
-}
+    .movie-card {
+        transition: transform 0.2s;
+        cursor: pointer;
+    }
+
+    .movie-card:hover {
+        transform: scale(1.05);
+    }
+
+    .movie-poster {
+        height: 300px;
+        object-fit: cover;
+    }
 </style>
 
 <!-- Scripts específicos -->
 <script>
-$(document).ready(function() {
-    // DataTable
-    $('#moviesTable').DataTable({
-        "responsive": true,
-        "language": {
-            "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Spanish.json"
-        }
-    });
-
-    // Cambiar vista
-    $('#viewGrid').click(function() {
-        $('#listView').hide();
-        $('#gridView').show();
-        $(this).addClass('active');
-        $('#viewList').removeClass('active');
-    });
-
-    $('#viewList').click(function() {
-        $('#gridView').hide();
-        $('#listView').show();
-        $(this).addClass('active');
-        $('#viewGrid').removeClass('active');
-    });
-
-    // Reproducir película
-    $('.play-movie').click(function() {
-        const movieId = $(this).data('id');
-        // Aquí cargarías la URL del video
-        $('#videoPlayer').attr('src', '<?php echo SITE_URL; ?>content/movies/movie-' + movieId + '.mp4');
-        $('#playerModal').modal('show');
-    });
-
-    // Detener video al cerrar modal
-    $('#playerModal').on('hidden.bs.modal', function() {
-        $('#videoPlayer')[0].pause();
-    });
-
-    // Recomprimir video
-    $('.compress-video').click(function() {
-        const movieId = $(this).data('id');
-        const $btn = $(this);
-        
-        Swal.fire({
-            title: '¿Recomprimir video?',
-            text: 'Este proceso puede tomar varios minutos',
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: 'Sí, recomprimir',
-            cancelButtonText: 'Cancelar'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
-                
-                $.ajax({
-                    url: '../../api/content/process-video.php',
-                    method: 'POST',
-                    data: { id: movieId },
-                    success: function(response) {
-                        toastr.success('Video enviado a procesar');
-                        setTimeout(() => location.reload(), 2000);
-                    },
-                    error: function() {
-                        toastr.error('Error al procesar video');
-                        $btn.prop('disabled', false).html('<i class="fas fa-compress"></i>');
-                    }
-                });
+    $(document).ready(function() {
+        // DataTable
+        $('#moviesTable').DataTable({
+            "responsive": true,
+            "language": {
+                "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Spanish.json"
             }
         });
-    });
 
-    // Regenerar thumbnail
-    $('.regenerate-thumb').click(function() {
-        const movieId = $(this).data('id');
-        const $btn = $(this);
-        
-        $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
-        
-        $.ajax({
-            url: '../../api/content/generate-thumbnail.php',
-            method: 'POST',
-            data: { id: movieId, type: 'movie' },
-            success: function(response) {
-                toastr.success('Thumbnail regenerado');
-                setTimeout(() => location.reload(), 1500);
-            },
-            error: function() {
-                toastr.error('Error al generar thumbnail');
-                $btn.prop('disabled', false).html('<i class="fas fa-image"></i>');
-            }
+        // Cambiar vista
+        $('#viewGrid').click(function() {
+            $('#listView').hide();
+            $('#gridView').show();
+            $(this).addClass('active');
+            $('#viewList').removeClass('active');
+        });
+
+        $('#viewList').click(function() {
+            $('#gridView').hide();
+            $('#listView').show();
+            $(this).addClass('active');
+            $('#viewGrid').removeClass('active');
+        });
+
+        // Reproducir película
+        $('.play-movie').click(function() {
+            const movieId = $(this).data('id');
+            const moviePath = $(this).data('path');
+
+            console.log('Path del video:', moviePath); // Debug
+
+            const video = $('#videoPlayer')[0];
+            video.src = '<?php echo SITE_URL; ?>content/' + moviePath;
+
+            // Debug del video
+            video.addEventListener('loadedmetadata', function() {
+                console.log('Video cargado:');
+                console.log('- Tiene audio:', video.mozHasAudio || video.webkitAudioDecodedByteCount > 0);
+                console.log('- Muted:', video.muted);
+                console.log('- Volumen:', video.volume);
+            });
+
+            video.muted = false;
+            video.volume = 1.0;
+
+            $('#playerModal').modal('show');
+        });
+
+        // Detener video al cerrar modal
+        $('#playerModal').on('hidden.bs.modal', function() {
+            $('#videoPlayer')[0].pause();
         });
     });
-});
 </script>
 
 <?php
 // Helper function
-function formatFileSize($bytes) {
+function formatFileSize($bytes)
+{
     $units = ['B', 'KB', 'MB', 'GB'];
     $i = 0;
     while ($bytes >= 1024 && $i < count($units) - 1) {

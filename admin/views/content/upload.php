@@ -1,4 +1,5 @@
 <?php
+
 /**
  * MÓDULO 2.2.2: Formulario universal para subir contenido
  * Propósito: Permitir subida de películas, música y juegos
@@ -13,6 +14,7 @@ $controller->requireAuth();
 // Obtener datos para el formulario
 $uploadData = $controller->upload();
 $contentTypes = $uploadData['content_types'] ?? [];
+$genres = $uploadData['genres'] ?? [];
 $categories = $uploadData['categories'] ?? [];
 $ratings = $uploadData['ratings'] ?? [];
 
@@ -67,14 +69,14 @@ ob_start();
                             <div class="form-group">
                                 <label>Título <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control" name="titulo" required maxlength="200"
-                                       placeholder="Ingrese el título del contenido">
+                                    placeholder="Ingrese el título del contenido">
                             </div>
 
                             <!-- Descripción -->
                             <div class="form-group">
                                 <label>Descripción</label>
                                 <textarea class="form-control" name="descripcion" rows="3"
-                                          placeholder="Ingrese una descripción (opcional)"></textarea>
+                                    placeholder="Ingrese una descripción (opcional)"></textarea>
                             </div>
 
                             <!-- Campos dinámicos según tipo -->
@@ -106,9 +108,9 @@ ob_start();
 
                             <!-- Progress bar -->
                             <div class="progress mb-3" style="display: none;">
-                                <div class="progress-bar progress-bar-striped progress-bar-animated" 
-                                     role="progressbar" 
-                                     style="width: 0%">0%</div>
+                                <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                    role="progressbar"
+                                    style="width: 0%">0%</div>
                             </div>
 
                             <!-- Thumbnail -->
@@ -148,15 +150,15 @@ ob_start();
 </section>
 
 <!-- Templates para campos dinámicos -->
-<script type="text/template" id="movieFields">
+<script type="text/template" id="peliculaFields">
     <div class="row">
         <div class="col-md-6">
             <div class="form-group">
-                <label>Categoría</label>
-                <select class="form-control" name="categoria">
+                <label>Género</label>
+                <select class="form-control" name="genero">
                     <option value="">Seleccionar...</option>
-                    <?php foreach ($categories['pelicula'] as $cat): ?>
-                        <option value="<?php echo $cat; ?>"><?php echo $cat; ?></option>
+                    <?php foreach ($genres['pelicula'] as $value => $label): ?>
+                        <option value="<?php echo $value; ?>"><?php echo $label; ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
@@ -173,14 +175,8 @@ ob_start();
             </div>
         </div>
     </div>
-    <div class="row">
-        <div class="col-md-6">
-            <div class="form-group">
-                <label>Director</label>
-                <input type="text" class="form-control" name="director" placeholder="Nombre del director">
-            </div>
-        </div>
-        <div class="col-md-6">
+    <div class="row">        
+        <div class="col-md-12">
             <div class="form-group">
                 <label>Año</label>
                 <input type="number" class="form-control" name="anio_lanzamiento" 
@@ -190,7 +186,7 @@ ob_start();
     </div>
 </script>
 
-<script type="text/template" id="musicFields">
+<script type="text/template" id="musicaFields">
     <div class="row">
         <div class="col-md-6">
             <div class="form-group">
@@ -209,10 +205,10 @@ ob_start();
         <div class="col-md-6">
             <div class="form-group">
                 <label>Género</label>
-                <select class="form-control" name="categoria">
+                <select class="form-control" name="genero">  <!-- Cambiar de "categoria" a "genero" -->
                     <option value="">Seleccionar...</option>
-                    <?php foreach ($categories['musica'] as $cat): ?>
-                        <option value="<?php echo $cat; ?>"><?php echo $cat; ?></option>
+                    <?php foreach ($genres['musica'] as $value => $label): ?>
+                        <option value="<?php echo $value; ?>"><?php echo $label; ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
@@ -227,7 +223,7 @@ ob_start();
     </div>
 </script>
 
-<script type="text/template" id="gameFields">
+<script type="text/template" id="juegoFields">
     <div class="row">
         <div class="col-md-12">
             <div class="form-group">
@@ -260,113 +256,120 @@ require_once '../layouts/base.php';
 
 <!-- Scripts específicos -->
 <script>
-$(document).ready(function() {
-    const fileTypes = {
-        pelicula: {
-            accept: '.mp4,.avi,.mkv,.mov',
-            maxSize: <?php echo MAX_VIDEO_SIZE; ?>,
-            help: 'MP4, AVI, MKV o MOV. Máximo 15GB.'
-        },
-        musica: {
-            accept: '.mp3,.m4a,.wav,.flac,.mp4,.avi',
-            maxSize: <?php echo MAX_AUDIO_SIZE; ?>,
-            help: 'MP3, M4A, WAV, FLAC o videos musicales (MP4/AVI). Máximo 2GB.'
-        },
-        juego: {
-            accept: '.zip',
-            maxSize: <?php echo MAX_GAME_SIZE; ?>,
-            help: 'Archivo ZIP que contenga index.html. Máximo 10GB.'
-        }
-    };
-
-    // Cambiar campos según tipo
-    $('#tipo').on('change', function() {
-        const tipo = $(this).val();
-        
-        if (tipo) {
-            // Cargar campos dinámicos
-            const template = $('#' + tipo + 'Fields').html();
-            $('#dynamicFields').html(template);
-            
-            // Actualizar restricciones de archivo
-            const config = fileTypes[tipo];
-            $('#archivo').attr('accept', config.accept);
-            $('#fileHelp').text(config.help);
-        } else {
-            $('#dynamicFields').empty();
-            $('#archivo').removeAttr('accept');
-            $('#fileHelp').text('Seleccione primero el tipo de contenido');
-        }
-    });
-
-    // Preview de thumbnail
-    $('#thumbnail').on('change', function(e) {
-        const file = e.target.files[0];
-        if (file && file.type.startsWith('image/')) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                $('#thumbnailPreview img').attr('src', e.target.result);
-                $('#thumbnailPreview').show();
-            };
-            reader.readAsDataURL(file);
-        }
-    });
-
-    // Actualizar label de archivo
-    $('.custom-file-input').on('change', function(e) {
-        const fileName = e.target.files[0]?.name || 'Seleccionar archivo';
-        $(this).next('.custom-file-label').text(fileName);
-    });
-
-    // Enviar formulario
-    $('#uploadForm').on('submit', function(e) {
-        e.preventDefault();
-        
-        const tipo = $('#tipo').val();
-        if (!tipo) {
-            toastr.error('Debe seleccionar un tipo de contenido');
-            return;
-        }
-
-        const formData = new FormData(this);
-        const $submitBtn = $('#submitBtn');
-        const $progress = $('.progress');
-        const $progressBar = $('.progress-bar');
-
-        // Deshabilitar botón y mostrar progress
-        $submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Subiendo...');
-        $progress.show();
-
-        $.ajax({
-            url: '../../api/content/upload-' + tipo + '.php',
-            type: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
-            xhr: function() {
-                const xhr = new window.XMLHttpRequest();
-                xhr.upload.addEventListener('progress', function(evt) {
-                    if (evt.lengthComputable) {
-                        const percentComplete = Math.round((evt.loaded / evt.total) * 100);
-                        $progressBar.css('width', percentComplete + '%').text(percentComplete + '%');
-                    }
-                }, false);
-                return xhr;
+    $(document).ready(function() {
+        const fileTypes = {
+            pelicula: {
+                accept: '.mp4,.avi,.mkv,.mov',
+                maxSize: <?php echo MAX_VIDEO_SIZE; ?>,
+                help: 'SOLO EN MP4. Máximo 15GB.'
             },
-            success: function(response) {
-                toastr.success('Contenido subido exitosamente');
-                setTimeout(() => {
-                    window.location.href = 'index.php';
-                }, 1500);
+            musica: {
+                accept: '.mp3,.m4a,.wav,.flac,.mp4,.avi',
+                maxSize: <?php echo MAX_AUDIO_SIZE; ?>,
+                help: 'MP3, MP4. Máximo 2GB.'
             },
-            error: function(xhr) {
-                const error = xhr.responseJSON?.error || 'Error al subir el contenido';
-                toastr.error(error);
-                $submitBtn.prop('disabled', false).html('<i class="fas fa-upload"></i> Subir Contenido');
-                $progress.hide();
-                $progressBar.css('width', '0%').text('0%');
+            juego: {
+                accept: '.zip',
+                maxSize: <?php echo MAX_GAME_SIZE; ?>,
+                help: 'Archivo ZIP que contenga index.html. Máximo 10GB.'
+            }
+        };
+
+        // Cambiar campos según tipo
+        $('#tipo').on('change', function() {
+            const tipo = $(this).val();
+
+            if (tipo) {
+                // Cargar campos dinámicos
+                const template = $('#' + tipo + 'Fields').html();
+                $('#dynamicFields').html(template);
+
+                // Actualizar restricciones de archivo
+                const config = fileTypes[tipo];
+                $('#archivo').attr('accept', config.accept);
+                $('#fileHelp').text(config.help);
+            } else {
+                $('#dynamicFields').empty();
+                $('#archivo').removeAttr('accept');
+                $('#fileHelp').text('Seleccione primero el tipo de contenido');
             }
         });
+
+        // Preview de thumbnail
+        $('#thumbnail').on('change', function(e) {
+            const file = e.target.files[0];
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    $('#thumbnailPreview img').attr('src', e.target.result);
+                    $('#thumbnailPreview').show();
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Actualizar label de archivo
+        $('.custom-file-input').on('change', function(e) {
+            const fileName = e.target.files[0]?.name || 'Seleccionar archivo';
+            $(this).next('.custom-file-label').text(fileName);
+        });
+
+        // Enviar formulario
+        $('#uploadForm').on('submit', function(e) {
+            e.preventDefault();
+
+            const tipo = $('#tipo').val();
+            if (!tipo) {
+                toastr.error('Debe seleccionar un tipo de contenido');
+                return;
+            }
+
+            const formData = new FormData(this);
+            const $submitBtn = $('#submitBtn');
+            const $progress = $('.progress');
+            const $progressBar = $('.progress-bar');
+
+            // Deshabilitar botón y mostrar progress
+            $submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Subiendo...');
+            $progress.show();
+
+            // Mapear tipos a nombres de archivo
+            const apiMap = {
+                'pelicula': 'movie',
+                'musica': 'music',
+                'juego': 'game'
+            };
+
+            $.ajax({
+                url: '../../api/content/upload-' + apiMap[tipo] + '.php',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                xhr: function() {
+                    const xhr = new window.XMLHttpRequest();
+                    xhr.upload.addEventListener('progress', function(evt) {
+                        if (evt.lengthComputable) {
+                            const percentComplete = Math.round((evt.loaded / evt.total) * 100);
+                            $progressBar.css('width', percentComplete + '%').text(percentComplete + '%');
+                        }
+                    }, false);
+                    return xhr;
+                },
+                success: function(response) {
+                    toastr.success('Contenido subido exitosamente');
+                    setTimeout(() => {
+                        window.location.href = 'index.php';
+                    }, 1500);
+                },
+                error: function(xhr) {
+                    const error = xhr.responseJSON?.error || 'Error al subir el contenido';
+                    toastr.error(error);
+                    $submitBtn.prop('disabled', false).html('<i class="fas fa-upload"></i> Subir Contenido');
+                    $progress.hide();
+                    $progressBar.css('width', '0%').text('0%');
+                }
+            });
+        });
     });
-});
 </script>

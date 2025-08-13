@@ -1,7 +1,8 @@
 <?php
+
 /**
- * MÓDULO 2.2.8: API para procesar subida de música
- * Propósito: Manejar la subida de archivos de audio y extracción de metadatos ID3
+ * MÓDULO 2.2.9: API para procesar subida de juegos HTML5
+ * Propósito: Manejar la subida y validación de juegos en formato ZIP
  */
 
 require_once '../../config/system.php';
@@ -11,7 +12,7 @@ require_once '../../models/Content.php';
 
 // Configurar límites
 set_time_limit(0);
-ini_set('memory_limit', '512M');
+ini_set('memory_limit', '1G');
 
 // Verificar autenticación
 session_start();
@@ -35,25 +36,19 @@ try {
     }
 
     $file = $_FILES['archivo'];
-    
-    // Validar tipo de archivo
-    $allowedAudioTypes = ['mp3', 'm4a', 'wav', 'flac', 'ogg'];
-    $allowedVideoTypes = ['mp4', 'avi', 'mkv']; // Para videos musicales
-    $allowedTypes = array_merge($allowedAudioTypes, $allowedVideoTypes);
-    
+
+    // Validar tipo de archivo - solo ZIP para juegos
+    $allowedTypes = ['zip'];
     $fileInfo = pathinfo($file['name']);
     $extension = strtolower($fileInfo['extension'] ?? '');
-    
+
     if (!in_array($extension, $allowedTypes)) {
-        throw new Exception('Tipo de archivo no permitido. Formatos válidos: ' . implode(', ', $allowedTypes));
+        throw new Exception('Solo se permiten archivos ZIP para juegos');
     }
 
-    // Determinar si es audio o video musical
-    $isVideo = in_array($extension, $allowedVideoTypes);
-    
     // Validar tamaño
-    if ($file['size'] > MAX_AUDIO_SIZE) {
-        throw new Exception('El archivo excede el tamaño máximo permitido de ' . (MAX_AUDIO_SIZE / 1024 / 1024 / 1024) . 'GB');
+    if ($file['size'] > MAX_GAME_SIZE) {
+        throw new Exception('El archivo excede el tamaño máximo permitido de ' . (MAX_GAME_SIZE / 1024 / 1024 / 1024) . 'GB');
     }
 
     // Validar datos del formulario
@@ -64,73 +59,59 @@ try {
         }
     }
 
-    // Crear directorios
-    $audioPath = ROOT_PATH . 'content/music/audio/';
-    $videoPath = ROOT_PATH . 'content/music/videos/';
-    $thumbnailPath = ROOT_PATH . 'content/music/thumbnails/';
-    
-    foreach ([$audioPath, $videoPath, $thumbnailPath] as $path) {
+    // Crear directorios    
+    $sourcePath = dirname(ROOT_PATH) . '/content/games/source/';
+    $extractedPath = dirname(ROOT_PATH) . '/content/games/extracted/';
+    $thumbnailPath = dirname(ROOT_PATH) . '/content/games/thumbnails/';
+
+    foreach ([$sourcePath, $extractedPath, $thumbnailPath] as $path) {
         if (!is_dir($path)) {
             mkdir($path, 0755, true);
         }
     }
 
-    // Generar nombre único
-    $musicId = uniqid('music_');
-    $filename = $musicId . '.' . $extension;
-    
-    // Determinar ruta según tipo
-    $uploadPath = $isVideo ? $videoPath : $audioPath;
-    $fullPath = $uploadPath . $filename;
+    // Generar ID único para el juego
+    $gameId = uniqid('game_');
+    $zipFilename = $gameId . '.zip';
+    $zipFullPath = $sourcePath . $zipFilename;
 
-    // Mover archivo
-    if (!move_uploaded_file($file['tmp_name'], $fullPath)) {
-        throw new Exception('Error al guardar el archivo');
+    // Mover archivo ZIP
+    if (!move_uploaded_file($file['tmp_name'], $zipFullPath)) {
+        throw new Exception('Error al guardar el archivo ZIP');
     }
 
-    // Extraer metadatos ID3 (si es audio)
-    $metadata = [];
-    if (!$isVideo) {
-        $metadata = extractID3Tags($fullPath);
+    // Validar y extraer ZIP
+    $validationResult = validateAndExtractGame($zipFullPath, $extractedPath . $gameId);
+
+    if (!$validationResult['success']) {
+        // Eliminar archivo si la validación falla
+        @unlink($zipFullPath);
+        throw new Exception($validationResult['error']);
     }
 
-    // Obtener duración
-    $duration = getAudioDuration($fullPath);
-
-    // Manejar carátula/thumbnail
+    // Buscar o generar thumbnail
     $thumbnailFilename = null;
-    
-    // 1. Intentar extraer del archivo (ID3)
-    if (!$isVideo && !empty($metadata['picture'])) {
-        $thumbnailFilename = $musicId . '_cover.jpg';
-        $thumbnailFullPath = $thumbnailPath . $thumbnailFilename;
-        file_put_contents($thumbnailFullPath, $metadata['picture']);
+
+    // 1. Buscar imagen en el juego extraído
+    $gameScreenshots = findGameScreenshots($extractedPath . $gameId);
+    if (!empty($gameScreenshots)) {
+        $screenshotPath = $gameScreenshots[0];
+        $ext = pathinfo($screenshotPath, PATHINFO_EXTENSION);
+        $thumbnailFilename = $gameId . '_thumb.' . $ext;
+        copy($screenshotPath, $thumbnailPath . $thumbnailFilename);
     }
-    
+
     // 2. Si se subió una imagen personalizada
-    if (isset($_FILES['thumbnail']) && $_FILES['thumbnail']['error'] === UPLOAD_ERR_OK) {
+    if (!$thumbnailFilename && isset($_FILES['thumbnail']) && $_FILES['thumbnail']['error'] === UPLOAD_ERR_OK) {
         $thumbFile = $_FILES['thumbnail'];
         $thumbInfo = pathinfo($thumbFile['name']);
         $thumbExt = strtolower($thumbInfo['extension'] ?? '');
-        
+
         if (in_array($thumbExt, ['jpg', 'jpeg', 'png', 'webp'])) {
-            $thumbnailFilename = $musicId . '_custom.' . $thumbExt;
+            $thumbnailFilename = $gameId . '_custom.' . $thumbExt;
             $thumbnailFullPath = $thumbnailPath . $thumbnailFilename;
-            
-            if (move_uploaded_file($thumbFile['tmp_name'], $thumbnailFullPath)) {
-                // Eliminar carátula anterior si existe
-                if (isset($metadata['picture'])) {
-                    @unlink($thumbnailPath . $musicId . '_cover.jpg');
-                }
-            }
+            move_uploaded_file($thumbFile['tmp_name'], $thumbnailFullPath);
         }
-    }
-    
-    // 3. Si es video, generar thumbnail del video
-    if ($isVideo && !$thumbnailFilename) {
-        $thumbnailFilename = $musicId . '_thumb.jpg';
-        $thumbnailFullPath = $thumbnailPath . $thumbnailFilename;
-        generateVideoThumbnail($fullPath, $thumbnailFullPath);
     }
 
     // Preparar datos para BD
@@ -138,53 +119,56 @@ try {
     $contentData = [
         'titulo' => $_POST['titulo'],
         'descripcion' => $_POST['descripcion'] ?? null,
-        'tipo' => 'musica',
-        'categoria' => $_POST['categoria'] ?? $metadata['genre'] ?? null,
-        'artista' => $_POST['artista'] ?? $metadata['artist'] ?? null,
-        'album' => $_POST['album'] ?? $metadata['album'] ?? null,
-        'anio_lanzamiento' => $_POST['anio_lanzamiento'] ?? $metadata['year'] ?? null,
-        'archivo_path' => ($isVideo ? 'music/videos/' : 'music/audio/') . $filename,
+        'tipo' => 'juego',
+        'categoria' => $_POST['categoria'] ?? null,
+        'archivo_path' => 'games/source/' . $zipFilename,
         'tamanio_archivo' => $file['size'],
-        'duracion' => $duration,
-        'thumbnail_path' => $thumbnailFilename ? 'music/thumbnails/' . $thumbnailFilename : null,
+        'thumbnail_path' => $thumbnailFilename ? 'games/thumbnails/' . $thumbnailFilename : null,
         'estado' => 'activo',
-        'archivo_hash' => hash_file('sha256', $fullPath)
+        'archivo_hash' => hash_file('sha256', $zipFullPath),
+        'metadata' => json_encode([
+            'extracted_path' => 'games/extracted/' . $gameId . '/',
+            'main_file' => $validationResult['main_file'],
+            'game_files' => $validationResult['files'],
+            'instrucciones' => $_POST['instrucciones'] ?? null,
+            'controles' => $_POST['controles'] ?? null,
+            'validated_at' => date('Y-m-d H:i:s')
+        ])
     ];
 
     // Guardar en base de datos
     $contentId = $contentModel->create($contentData);
-    
+
     if (!$contentId) {
         // Limpiar archivos si falla
-        @unlink($fullPath);
+        @unlink($zipFullPath);
+        deleteDirectory($extractedPath . $gameId);
         if ($thumbnailFilename) {
             @unlink($thumbnailPath . $thumbnailFilename);
         }
         throw new Exception('Error al guardar en la base de datos');
     }
 
-    // Si es audio de alta calidad, podríamos optimizarlo
-    if (!$isVideo && in_array($extension, ['wav', 'flac'])) {
-        queueAudioOptimization($contentId, $fullPath);
+    // Programar generación de screenshot si no hay thumbnail
+    if (!$thumbnailFilename) {
+        queueGameScreenshot($contentId, $gameId);
     }
 
     // Respuesta exitosa
     http_response_code(200);
     echo json_encode([
         'success' => true,
-        'message' => 'Música subida exitosamente',
+        'message' => 'Juego subido exitosamente',
         'content_id' => $contentId,
-        'metadata' => [
-            'artist' => $contentData['artista'],
-            'album' => $contentData['album'],
-            'duration' => gmdate("i:s", $duration)
-        ]
+        'game_url' => SITE_URL . 'content/games/extracted/' . $gameId . '/' . $validationResult['main_file']
     ]);
-
 } catch (Exception $e) {
     // Limpiar archivos si hay error
-    if (isset($fullPath) && file_exists($fullPath)) {
-        @unlink($fullPath);
+    if (isset($zipFullPath) && file_exists($zipFullPath)) {
+        @unlink($zipFullPath);
+    }
+    if (isset($gameId) && is_dir($extractedPath . $gameId)) {
+        deleteDirectory($extractedPath . $gameId);
     }
     if (isset($thumbnailFullPath) && file_exists($thumbnailFullPath)) {
         @unlink($thumbnailFullPath);
@@ -197,107 +181,156 @@ try {
 }
 
 /**
- * Extraer tags ID3 del archivo de audio
+ * Validar y extraer juego ZIP
  */
-function extractID3Tags($filePath) {
-    $metadata = [];
-    
-    // Usando getID3 (si está instalado)
-    if (class_exists('getID3')) {
-        $getID3 = new getID3;
-        $fileInfo = $getID3->analyze($filePath);
-        
-        if (isset($fileInfo['tags'])) {
-            $tags = $fileInfo['tags'];
-            
-            // Preferir ID3v2 sobre ID3v1
-            $source = isset($tags['id3v2']) ? $tags['id3v2'] : 
-                     (isset($tags['id3v1']) ? $tags['id3v1'] : []);
-            
-            $metadata['title'] = $source['title'][0] ?? null;
-            $metadata['artist'] = $source['artist'][0] ?? null;
-            $metadata['album'] = $source['album'][0] ?? null;
-            $metadata['year'] = $source['year'][0] ?? null;
-            $metadata['genre'] = $source['genre'][0] ?? null;
-            
-            // Extraer imagen de portada
-            if (isset($fileInfo['comments']['picture'][0])) {
-                $metadata['picture'] = $fileInfo['comments']['picture'][0]['data'];
-            }
+function validateAndExtractGame($zipPath, $extractPath)
+{
+    $zip = new ZipArchive();
+
+    if ($zip->open($zipPath) !== TRUE) {
+        return ['success' => false, 'error' => 'No se pudo abrir el archivo ZIP'];
+    }
+
+    // Crear directorio de extracción
+    if (!is_dir($extractPath)) {
+        mkdir($extractPath, 0755, true);
+    }
+
+    // Extraer ZIP
+    $zip->extractTo($extractPath);
+    $zip->close();
+
+    // Buscar archivo principal (index.html)
+    $mainFiles = ['index.html', 'index.htm', 'game.html', 'main.html'];
+    $foundMainFile = null;
+
+    foreach ($mainFiles as $mainFile) {
+        if (file_exists($extractPath . '/' . $mainFile)) {
+            $foundMainFile = $mainFile;
+            break;
         }
-        
-        // Duración
-        if (isset($fileInfo['playtime_seconds'])) {
-            $metadata['duration'] = intval($fileInfo['playtime_seconds']);
-        }
-    } else {
-        // Fallback: usar herramientas del sistema
-        $ffprobePath = 'ffprobe';
-        
-        // Obtener metadatos básicos con ffprobe
-        $cmd = "$ffprobePath -v quiet -print_format json -show_format " . escapeshellarg($filePath);
-        $output = shell_exec($cmd);
-        
-        if ($output) {
-            $data = json_decode($output, true);
-            if (isset($data['format']['tags'])) {
-                $tags = $data['format']['tags'];
-                $metadata['title'] = $tags['title'] ?? null;
-                $metadata['artist'] = $tags['artist'] ?? null;
-                $metadata['album'] = $tags['album'] ?? null;
-                $metadata['date'] = $tags['date'] ?? null;
-                $metadata['genre'] = $tags['genre'] ?? null;
+
+        // Buscar en subdirectorios (máximo 1 nivel)
+        $dirs = glob($extractPath . '/*', GLOB_ONLYDIR);
+        foreach ($dirs as $dir) {
+            if (file_exists($dir . '/' . $mainFile)) {
+                $foundMainFile = basename($dir) . '/' . $mainFile;
+                break 2;
             }
         }
     }
-    
-    return $metadata;
+
+    if (!$foundMainFile) {
+        deleteDirectory($extractPath);
+        return ['success' => false, 'error' => 'No se encontró archivo HTML principal (index.html)'];
+    }
+
+    // Validar que tenga archivos JavaScript
+    $jsFiles = glob($extractPath . '/*.js') ?: [];
+    if (empty($jsFiles)) {
+        // Buscar en subdirectorios
+        $jsFiles = glob($extractPath . '/*/*.js') ?: [];
+    }
+
+    if (empty($jsFiles)) {
+        deleteDirectory($extractPath);
+        return ['success' => false, 'error' => 'El juego debe contener al menos un archivo JavaScript'];
+    }
+
+    // Listar todos los archivos del juego
+    $gameFiles = [];
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($extractPath, RecursiveDirectoryIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::SELF_FIRST
+    );
+
+    foreach ($iterator as $file) {
+        if ($file->isFile()) {
+            $relativePath = str_replace($extractPath . '/', '', $file->getPathname());
+            $gameFiles[] = $relativePath;
+        }
+    }
+
+    return [
+        'success' => true,
+        'main_file' => $foundMainFile,
+        'files' => $gameFiles,
+        'js_count' => count($jsFiles)
+    ];
 }
 
 /**
- * Obtener duración del audio/video
+ * Buscar screenshots en el juego
  */
-function getAudioDuration($filePath) {
-    $ffprobePath = 'ffprobe';
-    
-    $cmd = "$ffprobePath -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 " . escapeshellarg($filePath);
-    $duration = shell_exec($cmd);
-    
-    return $duration ? intval($duration) : 0;
+function findGameScreenshots($gamePath)
+{
+    $imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+    $possibleNames = ['screenshot', 'preview', 'thumb', 'cover', 'splash', 'banner'];
+    $foundImages = [];
+
+    // Buscar imágenes con nombres específicos
+    foreach ($possibleNames as $name) {
+        foreach ($imageExtensions as $ext) {
+            $imagePath = $gamePath . '/' . $name . '.' . $ext;
+            if (file_exists($imagePath)) {
+                $foundImages[] = $imagePath;
+            }
+        }
+    }
+
+    // Si no encuentra imágenes específicas, buscar cualquier imagen
+    if (empty($foundImages)) {
+        foreach ($imageExtensions as $ext) {
+            $images = glob($gamePath . '/*.' . $ext);
+            if ($images) {
+                $foundImages = array_merge($foundImages, $images);
+            }
+        }
+    }
+
+    return $foundImages;
 }
 
 /**
- * Generar thumbnail de video musical
+ * Programar generación de screenshot
  */
-function generateVideoThumbnail($videoPath, $outputPath, $timeInSeconds = 30) {
-    $ffmpegPath = 'ffmpeg';
+function queueGameScreenshot($contentId, $gameId)
+{
+    $jobsPath = dirname(ROOT_PATH) . '/jobs/';  // <-- CAMBIAR
+    if (!is_dir($jobsPath)) {
+        mkdir($jobsPath, 0755, true);
+    }
     
-    $cmd = "$ffmpegPath -i " . escapeshellarg($videoPath) . 
-           " -ss $timeInSeconds -vframes 1 -vf scale=640:-1 " . 
-           escapeshellarg($outputPath) . " 2>&1";
-    
-    shell_exec($cmd);
-    
-    return file_exists($outputPath);
-}
-
-/**
- * Encolar optimización de audio
- */
-function queueAudioOptimization($contentId, $inputPath) {
-    // En producción, esto enviaría a una cola para convertir WAV/FLAC a MP3 de alta calidad
-    $jobFile = ROOT_PATH . 'jobs/optimize_audio_' . $contentId . '.json';
+    $jobFile = $jobsPath . 'screenshot_game_' . $contentId . '.json';  // <-- CAMBIAR
     $jobData = [
         'content_id' => $contentId,
-        'input' => $inputPath,
+        'game_id' => $gameId,
+        'game_url' => SITE_URL . 'content/games/extracted/' . $gameId . '/index.html',
         'created_at' => date('Y-m-d H:i:s'),
         'status' => 'pending'
     ];
-    
-    if (!is_dir(ROOT_PATH . 'jobs/')) {
-        mkdir(ROOT_PATH . 'jobs/', 0755, true);
-    }
-    
+
     file_put_contents($jobFile, json_encode($jobData));
 }
-?>
+
+/**
+ * Eliminar directorio recursivamente
+ */
+function deleteDirectory($dir)
+{
+    if (!is_dir($dir)) {
+        return true;
+    }
+
+    $files = array_diff(scandir($dir), ['.', '..']);
+    foreach ($files as $file) {
+        $path = $dir . '/' . $file;
+        if (is_dir($path)) {
+            deleteDirectory($path);
+        } else {
+            @unlink($path);
+        }
+    }
+
+    return @rmdir($dir);
+}

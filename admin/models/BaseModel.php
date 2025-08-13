@@ -23,7 +23,7 @@ class BaseModel
     /**
      * Obtener todos los registros
      */
-    public function findAll($orderBy = 'id', $order = 'ASC')
+    public function findAll($orderBy = 'id', $order = 'DESC')
     {
         try {
             $sql = "SELECT * FROM {$this->table} ORDER BY {$orderBy} {$order}";

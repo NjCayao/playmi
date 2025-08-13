@@ -376,12 +376,36 @@ class ContentController extends BaseController
                 'musica' => 'Música',
                 'juego' => 'Juego'
             ],
-            'categories' => [
-                'pelicula' => ['Acción', 'Comedia', 'Drama', 'Terror', 'Ciencia Ficción', 'Documental'],
-                'musica' => ['Pop', 'Rock', 'Salsa', 'Cumbia', 'Reggaeton', 'Folclore'],
+            'genres' => [  // Géneros para películas y música
+                'pelicula' => [
+                    'accion' => 'Acción',
+                    'comedia' => 'Comedia',
+                    'drama' => 'Drama',
+                    'terror' => 'Terror',
+                    'ciencia-ficcion' => 'Ciencia Ficción',
+                    'documental' => 'Documental',
+                    'romance' => 'Romance',
+                    'animacion' => 'Animación'
+                ],
+                'musica' => [
+                    'pop' => 'Pop',
+                    'rock' => 'Rock',
+                    'salsa' => 'Salsa',
+                    'cumbia' => 'Cumbia',
+                    'reggaeton' => 'Reggaeton',
+                    'folclore' => 'Folclore'
+                ]
+            ],
+            'categories' => [  // Solo para juegos
                 'juego' => ['Puzzle', 'Arcade', 'Aventura', 'Estrategia', 'Educativo']
             ],
-            'ratings' => ['G', 'PG', 'PG-13', 'R', 'NC-17']
+            'ratings' => [
+                'TP' => 'TP - Todo Público',
+                '+7' => '+7 - Mayores de 7 años',
+                '+13' => '+13 - Mayores de 13 años',
+                '+16' => '+16 - Mayores de 16 años',
+                '+18' => '+18 - Solo Adultos'
+            ]
         ];
     }
 
