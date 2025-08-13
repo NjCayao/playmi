@@ -292,8 +292,8 @@ ob_start();
                         <div class="card-body">
                             <button type="submit" class="btn btn-primary btn-block">
                                 <i class="fas fa-save"></i> Guardar Cambios
-                            </button>
-                            <a href="<?php echo $content['tipo']; ?>s.php" class="btn btn-default btn-block">
+                            </button>                            
+                            <a href="<?php echo BASE_URL; ?>views/content/index.php" class="btn btn-default btn-block">
                                 <i class="fas fa-times"></i> Cancelar
                             </a>
                         </div>
