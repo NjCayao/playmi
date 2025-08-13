@@ -124,8 +124,9 @@ function exportData(format) {
 // Confirmar eliminación
 $(document).on('click', '.btn-delete', function(e) {
     e.preventDefault();
-    const url = $(this).attr('href');
-    const message = $(this).data('message');
+    const companyId = $(this).data('company-id');
+    const companyName = $(this).data('company-name');
+    const message = $(this).data('message'); // ✅ SOLO usar el data-message
     
     Swal.fire({
         title: '¿Eliminar empresa?',
@@ -138,7 +139,25 @@ $(document).on('click', '.btn-delete', function(e) {
         cancelButtonText: 'Cancelar'
     }).then((result) => {
         if (result.isConfirmed) {
-            window.location.href = url;
+            // Usar AJAX en lugar de redirección
+            $.ajax({
+                url: PLAYMI.baseUrl + 'api/companies/delete.php',
+                method: 'POST',
+                data: {
+                    company_id: companyId
+                },
+                success: function(response) {
+                    if (response.success) {
+                        toastr.success(response.message);
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        toastr.error(response.error);
+                    }
+                },
+                error: function() {
+                    toastr.error('Error al eliminar la empresa');
+                }
+            });
         }
     });
 });
@@ -230,9 +249,9 @@ ob_start();
                 <i class="fas fa-plus"></i> Nueva Empresa
             </a>
 
-            <button type="button" class="btn btn-info btn-sm" onclick="showImportModal()">
+            <!-- <button type="button" class="btn btn-info btn-sm" onclick="showImportModal()">
                 <i class="fas fa-upload"></i> Importar
-            </button>
+            </button> -->
             <button type="button" class="btn btn-success btn-sm" onclick="generateReport()">
                 <i class="fas fa-file-pdf"></i> Reporte
             </button>
@@ -480,12 +499,14 @@ ob_start();
                                                 <i class="fas fa-calendar-plus"></i>
                                             </button>
                                         <?php endif; ?>
-                                        <a href="<?php echo BASE_URL; ?>api/companies/delete.php?id=<?php echo $company['id']; ?>"
+                                        <button type="button"
                                             class="btn btn-danger btn-sm btn-delete"
                                             title="Eliminar"
+                                            data-company-id="<?php echo $company['id']; ?>"
+                                            data-company-name="<?php echo htmlspecialchars($company['nombre']); ?>"
                                             data-message="¿Está seguro que desea eliminar la empresa '<?php echo htmlspecialchars($company['nombre']); ?>'?">
                                             <i class="fas fa-trash"></i>
-                                        </a>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>

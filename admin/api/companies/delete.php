@@ -1,20 +1,36 @@
 <?php
+header('Content-Type: application/json');
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    echo json_encode(['error' => 'Método no permitido']);
+    exit;
+}
+
 require_once __DIR__ . '/../../config/system.php';
 require_once __DIR__ . '/../../models/Company.php';
 
 try {
-    session_start();
-    if (!isset($_SESSION['user_id'])) {
-        header('Location: ' . BASE_URL . 'login.php');
+    // Verificar sesión
+    if (session_status() == PHP_SESSION_NONE) {
+        session_start();
+    }
+    
+    // Verificar autenticación
+    $isAuthenticated = isset($_SESSION['user_id']) || 
+                      isset($_SESSION['admin_logged_in']) || 
+                      isset($_SESSION['admin_id']) || 
+                      isset($_SESSION['logged_in']);
+    
+    if (!$isAuthenticated) {
+        echo json_encode(['success' => false, 'error' => 'No autorizado']);
         exit;
     }
     
-    $companyId = (int)($_GET['id'] ?? 0);
+    $companyId = (int)($_POST['company_id'] ?? 0);
     
     if (!$companyId) {
-        $_SESSION['message'] = 'ID de empresa inválido';
-        $_SESSION['message_type'] = 'error';
-        header('Location: ' . BASE_URL . 'views/companies/index.php');
+        echo json_encode(['success' => false, 'error' => 'ID de empresa requerido']);
         exit;
     }
     
@@ -22,29 +38,34 @@ try {
     $company = $companyModel->findById($companyId);
     
     if (!$company) {
-        $_SESSION['message'] = 'Empresa no encontrada';
-        $_SESSION['message_type'] = 'error';
-        header('Location: ' . BASE_URL . 'views/companies/index.php');
+        echo json_encode(['success' => false, 'error' => 'Empresa no encontrada']);
         exit;
     }
     
+    // Guardar nombre para el mensaje
+    $companyName = $company['nombre'];
+    
+    // Eliminar logo si existe
+    if ($company['logo_path']) {
+        $logoPath = __DIR__ . '/../../..' . '/companies/data/' . $company['logo_path'];
+        if (file_exists($logoPath)) {
+            unlink($logoPath);
+        }
+    }
+    
+    // Eliminar empresa de la base de datos
     $result = $companyModel->delete($companyId);
     
     if ($result) {
-        $_SESSION['message'] = 'Empresa eliminada correctamente';
-        $_SESSION['message_type'] = 'success';
+        echo json_encode([
+            'success' => true, 
+            'message' => "La empresa '$companyName' ha sido eliminada correctamente"
+        ]);
     } else {
-        $_SESSION['message'] = 'Error al eliminar la empresa';
-        $_SESSION['message_type'] = 'error';
+        echo json_encode(['success' => false, 'error' => 'Error al eliminar la empresa']);
     }
     
-    header('Location: ' . BASE_URL . 'views/companies/index.php');
-    exit;
-    
 } catch (Exception $e) {
-    $_SESSION['message'] = 'Error interno del servidor';
-    $_SESSION['message_type'] = 'error';
-    header('Location: ' . BASE_URL . 'views/companies/index.php');
-    exit;
+    echo json_encode(['success' => false, 'error' => 'Error interno: ' . $e->getMessage()]);
 }
 ?>

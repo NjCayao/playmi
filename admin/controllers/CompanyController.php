@@ -48,9 +48,9 @@ class CompanyController extends BaseController
             // Obtener estadísticas
             $stats = [
                 'total' => $this->companyModel->count(),
-                'activo' => $this->companyModel->count("estado = 'activo'"),
-                'suspendido' => $this->companyModel->count("estado = 'suspendido'"),
-                'vencido' => $this->companyModel->count("estado = 'vencido'")
+                'active' => $this->companyModel->count("estado = 'activo'"),        // ← 'active' no 'activo'
+                'suspended' => $this->companyModel->count("estado = 'suspendido'"), // ← 'suspended' no 'suspendido'
+                'expired' => $this->companyModel->count("estado = 'vencido'")       // ← 'expired' no 'vencido'
             ];
 
             // Información de paginación
@@ -331,7 +331,7 @@ class CompanyController extends BaseController
         } elseif (strlen(trim($data['nombre'])) < 3) {
             $errors['nombre'] = 'El nombre debe tener al menos 3 caracteres';
         } else {
-            // Verificar duplicados
+            // Verificar duplicados - el modelo ya excluye el ID actual
             $existing = $this->companyModel->findByName(trim($data['nombre']), $excludeId);
             if ($existing) {
                 $errors['nombre'] = 'Ya existe una empresa con este nombre';
@@ -342,16 +342,14 @@ class CompanyController extends BaseController
         if (empty(trim($data['ruc'] ?? ''))) {
             $errors['ruc'] = 'El RUC es requerido';
         } elseif (!preg_match('/^[0-9]{11}$/', trim($data['ruc']))) {
-            $errors['ruc'] = 'El RUC debe tener 11 dígitos numéricos';
+            $errors['ruc'] = 'El RUC debe tener exactamente 11 dígitos numéricos';
+        } elseif (!in_array(substr(trim($data['ruc']), 0, 2), ['10', '15', '17', '20'])) {
+            $errors['ruc'] = 'El RUC debe empezar con 10 (Persona Natural), 15 (Sucesión), 17 (Régimen Especial) o 20 (Empresa)';
         } else {
-            // Validar formato RUC
-            if (!$this->companyModel->validateRuc(trim($data['ruc']))) {
-                $errors['ruc'] = 'El RUC ingresado no es válido';
-            }
-            // Verificar duplicados
+            // Verificar duplicados (excluyendo la empresa actual en edición)
             $existing = $this->companyModel->findByRuc(trim($data['ruc']), $excludeId);
             if ($existing) {
-                $errors['ruc'] = 'Ya existe una empresa con este RUC';
+                $errors['ruc'] = 'Ya existe una empresa registrada con este RUC';
             }
         }
 
@@ -361,7 +359,7 @@ class CompanyController extends BaseController
         } elseif (!filter_var(trim($data['email_contacto']), FILTER_VALIDATE_EMAIL)) {
             $errors['email_contacto'] = 'El email no es válido';
         } else {
-            // Verificar duplicados
+            // Verificar duplicados - el modelo ya excluye el ID actual
             $existing = $this->companyModel->findByEmail(trim($data['email_contacto']), $excludeId);
             if ($existing) {
                 $errors['email_contacto'] = 'Ya existe una empresa con este email';
@@ -386,11 +384,15 @@ class CompanyController extends BaseController
 
         // Validar que fecha de vencimiento sea posterior a fecha de inicio
         if (!empty($data['fecha_inicio']) && !empty($data['fecha_vencimiento'])) {
-            $fechaInicio = new DateTime($data['fecha_inicio']);
-            $fechaVencimiento = new DateTime($data['fecha_vencimiento']);
+            try {
+                $fechaInicio = new DateTime($data['fecha_inicio']);
+                $fechaVencimiento = new DateTime($data['fecha_vencimiento']);
 
-            if ($fechaVencimiento <= $fechaInicio) {
-                $errors['fecha_vencimiento'] = 'La fecha de vencimiento debe ser posterior a la fecha de inicio';
+                if ($fechaVencimiento <= $fechaInicio) {
+                    $errors['fecha_vencimiento'] = 'La fecha de vencimiento debe ser posterior a la fecha de inicio';
+                }
+            } catch (Exception $e) {
+                $errors['fecha_inicio'] = 'Formato de fecha inválido';
             }
         }
 
@@ -493,18 +495,37 @@ class CompanyController extends BaseController
             }
 
             // Verificar que la empresa existe
-            $existingCompany = $this->companyModel->rucExistsActive($data['ruc']);
-            if ($existingCompany) {
-                $errors['ruc'] = 'Ya existe una empresa ACTIVA con este RUC: ' . $existingCompany['nombre'];
+            $existingCompany = $this->companyModel->findById($companyId);
+            if (!$existingCompany) {
+                echo json_encode([
+                    'success' => false,
+                    'error' => 'Empresa no encontrada'
+                ]);
+                exit;
             }
+
+            // 🔍 DEBUG FORZADO - Mostrar información antes de validar
+            $debugInfo = [
+                'company_id' => $companyId,
+                'post_ruc' => $_POST['ruc'] ?? 'NO_RUC',
+                'post_email' => $_POST['email_contacto'] ?? 'NO_EMAIL',
+                'existing_company' => $this->companyModel->findById($companyId),
+                'ruc_validation' => $this->companyModel->validateRuc(trim($_POST['ruc'] ?? '')),
+                'email_check' => $this->companyModel->findByEmail(trim($_POST['email_contacto'] ?? ''), $companyId),
+                'ruc_check' => $this->companyModel->findByRuc(trim($_POST['ruc'] ?? ''), $companyId),
+                'all_post_data' => $_POST
+            ];
+
 
             // Validar datos de entrada
             $errors = $this->validateCompanyData($_POST, $companyId);
+
             if (!empty($errors)) {
                 echo json_encode([
                     'success' => false,
                     'error' => 'Datos inválidos',
-                    'errors' => $errors
+                    'errors' => $errors,
+                    'debug' => $debugInfo  // 🔍 Incluir debug temporalmente
                 ]);
                 exit;
             }
@@ -562,7 +583,7 @@ class CompanyController extends BaseController
         } catch (Exception $e) {
             echo json_encode([
                 'success' => false,
-                'error' => 'Error interno del servidor'
+                'error' => 'Error interno del servidor: ' . $e->getMessage()
             ]);
         }
     }

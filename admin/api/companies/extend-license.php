@@ -11,8 +11,18 @@ require_once __DIR__ . '/../../config/system.php';
 require_once __DIR__ . '/../../models/Company.php';
 
 try {
-    session_start();
-    if (!isset($_SESSION['user_id'])) {
+    // ✅ CORRECCIÓN: Verificar sesión antes de iniciarla
+    if (session_status() == PHP_SESSION_NONE) {
+        session_start();
+    }
+    
+    // ✅ CORRECCIÓN: Verificar autenticación con múltiples campos posibles
+    $isAuthenticated = isset($_SESSION['user_id']) || 
+                      isset($_SESSION['admin_logged_in']) || 
+                      isset($_SESSION['admin_id']) || 
+                      isset($_SESSION['logged_in']);
+    
+    if (!$isAuthenticated) {
         echo json_encode(['success' => false, 'error' => 'No autorizado']);
         exit;
     }
