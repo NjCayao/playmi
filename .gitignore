@@ -1,4 +1,5 @@
 content/
 !/admin/views/content/
+!/admin/api/content/
 logs/
 packages/generated/
