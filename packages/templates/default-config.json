@@ -1,0 +1,280 @@
+{
+  "package_info": {
+    "version": "1.0.0",
+    "generated_at": "TIMESTAMP",
+    "generator_version": "1.0",
+    "company_id": "COMPANY_ID",
+    "package_type": "standard",
+    "package_name": "PACKAGE_NAME",
+    "installation_key": "INSTALLATION_KEY"
+  },
+  
+  "wifi_config": {
+    "ssid": "COMPANY_WIFI_NAME",
+    "password": "WIFI_PASSWORD",
+    "security": "WPA2",
+    "hidden": false,
+    "channel": "auto",
+    "band": "2.4GHz",
+    "max_connections": 50,
+    "ip_range": {
+      "start": "192.168.1.100",
+      "end": "192.168.1.200"
+    },
+    "dhcp": {
+      "enabled": true,
+      "lease_time": 3600,
+      "dns_servers": ["8.8.8.8", "8.8.4.4"]
+    }
+  },
+  
+  "portal_config": {
+    "company_name": "COMPANY_NAME",
+    "service_name": "SERVICE_NAME",
+    "primary_color": "PRIMARY_COLOR",
+    "secondary_color": "SECONDARY_COLOR",
+    "accent_color": "#FF6B35",
+    "logo_path": "LOGO_PATH",
+    "favicon_path": "/assets/images/favicon.ico",
+    "welcome_message": "WELCOME_MESSAGE",
+    "footer_text": "© 2025 PLAYMI Entertainment. Todos los derechos reservados.",
+    "theme": "dark",
+    "language": "es",
+    "timezone": "America/Lima",
+    
+    "ui_config": {
+      "show_logo": true,
+      "show_company_name": true,
+      "animations_enabled": true,
+      "auto_play_trailers": false,
+      "carousel_interval": 5000,
+      "items_per_row": {
+        "mobile": 2,
+        "tablet": 4,
+        "desktop": 6
+      }
+    },
+    
+    "features": {
+      "search_enabled": true,
+      "categories_enabled": true,
+      "favorites_enabled": true,
+      "recently_watched": true,
+      "continue_watching": true,
+      "ratings_enabled": false,
+      "comments_enabled": false,
+      "download_enabled": false
+    }
+  },
+  
+  "content_config": {
+    "movies_enabled": true,
+    "music_enabled": true,
+    "games_enabled": true,
+    "max_concurrent_users": 50,
+    "max_concurrent_streams": 10,
+    
+    "movies": {
+      "enabled": true,
+      "auto_play_next": false,
+      "skip_intro_enabled": false,
+      "quality_options": ["360p", "480p", "720p"],
+      "default_quality": "480p",
+      "subtitles_enabled": false
+    },
+    
+    "music": {
+      "enabled": true,
+      "shuffle_enabled": true,
+      "repeat_enabled": true,
+      "visualizer_enabled": true,
+      "crossfade_seconds": 3,
+      "equalizer_presets": ["Normal", "Rock", "Pop", "Jazz", "Classical"]
+    },
+    
+    "games": {
+      "enabled": true,
+      "fullscreen_enabled": true,
+      "save_progress": true,
+      "leaderboard_enabled": true,
+      "max_play_time_minutes": 30
+    },
+    
+    "categories": {
+      "movies": [
+        "Acción",
+        "Comedia",
+        "Drama",
+        "Terror",
+        "Ciencia Ficción",
+        "Animación",
+        "Documental",
+        "Romance"
+      ],
+      "music": [
+        "Pop",
+        "Rock",
+        "Salsa",
+        "Cumbia",
+        "Reggaeton",
+        "Folclore",
+        "Clásica",
+        "Electrónica"
+      ],
+      "games": [
+        "Puzzle",
+        "Arcade",
+        "Aventura",
+        "Estrategia",
+        "Cartas",
+        "Educativo"
+      ]
+    }
+  },
+  
+  "system_config": {
+    "auto_sync": true,
+    "sync_interval": 3600,
+    "sync_on_startup": true,
+    "sync_server_url": "https://api.playmi.com/sync",
+    "log_level": "INFO",
+    "log_rotation": "daily",
+    "log_retention_days": 30,
+    "analytics_enabled": true,
+    "crash_reporting": true,
+    "auto_update": true,
+    "update_channel": "stable",
+    
+    "performance": {
+      "cache_enabled": true,
+      "cache_size_mb": 500,
+      "preload_thumbnails": true,
+      "lazy_loading": true,
+      "compression_enabled": true
+    },
+    
+    "security": {
+      "session_timeout_minutes": 240,
+      "max_login_attempts": 5,
+      "lockout_duration_minutes": 30,
+      "require_secure_connection": false,
+      "allowed_domains": ["*.playmi.com", "localhost"]
+    },
+    
+    "maintenance": {
+      "auto_cleanup": true,
+      "cleanup_interval_hours": 24,
+      "temp_file_retention_hours": 48,
+      "max_log_size_mb": 100
+    }
+  },
+  
+  "hardware_config": {
+    "raspberry_pi": {
+      "model": "auto_detect",
+      "wifi_interface": "wlan0",
+      "ethernet_interface": "eth0",
+      "storage_path": "/home/pi/playmi/content",
+      "temp_path": "/tmp/playmi",
+      "max_cpu_temp_celsius": 80,
+      "throttle_at_temp": 75
+    },
+    
+    "network": {
+      "wifi_power_management": false,
+      "wifi_power_save": false,
+      "tcp_optimization": true,
+      "mtu_size": 1500
+    },
+    
+    "display": {
+      "hdmi_output": true,
+      "hdmi_resolution": "auto",
+      "hdmi_audio": true,
+      "screen_saver_minutes": 0
+    }
+  },
+  
+  "api_config": {
+    "base_url": "http://192.168.1.1",
+    "api_version": "v1",
+    "timeout_seconds": 30,
+    "retry_attempts": 3,
+    "retry_delay_seconds": 5,
+    
+    "endpoints": {
+      "content_list": "/api/content",
+      "content_detail": "/api/content/{id}",
+      "play_content": "/api/play/{id}",
+      "track_usage": "/api/track",
+      "sync_status": "/api/sync/status",
+      "system_info": "/api/system/info"
+    },
+    
+    "rate_limiting": {
+      "enabled": true,
+      "requests_per_minute": 60,
+      "burst_size": 10
+    }
+  },
+  
+  "notification_config": {
+    "system_notifications": true,
+    "update_notifications": true,
+    "sync_notifications": false,
+    "error_notifications": true,
+    
+    "email": {
+      "enabled": false,
+      "smtp_server": "",
+      "smtp_port": 587,
+      "smtp_user": "",
+      "smtp_password": "",
+      "from_address": "noreply@playmi.com",
+      "admin_email": ""
+    }
+  },
+  
+  "advertising_config": {
+    "enabled": false,
+    "pre_roll_enabled": false,
+    "mid_roll_enabled": false,
+    "banner_ads_enabled": false,
+    "skip_after_seconds": 5,
+    "max_ad_duration_seconds": 30,
+    
+    "ad_frequency": {
+      "movies": {
+        "pre_roll": true,
+        "mid_roll_interval_minutes": 45
+      },
+      "music": {
+        "audio_ads_every_songs": 10
+      },
+      "games": {
+        "interstitial_every_minutes": 15
+      }
+    }
+  },
+  
+  "backup_config": {
+    "auto_backup": true,
+    "backup_interval_days": 7,
+    "backup_retention_count": 4,
+    "backup_path": "/home/pi/playmi/backups",
+    "backup_includes": [
+      "config",
+      "logs",
+      "user_data"
+    ],
+    "compress_backups": true
+  },
+  
+  "metadata": {
+    "schema_version": "1.0",
+    "last_modified": "TIMESTAMP",
+    "modified_by": "ADMIN_USER",
+    "description": "Configuración por defecto para paquetes PLAYMI",
+    "notes": ""
+  }
+}
