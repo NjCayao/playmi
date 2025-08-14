@@ -10,13 +10,21 @@ class Package extends BaseModel {
     protected $table = 'paquetes_generados';
     
     /**
+     * Obtener conexión a la base de datos
+     * (Método público para que el controlador pueda acceder)
+     */
+    public function getDb() {
+        return $this->db;
+    }
+    
+    /**
      * Obtener paquetes por empresa
      */
     public function getByCompany($companyId, $limit = null) {
         try {
-            $sql = "SELECT p.*, e.nombre as empresa_nombre 
+            $sql = "SELECT p.*, c.nombre as empresa_nombre 
                     FROM paquetes_generados p 
-                    JOIN empresas e ON p.empresa_id = e.id 
+                    JOIN companies c ON p.empresa_id = c.id 
                     WHERE p.empresa_id = ? 
                     ORDER BY p.fecha_generacion DESC";
             
@@ -38,9 +46,9 @@ class Package extends BaseModel {
      */
     public function getRecent($limit = 10) {
         try {
-            $sql = "SELECT p.*, e.nombre as empresa_nombre 
+            $sql = "SELECT p.*, c.nombre as empresa_nombre 
                     FROM paquetes_generados p 
-                    JOIN empresas e ON p.empresa_id = e.id 
+                    JOIN companies c ON p.empresa_id = c.id 
                     ORDER BY p.fecha_generacion DESC 
                     LIMIT ?";
             
@@ -60,8 +68,8 @@ class Package extends BaseModel {
         try {
             $sql = "SELECT 
                         COUNT(*) as total_paquetes,
-                        SUM(tamaño_paquete) as tamaño_total,
-                        AVG(tamaño_paquete) as tamaño_promedio,
+                        SUM(tamanio_paquete) as tamanio_total,
+                        AVG(tamanio_paquete) as tamanio_promedio,
                         COUNT(CASE WHEN estado = 'listo' THEN 1 END) as listos,
                         COUNT(CASE WHEN estado = 'instalado' THEN 1 END) as instalados,
                         COUNT(CASE WHEN estado = 'generando' THEN 1 END) as generando
@@ -151,7 +159,7 @@ class Package extends BaseModel {
             $data = [
                 'estado' => 'listo',
                 'ruta_paquete' => $packagePath,
-                'tamaño_paquete' => $packageSize,
+                'tamanio_paquete' => $packageSize,
                 'cantidad_contenido' => $contentCount,
                 'checksum' => $checksum
             ];
@@ -171,6 +179,60 @@ class Package extends BaseModel {
         } catch(Exception $e) {
             $this->logError("Error en markAsComplete: " . $e->getMessage());
             return ['error' => 'Error interno del sistema'];
+        }
+    }
+    
+    /**
+     * Actualizar contador de descargas
+     */
+    public function updateDownloadCount($packageId) {
+        try {
+            $sql = "UPDATE paquetes_generados 
+                    SET descargas_count = descargas_count + 1,
+                        fecha_ultima_descarga = NOW() 
+                    WHERE id = ?";
+            $stmt = $this->db->prepare($sql);
+            return $stmt->execute([$packageId]);
+        } catch(Exception $e) {
+            $this->logError("Error en updateDownloadCount: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Obtener logs de un paquete
+     */
+    public function getLogs($packageId) {
+        try {
+            $sql = "SELECT * FROM paquetes_logs 
+                    WHERE paquete_id = ? 
+                    ORDER BY fecha_log DESC";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$packageId]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch(Exception $e) {
+            $this->logError("Error en getLogs: " . $e->getMessage());
+            return [];
+        }
+    }
+    
+    /**
+     * Crear log para un paquete
+     */
+    public function createLog($packageId, $logData) {
+        try {
+            $sql = "INSERT INTO paquetes_logs (paquete_id, accion, descripcion, tipo) 
+                    VALUES (?, ?, ?, ?)";
+            $stmt = $this->db->prepare($sql);
+            return $stmt->execute([
+                $packageId,
+                $logData['action'] ?? 'info',
+                $logData['description'] ?? '',
+                $logData['type'] ?? 'info'
+            ]);
+        } catch(Exception $e) {
+            $this->logError("Error en createLog: " . $e->getMessage());
+            return false;
         }
     }
     
@@ -224,9 +286,9 @@ class Package extends BaseModel {
      */
     public function getExpiredPackages() {
         try {
-            $sql = "SELECT p.*, e.nombre as empresa_nombre 
+            $sql = "SELECT p.*, c.nombre as empresa_nombre 
                     FROM paquetes_generados p 
-                    JOIN empresas e ON p.empresa_id = e.id 
+                    JOIN companies c ON p.empresa_id = c.id 
                     WHERE p.fecha_vencimiento_licencia < CURDATE() 
                     AND p.estado != 'vencido' 
                     ORDER BY p.fecha_vencimiento_licencia";

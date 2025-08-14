@@ -1,17 +1,4 @@
 <?php
-/**
- * MÓDULO 2.3.1: Lista principal de paquetes generados
- * Página para visualizar todos los paquetes generados para empresas
- * 
- * Funcionalidades:
- * - Lista con DataTables (paginación, ordenamiento, búsqueda)
- * - Filtros por empresa y estado
- * - Descarga directa de paquetes listos
- * - Regenerar paquete con contenido actualizado
- * - Eliminar paquetes obsoletos
- * - Ver log de instalación
- */
-
 // Incluir configuración y controlador
 require_once __DIR__ . '/../../config/system.php';
 require_once __DIR__ . '/../../controllers/PackageController.php';
@@ -49,6 +36,23 @@ $additionalJS = [];
 // Iniciar buffer de contenido
 ob_start();
 ?>
+
+<!-- Content Header -->
+<div class="content-header">
+    <div class="container-fluid">
+        <div class="row mb-2">
+            <div class="col-sm-6">
+                <h1 class="m-0">Lista de Paquetes Generados</h1>
+            </div>
+            <div class="col-sm-6">
+                <ol class="breadcrumb float-sm-right">
+                    <li class="breadcrumb-item"><a href="<?php echo BASE_URL; ?>">Dashboard</a></li>
+                    <li class="breadcrumb-item active">Paquetes</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- Estadísticas superiores -->
 <div class="row">
@@ -385,8 +389,15 @@ function formatFileSize($bytes) {
     
     return round($bytes, 2) . ' ' . $units[$i];
 }
+
+// Capturar contenido
+$content = ob_get_clean();
+
+// Incluir layout base
+require_once __DIR__ . '/../layouts/base.php';
 ?>
 
+<!-- Scripts específicos de la página -->
 <script>
 $(document).ready(function() {
     // Inicializar DataTable si hay datos
@@ -398,7 +409,7 @@ $(document).ready(function() {
         pageLength: 25,
         order: [[4, 'desc']], // Ordenar por fecha de generación
         language: {
-            url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json'
+            url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/Spanish.json'
         },
         dom: 'Bfrtip',
         buttons: [
@@ -529,7 +540,7 @@ $(document).ready(function() {
     });
     
     // Auto-refresh para paquetes en generación
-    <?php if ($stats['generating'] > 0): ?>
+   <?php if (($stats['generating'] ?? 0) > 0): ?>
     setInterval(function() {
         // Solo actualizar si hay paquetes generándose
         $.ajax({
@@ -547,11 +558,3 @@ $(document).ready(function() {
     <?php endif; ?>
 });
 </script>
-
-<?php
-// Capturar contenido
-$content = ob_get_clean();
-
-// Incluir layout base
-require_once __DIR__ . '/../layouts/base.php';
-?>

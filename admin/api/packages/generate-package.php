@@ -531,4 +531,35 @@ function deleteDirectory($dir) {
     
     rmdir($dir);
 }
+
+/**
+ * Generar QR Code WiFi para el paquete
+ */
+function generatePackageQR($packagePath, $wifiConfig) {
+    require_once '../../libs/phpqrcode/qrlib.php';
+    
+    // Formato WiFi QR
+    $wifiString = "WIFI:T:WPA;S:{$wifiConfig['ssid']};P:{$wifiConfig['password']};H:{$wifiConfig['hidden']};;";
+    
+    // Crear directorio si no existe
+    $qrDir = $packagePath . '/config/qr/';
+    if (!is_dir($qrDir)) {
+        mkdir($qrDir, 0755, true);
+    }
+    
+    // Generar múltiples formatos del QR
+    $sizes = [
+        'small' => ['size' => 5, 'file' => 'wifi-qr-small.png'],
+        'medium' => ['size' => 10, 'file' => 'wifi-qr-medium.png'],
+        'large' => ['size' => 15, 'file' => 'wifi-qr-large.png'],
+        'print' => ['size' => 20, 'file' => 'wifi-qr-print.png'] // Para imprimir
+    ];
+    
+    foreach ($sizes as $key => $config) {
+        $qrPath = $qrDir . $config['file'];
+        QRcode::png($wifiString, $qrPath, QR_ECLEVEL_L, $config['size'], 2);
+    }
+    
+    return true;
+}
 ?>
