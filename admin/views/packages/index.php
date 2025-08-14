@@ -133,14 +133,14 @@ ob_start();
                 <select name="company_id" class="form-control" onchange="this.form.submit()">
                     <option value="">Todas las empresas</option>
                     <?php foreach ($companies as $company): ?>
-                        <option value="<?php echo $company['id']; ?>" 
-                                <?php echo ($filters['company_id'] ?? '') == $company['id'] ? 'selected' : ''; ?>>
+                        <option value="<?php echo $company['id']; ?>"
+                            <?php echo ($filters['company_id'] ?? '') == $company['id'] ? 'selected' : ''; ?>>
                             <?php echo htmlspecialchars($company['nombre']); ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
             </div>
-            
+
             <div class="form-group mr-3">
                 <label class="mr-2">Estado:</label>
                 <select name="estado" class="form-control" onchange="this.form.submit()">
@@ -162,13 +162,13 @@ ob_start();
                     </option>
                 </select>
             </div>
-            
+
             <?php if (!empty($filters['company_id']) || !empty($filters['estado'])): ?>
                 <a href="<?php echo BASE_URL; ?>views/packages/index.php" class="btn btn-secondary">
                     <i class="fas fa-times"></i> Limpiar filtros
                 </a>
             <?php endif; ?>
-            
+
             <div class="ml-auto">
                 <a href="<?php echo BASE_URL; ?>views/packages/generate.php" class="btn btn-primary">
                     <i class="fas fa-plus"></i> Generar Nuevo Paquete
@@ -255,41 +255,41 @@ ob_start();
                                 </td>
                                 <td>
                                     <div class="btn-group btn-group-sm">
-                                        <?php if ($package['estado'] == 'listo'): ?>
-                                            <a href="<?php echo API_URL; ?>packages/download-package.php?id=<?php echo $package['id']; ?>" 
-                                               class="btn btn-success" 
-                                               data-toggle="tooltip" 
-                                               title="Descargar paquete">
+                                        <?php if (in_array($package['estado'], ['listo', 'descargado', 'instalado'])): ?>
+                                            <a href="<?php echo API_URL; ?>packages/download-package.php?id=<?php echo $package['id']; ?>"
+                                                class="btn btn-success"
+                                                data-toggle="tooltip"
+                                                title="Descargar paquete">
                                                 <i class="fas fa-download"></i>
                                             </a>
                                         <?php endif; ?>
-                                        
-                                        <?php if (in_array($package['estado'], ['listo', 'instalado'])): ?>
-                                            <button type="button" 
-                                                    class="btn btn-info btn-regenerate" 
-                                                    data-id="<?php echo $package['id']; ?>"
-                                                    data-company="<?php echo $package['empresa_id']; ?>"
-                                                    data-toggle="tooltip" 
-                                                    title="Regenerar paquete">
+
+                                        <?php if (in_array($package['estado'], ['listo', 'descargado', 'instalado'])): ?>
+                                            <button type="button"
+                                                class="btn btn-info btn-regenerate"
+                                                data-id="<?php echo $package['id']; ?>"
+                                                data-company="<?php echo $package['empresa_id']; ?>"
+                                                data-toggle="tooltip"
+                                                title="Regenerar paquete">
                                                 <i class="fas fa-sync"></i>
                                             </button>
                                         <?php endif; ?>
-                                        
-                                        <button type="button" 
-                                                class="btn btn-warning btn-view-log" 
-                                                data-id="<?php echo $package['id']; ?>"
-                                                data-toggle="tooltip" 
-                                                title="Ver logs">
+
+                                        <button type="button"
+                                            class="btn btn-warning btn-view-log"
+                                            data-id="<?php echo $package['id']; ?>"
+                                            data-toggle="tooltip"
+                                            title="Ver logs">
                                             <i class="fas fa-file-alt"></i>
                                         </button>
-                                        
+
                                         <?php if (!in_array($package['estado'], ['generando', 'instalado'])): ?>
-                                            <button type="button" 
-                                                    class="btn btn-danger btn-delete" 
-                                                    data-id="<?php echo $package['id']; ?>"
-                                                    data-name="<?php echo htmlspecialchars($package['nombre_paquete']); ?>"
-                                                    data-toggle="tooltip" 
-                                                    title="Eliminar paquete">
+                                            <button type="button"
+                                                class="btn btn-danger btn-delete"
+                                                data-id="<?php echo $package['id']; ?>"
+                                                data-name="<?php echo htmlspecialchars($package['nombre_paquete']); ?>"
+                                                data-toggle="tooltip"
+                                                title="Eliminar paquete">
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         <?php endif; ?>
@@ -300,7 +300,7 @@ ob_start();
                     </tbody>
                 </table>
             </div>
-            
+
             <!-- Paginación -->
             <?php if ($pagination['total_pages'] > 1): ?>
                 <div class="mt-3">
@@ -311,7 +311,7 @@ ob_start();
                                     Anterior
                                 </a>
                             </li>
-                            
+
                             <?php for ($i = 1; $i <= $pagination['total_pages']; $i++): ?>
                                 <?php if ($i == 1 || $i == $pagination['total_pages'] || ($i >= $pagination['current_page'] - 2 && $i <= $pagination['current_page'] + 2)): ?>
                                     <li class="page-item <?php echo $i == $pagination['current_page'] ? 'active' : ''; ?>">
@@ -325,7 +325,7 @@ ob_start();
                                     </li>
                                 <?php endif; ?>
                             <?php endfor; ?>
-                            
+
                             <li class="page-item <?php echo !$pagination['has_next'] ? 'disabled' : ''; ?>">
                                 <a class="page-link" href="?page=<?php echo $pagination['next_page']; ?>&amp;<?php echo http_build_query($filters); ?>">
                                     Siguiente
@@ -366,7 +366,8 @@ ob_start();
 
 <?php
 // Funciones auxiliares
-function renderPackageStatus($status) {
+function renderPackageStatus($status)
+{
     $badges = [
         'generando' => '<span class="badge badge-warning"><i class="fas fa-cogs"></i> Generando</span>',
         'listo' => '<span class="badge badge-success"><i class="fas fa-check"></i> Listo</span>',
@@ -374,19 +375,20 @@ function renderPackageStatus($status) {
         'instalado' => '<span class="badge badge-primary"><i class="fas fa-server"></i> Instalado</span>',
         'vencido' => '<span class="badge badge-danger"><i class="fas fa-times"></i> Vencido</span>'
     ];
-    
+
     return $badges[$status] ?? '<span class="badge badge-secondary">' . ucfirst($status) . '</span>';
 }
 
-function formatFileSize($bytes) {
+function formatFileSize($bytes)
+{
     $units = ['B', 'KB', 'MB', 'GB'];
     $i = 0;
-    
+
     while ($bytes >= 1024 && $i < count($units) - 1) {
         $bytes /= 1024;
         $i++;
     }
-    
+
     return round($bytes, 2) . ' ' . $units[$i];
 }
 
@@ -399,59 +401,62 @@ require_once __DIR__ . '/../layouts/base.php';
 
 <!-- Scripts específicos de la página -->
 <script>
-$(document).ready(function() {
-    // Inicializar DataTable si hay datos
-    <?php if (!empty($packages)): ?>
-    $('#packagesTable').DataTable({
-        responsive: true,
-        lengthChange: false,
-        autoWidth: false,
-        pageLength: 25,
-        order: [[4, 'desc']], // Ordenar por fecha de generación
-        language: {
-            url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/Spanish.json'
-        },
-        dom: 'Bfrtip',
-        buttons: [
-            {
-                extend: 'excel',
-                text: '<i class="fas fa-file-excel"></i> Excel',
-                className: 'btn btn-success btn-sm',
-                exportOptions: {
-                    columns: [0, 1, 2, 3, 4, 5, 6, 7]
-                }
-            },
-            {
-                extend: 'pdf',
-                text: '<i class="fas fa-file-pdf"></i> PDF',
-                className: 'btn btn-danger btn-sm',
-                exportOptions: {
-                    columns: [0, 1, 2, 3, 4, 5, 6, 7]
-                }
-            }
-        ]
-    });
-    <?php endif; ?>
-    
-    // Ver logs
-    $('.btn-view-log').on('click', function() {
-        const packageId = $(this).data('id');
-        
-        $('#logsModal').modal('show');
-        $('#logsContent').html('<div class="text-center"><i class="fas fa-spinner fa-spin fa-2x"></i><p class="mt-2">Cargando logs...</p></div>');
-        
-        // Cargar logs via AJAX
-        $.ajax({
-            url: '<?php echo API_URL; ?>packages/get-logs.php',
-            method: 'GET',
-            data: { package_id: packageId },
-            success: function(response) {
-                if (response.success) {
-                    let logsHtml = '<div class="timeline">';
-                    
-                    if (response.logs && response.logs.length > 0) {
-                        response.logs.forEach(function(log) {
-                            logsHtml += `
+    $(document).ready(function() {
+        // Inicializar DataTable si hay datos
+        <?php if (!empty($packages)): ?>
+            $('#packagesTable').DataTable({
+                responsive: true,
+                lengthChange: false,
+                autoWidth: false,
+                pageLength: 25,
+                order: [
+                    [4, 'desc']
+                ], // Ordenar por fecha de generación
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/Spanish.json'
+                },
+                dom: 'Bfrtip',
+                buttons: [{
+                        extend: 'excel',
+                        text: '<i class="fas fa-file-excel"></i> Excel',
+                        className: 'btn btn-success btn-sm',
+                        exportOptions: {
+                            columns: [0, 1, 2, 3, 4, 5, 6, 7]
+                        }
+                    },
+                    {
+                        extend: 'pdf',
+                        text: '<i class="fas fa-file-pdf"></i> PDF',
+                        className: 'btn btn-danger btn-sm',
+                        exportOptions: {
+                            columns: [0, 1, 2, 3, 4, 5, 6, 7]
+                        }
+                    }
+                ]
+            });
+        <?php endif; ?>
+
+        // Ver logs
+        $('.btn-view-log').on('click', function() {
+            const packageId = $(this).data('id');
+
+            $('#logsModal').modal('show');
+            $('#logsContent').html('<div class="text-center"><i class="fas fa-spinner fa-spin fa-2x"></i><p class="mt-2">Cargando logs...</p></div>');
+
+            // Cargar logs via AJAX
+            $.ajax({
+                url: '<?php echo API_URL; ?>packages/get-logs.php',
+                method: 'GET',
+                data: {
+                    package_id: packageId
+                },
+                success: function(response) {
+                    if (response.success) {
+                        let logsHtml = '<div class="timeline">';
+
+                        if (response.logs && response.logs.length > 0) {
+                            response.logs.forEach(function(log) {
+                                logsHtml += `
                                 <div class="time-label">
                                     <span class="bg-blue">${log.date}</span>
                                 </div>
@@ -464,97 +469,153 @@ $(document).ready(function() {
                                     </div>
                                 </div>
                             `;
-                        });
-                    } else {
-                        logsHtml += '<p class="text-muted text-center">No hay logs disponibles</p>';
-                    }
-                    
-                    logsHtml += '</div>';
-                    $('#logsContent').html(logsHtml);
-                } else {
-                    $('#logsContent').html('<div class="alert alert-danger">Error al cargar logs</div>');
-                }
-            },
-            error: function() {
-                $('#logsContent').html('<div class="alert alert-danger">Error de conexión</div>');
-            }
-        });
-    });
-    
-    // Regenerar paquete
-    $('.btn-regenerate').on('click', function() {
-        const packageId = $(this).data('id');
-        const companyId = $(this).data('company');
-        
-        Swal.fire({
-            title: '¿Regenerar paquete?',
-            text: 'Se creará una nueva versión del paquete con el contenido actual',
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#3085d6',
-            cancelButtonColor: '#d33',
-            confirmButtonText: 'Sí, regenerar',
-            cancelButtonText: 'Cancelar'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                // Redirigir a generar con empresa preseleccionada
-                window.location.href = '<?php echo BASE_URL; ?>views/packages/generate.php?company_id=' + companyId + '&regenerate=' + packageId;
-            }
-        });
-    });
-    
-    // Eliminar paquete
-    $('.btn-delete').on('click', function() {
-        const packageId = $(this).data('id');
-        const packageName = $(this).data('name');
-        
-        Swal.fire({
-            title: '¿Eliminar paquete?',
-            text: `¿Está seguro de eliminar el paquete "${packageName}"?`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Sí, eliminar',
-            cancelButtonText: 'Cancelar'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                $.ajax({
-                    url: '<?php echo API_URL; ?>packages/delete-package.php',
-                    method: 'POST',
-                    data: { package_id: packageId },
-                    success: function(response) {
-                        if (response.success) {
-                            toastr.success('Paquete eliminado exitosamente');
-                            setTimeout(() => location.reload(), 1500);
+                            });
                         } else {
-                            toastr.error(response.error || 'Error al eliminar el paquete');
+                            logsHtml += '<p class="text-muted text-center">No hay logs disponibles</p>';
                         }
+
+                        logsHtml += '</div>';
+                        $('#logsContent').html(logsHtml);
+                    } else {
+                        $('#logsContent').html('<div class="alert alert-danger">Error al cargar logs</div>');
+                    }
+                },
+                error: function() {
+                    $('#logsContent').html('<div class="alert alert-danger">Error de conexión</div>');
+                }
+            });
+        });
+
+        // Regenerar paquete
+        $('.btn-regenerate').on('click', function() {
+            const packageId = $(this).data('id');
+            const companyId = $(this).data('company');
+
+            Swal.fire({
+                title: '¿Regenerar paquete?',
+                text: 'Se creará una nueva versión del paquete con el contenido actual',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Sí, regenerar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Redirigir a generar con empresa preseleccionada
+                    window.location.href = '<?php echo BASE_URL; ?>views/packages/generate.php?company_id=' + companyId + '&regenerate=' + packageId;
+                }
+            });
+        });
+
+        // Eliminar paquete
+        $('.btn-delete').on('click', function() {
+            const $button = $(this);
+            const packageId = $button.data('id');
+            const packageName = $button.data('name');
+            const $row = $button.closest('tr');
+
+            Swal.fire({
+                title: '¿Eliminar paquete?',
+                html: `
+            <p>¿Está seguro de eliminar el paquete "<strong>${packageName}</strong>"?</p>
+            <p class="text-warning"><small>
+                <i class="fas fa-exclamation-triangle"></i> 
+                Esta acción eliminará permanentemente el paquete y sus archivos.
+            </small></p>
+        `,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar',
+                showLoaderOnConfirm: true,
+                preConfirm: () => {
+                    return $.ajax({
+                        url: '<?php echo API_URL; ?>packages/delete-package.php',
+                        method: 'POST',
+                        data: {
+                            package_id: packageId
+                        },
+                        xhrFields: {
+                            withCredentials: true // Importante para mantener la sesión
+                        }
+                    }).then(response => {
+                        if (!response.success) {
+                            throw new Error(response.error || 'Error desconocido');
+                        }
+                        return response;
+                    }).catch(error => {
+                        console.error('Error:', error);
+                        Swal.showValidationMessage(
+                            `Error: ${error.responseJSON?.error || error.message || 'Error de conexión'}`
+                        );
+                    });
+                },
+                allowOutsideClick: () => !Swal.isLoading()
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Animar y eliminar la fila
+                    $row.css('background-color', '#f8d7da').fadeOut(600, function() {
+                        $(this).remove();
+
+                        // Actualizar contadores
+                        updatePackageCounters();
+                    });
+
+                    // Mostrar resultado
+                    const details = result.value.details;
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Paquete eliminado!',
+                        html: `
+                    <p>${result.value.message}</p>
+                    ${details ? `
+                        <small class="text-muted">
+                            Archivos eliminados: ${details.files_deleted}<br>
+                            Espacio liberado: ${details.space_freed}
+                        </small>
+                    ` : ''}
+                `,
+                        timer: 3000,
+                        timerProgressBar: true
+                    });
+                }
+            });
+        });
+
+        // Función para actualizar contadores
+        function updatePackageCounters() {
+            // Actualizar el contador total
+            const $totalBox = $('.small-box:first h3');
+            const currentTotal = parseInt($totalBox.text().replace(/,/g, ''));
+            $totalBox.text((currentTotal - 1).toLocaleString());
+
+            // Si no quedan filas, recargar
+            if ($('#packagesTable tbody tr').length === 0) {
+                setTimeout(() => location.reload(), 1500);
+            }
+        }
+
+        // Auto-refresh para paquetes en generación
+        <?php if (($stats['generating'] ?? 0) > 0): ?>
+            setInterval(function() {
+                // Solo actualizar si hay paquetes generándose
+                $.ajax({
+                    url: '<?php echo API_URL; ?>packages/check-status.php',
+                    method: 'GET',
+                    data: {
+                        estado: 'generando'
                     },
-                    error: function() {
-                        toastr.error('Error de conexión');
+                    success: function(response) {
+                        if (response.updated) {
+                            toastr.info('Un paquete ha terminado de generarse');
+                            setTimeout(() => location.reload(), 2000);
+                        }
                     }
                 });
-            }
-        });
+            }, 30000); // Cada 30 segundos
+        <?php endif; ?>
     });
-    
-    // Auto-refresh para paquetes en generación
-   <?php if (($stats['generating'] ?? 0) > 0): ?>
-    setInterval(function() {
-        // Solo actualizar si hay paquetes generándose
-        $.ajax({
-            url: '<?php echo API_URL; ?>packages/check-status.php',
-            method: 'GET',
-            data: { estado: 'generando' },
-            success: function(response) {
-                if (response.updated) {
-                    toastr.info('Un paquete ha terminado de generarse');
-                    setTimeout(() => location.reload(), 2000);
-                }
-            }
-        });
-    }, 30000); // Cada 30 segundos
-    <?php endif; ?>
-});
 </script>

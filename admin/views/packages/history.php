@@ -143,38 +143,38 @@ foreach ($packages as $package) {
                 <select name="company_id" class="form-control select2" style="width: 250px;">
                     <option value="">Todas las empresas</option>
                     <?php foreach ($companies as $company): ?>
-                        <option value="<?php echo $company['id']; ?>" 
-                                <?php echo ($filters['company_id'] ?? '') == $company['id'] ? 'selected' : ''; ?>>
+                        <option value="<?php echo $company['id']; ?>"
+                            <?php echo ($filters['company_id'] ?? '') == $company['id'] ? 'selected' : ''; ?>>
                             <?php echo htmlspecialchars($company['nombre']); ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
             </div>
-            
+
             <div class="form-group mr-3">
                 <label class="mr-2">Período:</label>
-                <input type="text" class="form-control" id="daterange" name="daterange" 
-                       value="<?php echo htmlspecialchars($filters['daterange'] ?? ''); ?>"
-                       placeholder="Seleccione rango de fechas">
+                <input type="text" class="form-control" id="daterange" name="daterange"
+                    value="<?php echo htmlspecialchars($filters['daterange'] ?? ''); ?>"
+                    placeholder="Seleccione rango de fechas">
             </div>
-            
+
             <div class="form-group mr-3">
                 <label class="mr-2">Versión:</label>
-                <input type="text" class="form-control" name="version" 
-                       value="<?php echo htmlspecialchars($filters['version'] ?? ''); ?>"
-                       placeholder="Ej: 1.0">
+                <input type="text" class="form-control" name="version"
+                    value="<?php echo htmlspecialchars($filters['version'] ?? ''); ?>"
+                    placeholder="Ej: 1.0">
             </div>
-            
+
             <button type="submit" class="btn btn-primary">
                 <i class="fas fa-search"></i> Filtrar
             </button>
-            
+
             <?php if (!empty($filters['company_id']) || !empty($filters['daterange']) || !empty($filters['version'])): ?>
                 <a href="<?php echo BASE_URL; ?>views/packages/history.php" class="btn btn-secondary ml-2">
                     <i class="fas fa-times"></i> Limpiar
                 </a>
             <?php endif; ?>
-            
+
             <div class="ml-auto">
                 <button type="button" class="btn btn-danger" onclick="exportPDF()">
                     <i class="fas fa-file-pdf"></i> Exportar PDF
@@ -201,135 +201,280 @@ foreach ($packages as $package) {
     </div>
 </div>
 
+<?php
+// Función helper para construir URLs con todos los parámetros
+function buildPaginationUrl($page, $perPage)
+{
+    $params = $_GET;
+    $params['page'] = $page;
+    $params['per_page'] = $perPage;
+    return '?' . http_build_query($params);
+}
+?>
+
 <!-- Timeline de paquetes -->
 <div class="card">
     <div class="card-header">
         <h3 class="card-title">
             <i class="fas fa-stream"></i> Timeline de Paquetes
         </h3>
+        <div class="card-tools">
+            <button type="button" class="btn btn-sm btn-tool" onclick="toggleAllCards()" title="Expandir/Colapsar todos">
+                <i class="fas fa-expand-arrows-alt"></i>
+            </button>
+        </div>
     </div>
     <div class="card-body">
+        <?php
+        // Configuración de paginación
+        $itemsPerPage = isset($_GET['per_page']) ? (int)$_GET['per_page'] : 10;
+        $currentPage = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+        $totalCompanies = count($packagesByCompany);
+        $totalPages = ceil($totalCompanies / $itemsPerPage);
+
+        // Asegurar que la página actual sea válida
+        $currentPage = max(1, min($currentPage, $totalPages));
+
+        // Calcular índices
+        $startIndex = ($currentPage - 1) * $itemsPerPage;
+        $pageCompanies = array_slice($packagesByCompany, $startIndex, $itemsPerPage, true);
+        ?>
+
         <?php if (empty($packagesByCompany)): ?>
             <div class="alert alert-info">
                 <i class="fas fa-info-circle"></i> No se encontraron paquetes con los filtros aplicados.
             </div>
         <?php else: ?>
-            <?php foreach ($packagesByCompany as $companyId => $companyData): ?>
-                <h4 class="text-primary mb-3">
-                    <i class="fas fa-building"></i> <?php echo htmlspecialchars($companyData['company_name']); ?>
-                </h4>
-                
-                <div class="timeline mb-5">
-                    <?php 
-                    $currentDate = '';
-                    foreach ($companyData['packages'] as $package): 
-                        $packageDate = date('d/m/Y', strtotime($package['fecha_generacion']));
-                        
-                        // Mostrar label de fecha si cambió
-                        if ($packageDate !== $currentDate):
-                            $currentDate = $packageDate;
-                    ?>
-                        <div class="time-label">
-                            <span class="bg-primary"><?php echo $currentDate; ?></span>
-                        </div>
-                    <?php endif; ?>
-                    
-                    <!-- Item del timeline -->
-                    <div>
-                        <i class="fas fa-box bg-<?php echo getStatusColor($package['estado']); ?>"></i>
-                        <div class="timeline-item">
-                            <span class="time">
-                                <i class="fas fa-clock"></i> <?php echo date('H:i', strtotime($package['fecha_generacion'])); ?>
+
+            <!-- Controles superiores -->
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center">
+                        <label class="mr-2 mb-0">Mostrar:</label>
+                        <select class="form-control form-control-sm" id="itemsPerPage" style="width: 100px;">
+                            <option value="5" <?php echo $itemsPerPage == 5 ? 'selected' : ''; ?>>5</option>
+                            <option value="10" <?php echo $itemsPerPage == 10 ? 'selected' : ''; ?>>10</option>
+                            <option value="20" <?php echo $itemsPerPage == 20 ? 'selected' : ''; ?>>20</option>
+                            <option value="50" <?php echo $itemsPerPage == 50 ? 'selected' : ''; ?>>50</option>
+                        </select>
+                        <span class="ml-2">empresas por página</span>
+                    </div>
+                </div>
+                <div class="col-md-6 text-right">
+                    <small class="text-muted">
+                        Mostrando <?php echo $startIndex + 1; ?> - <?php echo min($startIndex + $itemsPerPage, $totalCompanies); ?>
+                        de <?php echo $totalCompanies; ?> empresas
+                    </small>
+                </div>
+            </div>
+
+            <!-- Empresas de la página actual -->
+            <?php foreach ($pageCompanies as $companyId => $companyData): ?>
+                <div class="card collapsed-card mb-3">
+                    <div class="card-header bg-primary" style="cursor: pointer;" data-card-widget="collapse">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-building"></i>
+                            <?php echo htmlspecialchars($companyData['company_name']); ?>
+                            <span class="badge badge-light ml-2">
+                                <?php echo count($companyData['packages']); ?> paquetes
                             </span>
-                            
-                            <h3 class="timeline-header">
-                                <strong><?php echo htmlspecialchars($package['nombre_paquete']); ?></strong>
-                                <span class="badge badge-secondary ml-2">v<?php echo $package['version_paquete']; ?></span>
-                                <?php echo renderPackageStatus($package['estado']); ?>
-                            </h3>
-                            
-                            <div class="timeline-body">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <dl class="row mb-0">
-                                            <dt class="col-sm-4">Tamaño:</dt>
-                                            <dd class="col-sm-8">
-                                                <?php echo $package['tamanio_paquete'] ? formatFileSize($package['tamanio_paquete']) : 'N/A'; ?>
-                                            </dd>
-                                            <dt class="col-sm-4">Contenido:</dt>
-                                            <dd class="col-sm-8">
-                                                <?php echo $package['cantidad_contenido'] ? number_format($package['cantidad_contenido']) . ' items' : 'N/A'; ?>
-                                            </dd>
-                                        </dl>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <dl class="row mb-0">
-                                            <dt class="col-sm-4">Generado por:</dt>
-                                            <dd class="col-sm-8">
-                                                <?php echo htmlspecialchars($package['generado_por_nombre'] ?? 'Sistema'); ?>
-                                            </dd>
-                                            <dt class="col-sm-4">Vencimiento:</dt>
-                                            <dd class="col-sm-8">
-                                                <?php 
-                                                if ($package['fecha_vencimiento_licencia']) {
-                                                    echo date('d/m/Y', strtotime($package['fecha_vencimiento_licencia']));
-                                                    $daysLeft = (strtotime($package['fecha_vencimiento_licencia']) - time()) / 86400;
-                                                    if ($daysLeft > 0 && $daysLeft < 30) {
-                                                        echo ' <span class="badge badge-warning">Vence pronto</span>';
-                                                    } elseif ($daysLeft <= 0) {
-                                                        echo ' <span class="badge badge-danger">Vencido</span>';
-                                                    }
-                                                } else {
-                                                    echo 'N/A';
-                                                }
-                                                ?>
-                                            </dd>
-                                        </dl>
-                                    </div>
-                                </div>
-                                
-                                <?php if ($package['notas']): ?>
-                                    <div class="mt-2">
-                                        <strong>Notas:</strong> <?php echo htmlspecialchars($package['notas']); ?>
-                                    </div>
-                                <?php endif; ?>
-                            </div>
-                            
-                            <div class="timeline-footer">
-                                <?php if ($package['estado'] == 'listo'): ?>
-                                    <a href="<?php echo API_URL; ?>packages/download-package.php?id=<?php echo $package['id']; ?>" 
-                                       class="btn btn-success btn-sm">
-                                        <i class="fas fa-download"></i> Descargar
-                                    </a>
-                                <?php endif; ?>
-                                
-                                <button type="button" class="btn btn-info btn-sm" 
-                                        onclick="viewLogs(<?php echo $package['id']; ?>)">
-                                    <i class="fas fa-file-alt"></i> Ver Logs
-                                </button>
-                                
-                                <?php if (isset($companyData['packages'][array_search($package, $companyData['packages']) + 1])): ?>
-                                    <button type="button" class="btn btn-warning btn-sm" 
-                                            onclick="compareVersions(<?php echo $package['id']; ?>, <?php echo $companyData['packages'][array_search($package, $companyData['packages']) + 1]['id']; ?>)">
-                                        <i class="fas fa-code-branch"></i> Comparar con anterior
-                                    </button>
-                                <?php endif; ?>
-                                
-                                <button type="button" class="btn btn-secondary btn-sm" 
-                                        onclick="viewDetails(<?php echo $package['id']; ?>)">
-                                    <i class="fas fa-info-circle"></i> Detalles
-                                </button>
-                            </div>
+                        </h5>
+                        <div class="card-tools">
+                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                <i class="fas fa-plus"></i>
+                            </button>
                         </div>
                     </div>
-                    <?php endforeach; ?>
-                    
-                    <!-- Fin del timeline -->
-                    <div>
-                        <i class="fas fa-flag-checkered bg-gray"></i>
+                    <div class="card-body" style="display: none;">
+                        <!-- Timeline completo -->
+                        <div class="timeline">
+                            <?php
+                            $currentDate = '';
+                            foreach ($companyData['packages'] as $package):
+                                $packageDate = date('d/m/Y', strtotime($package['fecha_generacion']));
+
+                                // Mostrar label de fecha si cambió
+                                if ($packageDate !== $currentDate):
+                                    $currentDate = $packageDate;
+                            ?>
+                                    <div class="time-label">
+                                        <span class="bg-primary"><?php echo $currentDate; ?></span>
+                                    </div>
+                                <?php endif; ?>
+
+                                <!-- Item del timeline -->
+                                <div>
+                                    <i class="fas fa-box bg-<?php echo getStatusColor($package['estado']); ?>"></i>
+                                    <div class="timeline-item">
+                                        <span class="time">
+                                            <i class="fas fa-clock"></i> <?php echo date('H:i', strtotime($package['fecha_generacion'])); ?>
+                                        </span>
+
+                                        <h3 class="timeline-header">
+                                            <strong><?php echo htmlspecialchars($package['nombre_paquete']); ?></strong>
+                                            <span class="badge badge-secondary ml-2">v<?php echo $package['version_paquete']; ?></span>
+                                            <?php echo renderPackageStatus($package['estado']); ?>
+                                        </h3>
+
+                                        <div class="timeline-body">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <dl class="row mb-0">
+                                                        <dt class="col-sm-4">Tamaño:</dt>
+                                                        <dd class="col-sm-8">
+                                                            <?php echo $package['tamanio_paquete'] ? formatFileSize($package['tamanio_paquete']) : 'N/A'; ?>
+                                                        </dd>
+                                                        <dt class="col-sm-4">Contenido:</dt>
+                                                        <dd class="col-sm-8">
+                                                            <?php echo $package['cantidad_contenido'] ? number_format($package['cantidad_contenido']) . ' items' : 'N/A'; ?>
+                                                        </dd>
+                                                    </dl>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <dl class="row mb-0">
+                                                        <dt class="col-sm-4">Generado por:</dt>
+                                                        <dd class="col-sm-8">
+                                                            <?php echo htmlspecialchars($package['generado_por_nombre'] ?? 'Sistema'); ?>
+                                                        </dd>
+                                                        <dt class="col-sm-4">Vencimiento:</dt>
+                                                        <dd class="col-sm-8">
+                                                            <?php
+                                                            if ($package['fecha_vencimiento_licencia']) {
+                                                                echo date('d/m/Y', strtotime($package['fecha_vencimiento_licencia']));
+                                                                $daysLeft = (strtotime($package['fecha_vencimiento_licencia']) - time()) / 86400;
+                                                                if ($daysLeft > 0 && $daysLeft < 30) {
+                                                                    echo ' <span class="badge badge-warning">Vence pronto</span>';
+                                                                } elseif ($daysLeft <= 0) {
+                                                                    echo ' <span class="badge badge-danger">Vencido</span>';
+                                                                }
+                                                            } else {
+                                                                echo 'N/A';
+                                                            }
+                                                            ?>
+                                                        </dd>
+                                                    </dl>
+                                                </div>
+                                            </div>
+
+                                            <?php if ($package['notas']): ?>
+                                                <div class="mt-2">
+                                                    <strong>Notas:</strong> <?php echo htmlspecialchars($package['notas']); ?>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
+
+                                        <div class="timeline-footer">
+                                            <?php if ($package['estado'] == 'listo'): ?>
+                                                <a href="<?php echo API_URL; ?>packages/download-package.php?id=<?php echo $package['id']; ?>"
+                                                    class="btn btn-success btn-sm">
+                                                    <i class="fas fa-download"></i> Descargar
+                                                </a>
+                                            <?php endif; ?>
+
+                                            <button type="button" class="btn btn-info btn-sm"
+                                                onclick="viewLogs(<?php echo $package['id']; ?>)">
+                                                <i class="fas fa-file-alt"></i> Ver Logs
+                                            </button>
+
+                                            <?php if (isset($companyData['packages'][array_search($package, $companyData['packages']) + 1])): ?>
+                                                <button type="button" class="btn btn-warning btn-sm"
+                                                    onclick="compareVersions(<?php echo $package['id']; ?>, <?php echo $companyData['packages'][array_search($package, $companyData['packages']) + 1]['id']; ?>)">
+                                                    <i class="fas fa-code-branch"></i> Comparar con anterior
+                                                </button>
+                                            <?php endif; ?>
+
+                                            <button type="button" class="btn btn-secondary btn-sm"
+                                                onclick="viewDetails(<?php echo $package['id']; ?>)">
+                                                <i class="fas fa-info-circle"></i> Detalles
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+
+                            <!-- Fin del timeline -->
+                            <div>
+                                <i class="fas fa-flag-checkered bg-gray"></i>
+                            </div>
+                        </div>
                     </div>
                 </div>
             <?php endforeach; ?>
+
+            <!-- Paginación -->
+            <?php if ($totalPages > 1): ?>
+                <nav aria-label="Paginación de empresas">
+                    <ul class="pagination justify-content-center">
+                        <!-- Botón Primera página -->
+                        <li class="page-item <?php echo $currentPage == 1 ? 'disabled' : ''; ?>">
+                            <a class="page-link" href="<?php echo buildPaginationUrl(1, $itemsPerPage); ?>"
+                                title="Primera página">
+                                <i class="fas fa-angle-double-left"></i>
+                            </a>
+                        </li>
+
+                        <!-- Botón Anterior -->
+                        <li class="page-item <?php echo $currentPage == 1 ? 'disabled' : ''; ?>">
+                            <a class="page-link"
+                                href="<?php echo buildPaginationUrl($currentPage - 1, $itemsPerPage); ?>">
+                                <i class="fas fa-angle-left"></i> Anterior
+                            </a>
+                        </li>
+
+                        <!-- Números de página -->
+                        <?php
+                        $startPage = max(1, $currentPage - 2);
+                        $endPage = min($totalPages, $currentPage + 2);
+
+                        if ($startPage > 1): ?>
+                            <li class="page-item">
+                                <a class="page-link" href="<?php echo buildPaginationUrl(1, $itemsPerPage); ?>">1</a>
+                            </li>
+                            <?php if ($startPage > 2): ?>
+                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                            <?php endif; ?>
+                        <?php endif;
+
+                        for ($i = $startPage; $i <= $endPage; $i++): ?>
+                            <li class="page-item <?php echo $i == $currentPage ? 'active' : ''; ?>">
+                                <a class="page-link"
+                                    href="<?php echo buildPaginationUrl($i, $itemsPerPage); ?>">
+                                    <?php echo $i; ?>
+                                </a>
+                            </li>
+                        <?php endfor;
+
+                        if ($endPage < $totalPages): ?>
+                            <?php if ($endPage < $totalPages - 1): ?>
+                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                            <?php endif; ?>
+                            <li class="page-item">
+                                <a class="page-link" href="<?php echo buildPaginationUrl($totalPages, $itemsPerPage); ?>">
+                                    <?php echo $totalPages; ?>
+                                </a>
+                            </li>
+                        <?php endif; ?>
+
+                        <!-- Botón Siguiente -->
+                        <li class="page-item <?php echo $currentPage == $totalPages ? 'disabled' : ''; ?>">
+                            <a class="page-link"
+                                href="<?php echo buildPaginationUrl($currentPage + 1, $itemsPerPage); ?>">
+                                Siguiente <i class="fas fa-angle-right"></i>
+                            </a>
+                        </li>
+
+                        <!-- Botón Última página -->
+                        <li class="page-item <?php echo $currentPage == $totalPages ? 'disabled' : ''; ?>">
+                            <a class="page-link"
+                                href="<?php echo buildPaginationUrl($totalPages, $itemsPerPage); ?>"
+                                title="Última página">
+                                <i class="fas fa-angle-double-right"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            <?php endif; ?>
+
         <?php endif; ?>
     </div>
 </div>
@@ -405,7 +550,8 @@ foreach ($packages as $package) {
 
 <?php
 // Funciones auxiliares
-function getStatusColor($status) {
+function getStatusColor($status)
+{
     $colors = [
         'generando' => 'warning',
         'listo' => 'success',
@@ -416,7 +562,8 @@ function getStatusColor($status) {
     return $colors[$status] ?? 'secondary';
 }
 
-function renderPackageStatus($status) {
+function renderPackageStatus($status)
+{
     $badges = [
         'generando' => '<span class="badge badge-warning ml-2"><i class="fas fa-cogs"></i> Generando</span>',
         'listo' => '<span class="badge badge-success ml-2"><i class="fas fa-check"></i> Listo</span>',
@@ -427,7 +574,8 @@ function renderPackageStatus($status) {
     return $badges[$status] ?? '<span class="badge badge-secondary ml-2">' . ucfirst($status) . '</span>';
 }
 
-function formatFileSize($bytes) {
+function formatFileSize($bytes)
+{
     $units = ['B', 'KB', 'MB', 'GB'];
     $i = 0;
     while ($bytes >= 1024 && $i < count($units) - 1) {
@@ -447,93 +595,96 @@ require_once __DIR__ . '/../layouts/base.php';
 ?>
 
 <script>
-$(document).ready(function() {
-    // Inicializar Select2
-    $('.select2').select2({
-        theme: 'bootstrap4'
-    });
-    
-    // Inicializar date range picker
-    $('#daterange').daterangepicker({
-        autoUpdateInput: false,
-        locale: {
-            cancelLabel: 'Limpiar',
-            applyLabel: 'Aplicar',
-            format: 'DD/MM/YYYY',
-            daysOfWeek: ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa'],
-            monthNames: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
-                        'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
-        }
-    });
-    
-    $('#daterange').on('apply.daterangepicker', function(ev, picker) {
-        $(this).val(picker.startDate.format('DD/MM/YYYY') + ' - ' + picker.endDate.format('DD/MM/YYYY'));
-    });
-    
-    $('#daterange').on('cancel.daterangepicker', function(ev, picker) {
-        $(this).val('');
-    });
-    
-    // Inicializar gráfico
-    initActivityChart();
-});
+    $(document).ready(function() {
+        // Inicializar Select2
+        $('.select2').select2({
+            theme: 'bootstrap4'
+        });
 
-// Inicializar gráfico de actividad
-function initActivityChart() {
-    const ctx = document.getElementById('activityChart').getContext('2d');
-    
-    // Datos de ejemplo - en producción vendrían del servidor
-    const chartData = <?php echo json_encode($stats['activity_data'] ?? [
-        'labels' => ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio'],
-        'datasets' => [
-            (object)[
-                'label' => 'Paquetes Generados',
-                'data' => [12, 19, 15, 25, 22, 30],
-                'borderColor' => '#2563eb',
-                'backgroundColor' => 'rgba(37, 99, 235, 0.1)',
-                'tension' => 0.4
-            ]
-        ]
-    ]); ?>;
-    
-    new Chart(ctx, {
-        type: 'line',
-        data: chartData,
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        stepSize: 5
+        // Inicializar date range picker
+        $('#daterange').daterangepicker({
+            autoUpdateInput: false,
+            locale: {
+                cancelLabel: 'Limpiar',
+                applyLabel: 'Aplicar',
+                format: 'DD/MM/YYYY',
+                daysOfWeek: ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa'],
+                monthNames: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+                ]
+            }
+        });
+
+        $('#daterange').on('apply.daterangepicker', function(ev, picker) {
+            $(this).val(picker.startDate.format('DD/MM/YYYY') + ' - ' + picker.endDate.format('DD/MM/YYYY'));
+        });
+
+        $('#daterange').on('cancel.daterangepicker', function(ev, picker) {
+            $(this).val('');
+        });
+
+        // Inicializar gráfico
+        initActivityChart();
+    });
+
+    // Inicializar gráfico de actividad
+    function initActivityChart() {
+        const ctx = document.getElementById('activityChart').getContext('2d');
+
+        // Datos de ejemplo - en producción vendrían del servidor
+        const chartData = <?php echo json_encode($stats['activity_data'] ?? [
+                                'labels' => ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio'],
+                                'datasets' => [
+                                    (object)[
+                                        'label' => 'Paquetes Generados',
+                                        'data' => [12, 19, 15, 25, 22, 30],
+                                        'borderColor' => '#2563eb',
+                                        'backgroundColor' => 'rgba(37, 99, 235, 0.1)',
+                                        'tension' => 0.4
+                                    ]
+                                ]
+                            ]); ?>;
+
+        new Chart(ctx, {
+            type: 'line',
+            data: chartData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 5
+                        }
                     }
                 }
             }
-        }
-    });
-}
+        });
+    }
 
-// Ver logs del paquete
-function viewLogs(packageId) {
-    $('#logsModal').modal('show');
-    $('#logsContent').html('<div class="text-center"><i class="fas fa-spinner fa-spin fa-2x"></i><p class="mt-2">Cargando logs...</p></div>');
-    
-    $.ajax({
-        url: '<?php echo API_URL; ?>packages/get-logs.php',
-        method: 'GET',
-        data: { package_id: packageId },
-        success: function(response) {
-            if (response.success && response.logs) {
-                let logsHtml = '<div class="timeline timeline-inverse">';
-                
-                response.logs.forEach(function(log) {
-                    logsHtml += `
+    // Ver logs del paquete
+    function viewLogs(packageId) {
+        $('#logsModal').modal('show');
+        $('#logsContent').html('<div class="text-center"><i class="fas fa-spinner fa-spin fa-2x"></i><p class="mt-2">Cargando logs...</p></div>');
+
+        $.ajax({
+            url: '<?php echo API_URL; ?>packages/get-logs.php',
+            method: 'GET',
+            data: {
+                package_id: packageId
+            },
+            success: function(response) {
+                if (response.success && response.logs) {
+                    let logsHtml = '<div class="timeline timeline-inverse">';
+
+                    response.logs.forEach(function(log) {
+                        logsHtml += `
                         <div>
                             <i class="fas fa-${log.icon} bg-${log.color}"></i>
                             <div class="timeline-item">
@@ -547,35 +698,35 @@ function viewLogs(packageId) {
                             </div>
                         </div>
                     `;
-                });
-                
-                logsHtml += '</div>';
-                $('#logsContent').html(logsHtml);
-            } else {
-                $('#logsContent').html('<div class="alert alert-warning">No se encontraron logs para este paquete</div>');
-            }
-        },
-        error: function() {
-            $('#logsContent').html('<div class="alert alert-danger">Error al cargar los logs</div>');
-        }
-    });
-}
+                    });
 
-// Comparar versiones
-function compareVersions(currentId, previousId) {
-    $('#compareModal').modal('show');
-    $('#compareContent').html('<div class="text-center"><i class="fas fa-spinner fa-spin fa-2x"></i><p class="mt-2">Cargando comparación...</p></div>');
-    
-    $.ajax({
-        url: '<?php echo API_URL; ?>packages/compare-versions.php',
-        method: 'GET',
-        data: { 
-            current_id: currentId,
-            previous_id: previousId
-        },
-        success: function(response) {
-            if (response.success) {
-                let compareHtml = `
+                    logsHtml += '</div>';
+                    $('#logsContent').html(logsHtml);
+                } else {
+                    $('#logsContent').html('<div class="alert alert-warning">No se encontraron logs para este paquete</div>');
+                }
+            },
+            error: function() {
+                $('#logsContent').html('<div class="alert alert-danger">Error al cargar los logs</div>');
+            }
+        });
+    }
+
+    // Comparar versiones
+    function compareVersions(currentId, previousId) {
+        $('#compareModal').modal('show');
+        $('#compareContent').html('<div class="text-center"><i class="fas fa-spinner fa-spin fa-2x"></i><p class="mt-2">Cargando comparación...</p></div>');
+
+        $.ajax({
+            url: '<?php echo API_URL; ?>packages/compare-versions.php',
+            method: 'GET',
+            data: {
+                current_id: currentId,
+                previous_id: previousId
+            },
+            success: function(response) {
+                if (response.success) {
+                    let compareHtml = `
                     <div class="row">
                         <div class="col-md-6">
                             <h5>Versión Actual</h5>
@@ -621,44 +772,46 @@ function compareVersions(currentId, previousId) {
                     <div class="card">
                         <div class="card-body">
                 `;
-                
-                if (response.changes && response.changes.length > 0) {
-                    compareHtml += '<ul class="list-unstyled">';
-                    response.changes.forEach(function(change) {
-                        let icon = change.type === 'added' ? 'plus-circle text-success' : 
-                                  (change.type === 'removed' ? 'minus-circle text-danger' : 'edit text-warning');
-                        compareHtml += `<li><i class="fas fa-${icon}"></i> ${change.description}</li>`;
-                    });
-                    compareHtml += '</ul>';
-                } else {
-                    compareHtml += '<p class="text-muted">No se detectaron cambios significativos</p>';
-                }
-                
-                compareHtml += '</div></div>';
-                $('#compareContent').html(compareHtml);
-            } else {
-                $('#compareContent').html('<div class="alert alert-danger">Error al cargar la comparación</div>');
-            }
-        },
-        error: function() {
-            $('#compareContent').html('<div class="alert alert-danger">Error de conexión</div>');
-        }
-    });
-}
 
-// Ver detalles del paquete
-function viewDetails(packageId) {
-    $('#detailsModal').modal('show');
-    $('#detailsContent').html('<div class="text-center"><i class="fas fa-spinner fa-spin fa-2x"></i><p class="mt-2">Cargando detalles...</p></div>');
-    
-    $.ajax({
-        url: '<?php echo API_URL; ?>packages/get-details.php',
-        method: 'GET',
-        data: { package_id: packageId },
-        success: function(response) {
-            if (response.success && response.package) {
-                const pkg = response.package;
-                let detailsHtml = `
+                    if (response.changes && response.changes.length > 0) {
+                        compareHtml += '<ul class="list-unstyled">';
+                        response.changes.forEach(function(change) {
+                            let icon = change.type === 'added' ? 'plus-circle text-success' :
+                                (change.type === 'removed' ? 'minus-circle text-danger' : 'edit text-warning');
+                            compareHtml += `<li><i class="fas fa-${icon}"></i> ${change.description}</li>`;
+                        });
+                        compareHtml += '</ul>';
+                    } else {
+                        compareHtml += '<p class="text-muted">No se detectaron cambios significativos</p>';
+                    }
+
+                    compareHtml += '</div></div>';
+                    $('#compareContent').html(compareHtml);
+                } else {
+                    $('#compareContent').html('<div class="alert alert-danger">Error al cargar la comparación</div>');
+                }
+            },
+            error: function() {
+                $('#compareContent').html('<div class="alert alert-danger">Error de conexión</div>');
+            }
+        });
+    }
+
+    // Ver detalles del paquete
+    function viewDetails(packageId) {
+        $('#detailsModal').modal('show');
+        $('#detailsContent').html('<div class="text-center"><i class="fas fa-spinner fa-spin fa-2x"></i><p class="mt-2">Cargando detalles...</p></div>');
+
+        $.ajax({
+            url: '<?php echo API_URL; ?>packages/get-details.php',
+            method: 'GET',
+            data: {
+                package_id: packageId
+            },
+            success: function(response) {
+                if (response.success && response.package) {
+                    const pkg = response.package;
+                    let detailsHtml = `
                     <div class="row">
                         <div class="col-md-6">
                             <h5>Información General</h5>
@@ -728,23 +881,59 @@ function viewDetails(packageId) {
                         </div>
                     ` : ''}
                 `;
-                
-                $('#detailsContent').html(detailsHtml);
-            } else {
-                $('#detailsContent').html('<div class="alert alert-danger">Error al cargar los detalles</div>');
+
+                    $('#detailsContent').html(detailsHtml);
+                } else {
+                    $('#detailsContent').html('<div class="alert alert-danger">Error al cargar los detalles</div>');
+                }
+            },
+            error: function() {
+                $('#detailsContent').html('<div class="alert alert-danger">Error de conexión</div>');
             }
-        },
-        error: function() {
-            $('#detailsContent').html('<div class="alert alert-danger">Error de conexión</div>');
+        });
+    }
+
+    // Exportar a PDF
+    function exportPDF() {
+        const params = new URLSearchParams(window.location.search);
+        params.append('export', 'pdf');
+
+        window.open('<?php echo API_URL; ?>packages/export-history.php?' + params.toString(), '_blank');
+    }
+
+    // Cambiar elementos por página
+    $('#itemsPerPage').on('change', function() {
+        const perPage = $(this).val();
+        const url = new URL(window.location);
+
+        // Mantener todos los parámetros existentes
+        url.searchParams.set('per_page', perPage);
+        url.searchParams.set('page', 1); // Resetear a página 1
+
+        window.location.href = url.toString();
+    });
+    // Mostrar indicador al cambiar de página
+    $(document).on('click', '.pagination a', function(e) {
+        if (!$(this).parent().hasClass('disabled')) {
+            $(this).html('<i class="fas fa-spinner fa-spin"></i>');
         }
     });
-}
 
-// Exportar a PDF
-function exportPDF() {
-    const params = new URLSearchParams(window.location.search);
-    params.append('export', 'pdf');
-    
-    window.open('<?php echo API_URL; ?>packages/export-history.php?' + params.toString(), '_blank');
-}
+    // Función para expandir/colapsar todos los cards
+    function toggleAllCards() {
+        const collapsedCards = $('.card.collapsed-card').length;
+        const totalCards = $('.card-body').parent('.card').length - 1; // -1 para excluir el card principal
+
+        if (collapsedCards === totalCards) {
+            // Todos están colapsados, expandir todos
+            $('.card').removeClass('collapsed-card');
+            $('.card-body').slideDown();
+            $('.card-tools .fa-plus').removeClass('fa-plus').addClass('fa-minus');
+        } else {
+            // Algunos están expandidos, colapsar todos
+            $('.card').not(':first').addClass('collapsed-card');
+            $('.card').not(':first').find('.card-body').slideUp();
+            $('.card-tools .fa-minus').removeClass('fa-minus').addClass('fa-plus');
+        }
+    }
 </script>
