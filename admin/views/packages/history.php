@@ -1,17 +1,4 @@
 <?php
-/**
- * MÓDULO 2.3.4: Historial completo de paquetes por empresa
- * Página con timeline visual del historial de paquetes
- * 
- * Funcionalidades:
- * - Timeline visual del historial
- * - Comparación entre versiones
- * - Descarga de versiones anteriores
- * - Ver logs detallados de cada versión
- * - Filtros por empresa y fecha
- * - Exportar historial a PDF
- */
-
 // Incluir configuración y controlador
 require_once __DIR__ . '/../../config/system.php';
 require_once __DIR__ . '/../../controllers/PackageController.php';
@@ -42,14 +29,17 @@ $breadcrumbs = [
 
 // CSS adicional
 $additionalCSS = [
-    ASSETS_URL . 'plugins/daterangepicker/daterangepicker.css'
+    ASSETS_URL . 'plugins/daterangepicker/daterangepicker.css',
+    ASSETS_URL . 'plugins/select2/css/select2.min.css',
+    ASSETS_URL . 'plugins/select2-bootstrap4-theme/select2-bootstrap4.min.css'
 ];
 
 // JS adicional
 $additionalJS = [
     ASSETS_URL . 'plugins/moment/moment.min.js',
     ASSETS_URL . 'plugins/daterangepicker/daterangepicker.js',
-    ASSETS_URL . 'plugins/chart.js/Chart.min.js'
+    ASSETS_URL . 'plugins/chart.js/Chart.min.js',
+    ASSETS_URL . 'plugins/select2/js/select2.full.min.js'
 ];
 
 // Iniciar buffer de contenido

@@ -33,7 +33,7 @@ class PackageController extends BaseController {
      */
     public function index() {
         try {
-            // $this->requireAuth(); // Temporalmente deshabilitado para pruebas
+            $this->requireAuth(); 
             
             // Obtener filtros
             $filters = [
@@ -70,7 +70,7 @@ class PackageController extends BaseController {
             $totalPackages = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
             
             // Obtener paquetes
-            $sql = "SELECT p.*, c.nombre as empresa_nombre, u.nombre as generado_por_nombre
+            $sql = "SELECT p.*, c.nombre as empresa_nombre, u.nombre_completo as generado_por_nombre
                     FROM paquetes_generados p
                     LEFT JOIN companies c ON p.empresa_id = c.id
                     LEFT JOIN usuarios u ON p.generado_por = u.id" . 
@@ -255,7 +255,7 @@ class PackageController extends BaseController {
             $whereClause = !empty($whereConditions) ? ' WHERE ' . implode(' AND ', $whereConditions) : '';
             
             // Obtener historial de paquetes
-            $sql = "SELECT p.*, c.nombre as empresa_nombre, u.nombre as generado_por_nombre
+            $sql = "SELECT p.*, c.nombre as empresa_nombre, u.nombre_completo as generado_por_nombre
                     FROM paquetes_generados p
                     LEFT JOIN companies c ON p.empresa_id = c.id
                     LEFT JOIN usuarios u ON p.generado_por = u.id" . 

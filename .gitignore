@@ -1,3 +1,4 @@
 content/
+!/admin/content/
 logs/
 packages/generated/

@@ -74,51 +74,8 @@ ob_start();
                 </div>
             </div>
             <div class="card-body">
-                <!-- Indicador de progreso -->
+                <!-- Indicador de progreso mejorado -->
                 <div class="bs-stepper">
-                    <div class="bs-stepper-header" role="tablist">
-                        <div class="step active" data-target="#step1">
-                            <button type="button" class="step-trigger" role="tab">
-                                <span class="bs-stepper-circle">1</span>
-                                <span class="bs-stepper-label">Empresa</span>
-                            </button>
-                        </div>
-                        <div class="line"></div>
-                        <div class="step" data-target="#step2">
-                            <button type="button" class="step-trigger" role="tab">
-                                <span class="bs-stepper-circle">2</span>
-                                <span class="bs-stepper-label">Branding</span>
-                            </button>
-                        </div>
-                        <div class="line"></div>
-                        <div class="step" data-target="#step3">
-                            <button type="button" class="step-trigger" role="tab">
-                                <span class="bs-stepper-circle">3</span>
-                                <span class="bs-stepper-label">Contenido</span>
-                            </button>
-                        </div>
-                        <div class="line"></div>
-                        <div class="step" data-target="#step4">
-                            <button type="button" class="step-trigger" role="tab">
-                                <span class="bs-stepper-circle">4</span>
-                                <span class="bs-stepper-label">WiFi</span>
-                            </button>
-                        </div>
-                        <div class="line"></div>
-                        <div class="step" data-target="#step5">
-                            <button type="button" class="step-trigger" role="tab">
-                                <span class="bs-stepper-circle">5</span>
-                                <span class="bs-stepper-label">Portal</span>
-                            </button>
-                        </div>
-                        <div class="line"></div>
-                        <div class="step" data-target="#step6">
-                            <button type="button" class="step-trigger" role="tab">
-                                <span class="bs-stepper-circle">6</span>
-                                <span class="bs-stepper-label">Revisar</span>
-                            </button>
-                        </div>
-                    </div>
 
                     <div class="bs-stepper-content">
                         <form id="packageForm" method="POST" action="<?php echo API_URL; ?>packages/generate-package.php">
@@ -145,7 +102,7 @@ ob_start();
                                     </select>
                                 </div>
 
-                                <div id="companyInfo" class="mt-3" style="display: none;">
+                                <div id="companyInfo" class="mt-3 animated-card" style="display: none;">
                                     <div class="callout callout-info">
                                         <h5><i class="fas fa-info-circle"></i> Información de la Empresa</h5>
                                         <div class="row">
@@ -235,7 +192,7 @@ ob_start();
                                 </div>
 
                                 <!-- Preview del portal -->
-                                <div class="card card-outline card-info">
+                                <div class="card card-outline card-info animated-card">
                                     <div class="card-header">
                                         <h5 class="card-title">Vista Previa del Portal</h5>
                                     </div>
@@ -259,31 +216,41 @@ ob_start();
                                 <h4>Paso 3: Seleccionar Contenido</h4>
                                 <p class="text-muted">Elija el contenido que se incluirá en el paquete</p>
 
+                                <!-- Contadores mejorados -->
                                 <div class="row mb-3">
                                     <div class="col-md-4">
-                                        <div class="info-box">
-                                            <span class="info-box-icon bg-danger"><i class="fas fa-film"></i></span>
+                                        <div class="info-box bg-gradient-danger elevation-3 content-counter">
+                                            <span class="info-box-icon"><i class="fas fa-film"></i></span>
                                             <div class="info-box-content">
                                                 <span class="info-box-text">Películas</span>
-                                                <span class="info-box-number" id="selectedMoviesCount">0</span>
+                                                <span class="info-box-number counter-animation" id="selectedMoviesCount">0</span>
+                                                <div class="progress">
+                                                    <div class="progress-bar bg-white" id="moviesProgress" style="width: 0%"></div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                     <div class="col-md-4">
-                                        <div class="info-box">
-                                            <span class="info-box-icon bg-success"><i class="fas fa-music"></i></span>
+                                        <div class="info-box bg-gradient-success elevation-3 content-counter">
+                                            <span class="info-box-icon"><i class="fas fa-music"></i></span>
                                             <div class="info-box-content">
                                                 <span class="info-box-text">Música</span>
-                                                <span class="info-box-number" id="selectedMusicCount">0</span>
+                                                <span class="info-box-number counter-animation" id="selectedMusicCount">0</span>
+                                                <div class="progress">
+                                                    <div class="progress-bar bg-white" id="musicProgress" style="width: 0%"></div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                     <div class="col-md-4">
-                                        <div class="info-box">
-                                            <span class="info-box-icon bg-warning"><i class="fas fa-gamepad"></i></span>
+                                        <div class="info-box bg-gradient-warning elevation-3 content-counter">
+                                            <span class="info-box-icon"><i class="fas fa-gamepad"></i></span>
                                             <div class="info-box-content">
                                                 <span class="info-box-text">Juegos</span>
-                                                <span class="info-box-number" id="selectedGamesCount">0</span>
+                                                <span class="info-box-number counter-animation" id="selectedGamesCount">0</span>
+                                                <div class="progress">
+                                                    <div class="progress-bar bg-white" id="gamesProgress" style="width: 0%"></div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -292,6 +259,9 @@ ob_start();
                                 <div class="alert alert-info">
                                     <i class="fas fa-info-circle"></i>
                                     Tamaño estimado del paquete: <strong id="estimatedSize">0 MB</strong>
+                                    <div class="float-right">
+                                        <small>Total seleccionado: <span id="totalContentSelected">0</span> archivos</small>
+                                    </div>
                                 </div>
 
                                 <!-- Tabs para cada tipo de contenido -->
@@ -299,16 +269,19 @@ ob_start();
                                     <li class="nav-item">
                                         <a class="nav-link active" data-toggle="tab" href="#moviesTab">
                                             <i class="fas fa-film"></i> Películas
+                                            <span class="badge badge-danger ml-2" id="moviesBadge" style="display: none;">0</span>
                                         </a>
                                     </li>
                                     <li class="nav-item">
                                         <a class="nav-link" data-toggle="tab" href="#musicTab">
                                             <i class="fas fa-music"></i> Música
+                                            <span class="badge badge-success ml-2" id="musicBadge" style="display: none;">0</span>
                                         </a>
                                     </li>
                                     <li class="nav-item">
                                         <a class="nav-link" data-toggle="tab" href="#gamesTab">
                                             <i class="fas fa-gamepad"></i> Juegos
+                                            <span class="badge badge-warning ml-2" id="gamesBadge" style="display: none;">0</span>
                                         </a>
                                     </li>
                                 </ul>
@@ -327,19 +300,21 @@ ob_start();
                                         <div class="row" id="moviesList">
                                             <?php foreach ($content['movies'] ?? [] as $movie): ?>
                                                 <div class="col-md-4 mb-3">
-                                                    <div class="custom-control custom-checkbox">
-                                                        <input type="checkbox" class="custom-control-input content-checkbox movie-checkbox"
-                                                            id="movie_<?php echo $movie['id']; ?>"
-                                                            name="content_ids[]"
-                                                            value="<?php echo $movie['id']; ?>"
-                                                            data-size="<?php echo $movie['tamanio_archivo']; ?>"
-                                                            data-type="movie">
-                                                        <label class="custom-control-label" for="movie_<?php echo $movie['id']; ?>">
-                                                            <?php echo htmlspecialchars($movie['titulo']); ?>
-                                                            <small class="text-muted">
-                                                                (<?php echo formatFileSize($movie['tamanio_archivo']); ?>)
-                                                            </small>
-                                                        </label>
+                                                    <div class="content-item">
+                                                        <div class="custom-control custom-checkbox">
+                                                            <input type="checkbox" class="custom-control-input content-checkbox movie-checkbox"
+                                                                id="movie_<?php echo $movie['id']; ?>"
+                                                                name="content_ids[]"
+                                                                value="<?php echo $movie['id']; ?>"
+                                                                data-size="<?php echo $movie['tamanio_archivo']; ?>"
+                                                                data-type="movie">
+                                                            <label class="custom-control-label" for="movie_<?php echo $movie['id']; ?>">
+                                                                <?php echo htmlspecialchars($movie['titulo']); ?>
+                                                                <small class="text-muted d-block">
+                                                                    <i class="fas fa-hdd"></i> <?php echo formatFileSize($movie['tamanio_archivo']); ?>
+                                                                </small>
+                                                            </label>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             <?php endforeach; ?>
@@ -359,19 +334,21 @@ ob_start();
                                         <div class="row" id="musicList">
                                             <?php foreach ($content['music'] ?? [] as $music): ?>
                                                 <div class="col-md-4 mb-3">
-                                                    <div class="custom-control custom-checkbox">
-                                                        <input type="checkbox" class="custom-control-input content-checkbox music-checkbox"
-                                                            id="music_<?php echo $music['id']; ?>"
-                                                            name="content_ids[]"
-                                                            value="<?php echo $music['id']; ?>"
-                                                            data-size="<?php echo $music['tamanio_archivo']; ?>"
-                                                            data-type="music">
-                                                        <label class="custom-control-label" for="music_<?php echo $music['id']; ?>">
-                                                            <?php echo htmlspecialchars($music['titulo']); ?>
-                                                            <small class="text-muted">
-                                                                (<?php echo formatFileSize($music['tamanio_archivo']); ?>)
-                                                            </small>
-                                                        </label>
+                                                    <div class="content-item">
+                                                        <div class="custom-control custom-checkbox">
+                                                            <input type="checkbox" class="custom-control-input content-checkbox music-checkbox"
+                                                                id="music_<?php echo $music['id']; ?>"
+                                                                name="content_ids[]"
+                                                                value="<?php echo $music['id']; ?>"
+                                                                data-size="<?php echo $music['tamanio_archivo']; ?>"
+                                                                data-type="music">
+                                                            <label class="custom-control-label" for="music_<?php echo $music['id']; ?>">
+                                                                <?php echo htmlspecialchars($music['titulo']); ?>
+                                                                <small class="text-muted d-block">
+                                                                    <i class="fas fa-hdd"></i> <?php echo formatFileSize($music['tamanio_archivo']); ?>
+                                                                </small>
+                                                            </label>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             <?php endforeach; ?>
@@ -391,19 +368,21 @@ ob_start();
                                         <div class="row" id="gamesList">
                                             <?php foreach ($content['games'] ?? [] as $game): ?>
                                                 <div class="col-md-4 mb-3">
-                                                    <div class="custom-control custom-checkbox">
-                                                        <input type="checkbox" class="custom-control-input content-checkbox game-checkbox"
-                                                            id="game_<?php echo $game['id']; ?>"
-                                                            name="content_ids[]"
-                                                            value="<?php echo $game['id']; ?>"
-                                                            data-size="<?php echo $game['tamanio_archivo']; ?>"
-                                                            data-type="game">
-                                                        <label class="custom-control-label" for="game_<?php echo $game['id']; ?>">
-                                                            <?php echo htmlspecialchars($game['titulo']); ?>
-                                                            <small class="text-muted">
-                                                                (<?php echo formatFileSize($game['tamanio_archivo']); ?>)
-                                                            </small>
-                                                        </label>
+                                                    <div class="content-item">
+                                                        <div class="custom-control custom-checkbox">
+                                                            <input type="checkbox" class="custom-control-input content-checkbox game-checkbox"
+                                                                id="game_<?php echo $game['id']; ?>"
+                                                                name="content_ids[]"
+                                                                value="<?php echo $game['id']; ?>"
+                                                                data-size="<?php echo $game['tamanio_archivo']; ?>"
+                                                                data-type="game">
+                                                            <label class="custom-control-label" for="game_<?php echo $game['id']; ?>">
+                                                                <?php echo htmlspecialchars($game['titulo']); ?>
+                                                                <small class="text-muted d-block">
+                                                                    <i class="fas fa-hdd"></i> <?php echo formatFileSize($game['tamanio_archivo']); ?>
+                                                                </small>
+                                                            </label>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             <?php endforeach; ?>
@@ -481,7 +460,7 @@ ob_start();
                                 </div>
 
                                 <!-- Preview del QR Code e Instrucciones -->
-                                <div class="card card-outline card-info">
+                                <div class="card card-outline card-info animated-card">
                                     <div class="card-header">
                                         <h5 class="card-title">Vista Previa del QR Code e Instrucciones</h5>
                                     </div>
@@ -622,9 +601,11 @@ ob_start();
 
                                 <div class="row">
                                     <div class="col-md-6">
-                                        <div class="card">
-                                            <div class="card-header">
-                                                <h5 class="card-title">Información General</h5>
+                                        <div class="card animated-card">
+                                            <div class="card-header bg-primary">
+                                                <h5 class="card-title mb-0">
+                                                    <i class="fas fa-info-circle"></i> Información General
+                                                </h5>
                                             </div>
                                             <div class="card-body">
                                                 <dl class="row">
@@ -642,9 +623,11 @@ ob_start();
                                     </div>
 
                                     <div class="col-md-6">
-                                        <div class="card">
-                                            <div class="card-header">
-                                                <h5 class="card-title">Configuración WiFi</h5>
+                                        <div class="card animated-card">
+                                            <div class="card-header bg-info">
+                                                <h5 class="card-title mb-0">
+                                                    <i class="fas fa-wifi"></i> Configuración WiFi
+                                                </h5>
                                             </div>
                                             <div class="card-body">
                                                 <dl class="row">
@@ -662,9 +645,11 @@ ob_start();
                                     </div>
                                 </div>
 
-                                <div class="card mt-3">
-                                    <div class="card-header">
-                                        <h5 class="card-title">Contenido Seleccionado</h5>
+                                <div class="card mt-3 animated-card">
+                                    <div class="card-header bg-success">
+                                        <h5 class="card-title mb-0">
+                                            <i class="fas fa-photo-video"></i> Contenido Seleccionado
+                                        </h5>
                                     </div>
                                     <div class="card-body">
                                         <div class="row">
@@ -715,7 +700,70 @@ ob_start();
                                     <strong>Importante:</strong> La generación del paquete puede tomar varios minutos
                                     dependiendo de la cantidad de contenido seleccionado. No cierre esta ventana durante el proceso.
                                 </div>
+
+                                <div class="bs-stepper-header" role="tablist">
+                                    <div class="step active" data-target="#step1" data-step="1">
+                                        <button type="button" class="step-trigger" role="tab">
+                                            <span class="bs-stepper-circle">
+                                                <i class="fas fa-building step-icon"></i>
+                                                <i class="fas fa-check step-check" style="display: none;"></i>
+                                            </span>
+                                            <span class="bs-stepper-label">Empresa</span>
+                                        </button>
+                                    </div>
+                                    <div class="line"></div>
+                                    <div class="step" data-target="#step2" data-step="2">
+                                        <button type="button" class="step-trigger" role="tab">
+                                            <span class="bs-stepper-circle">
+                                                <i class="fas fa-palette step-icon"></i>
+                                                <i class="fas fa-check step-check" style="display: none;"></i>
+                                            </span>
+                                            <span class="bs-stepper-label">Branding</span>
+                                        </button>
+                                    </div>
+                                    <div class="line"></div>
+                                    <div class="step" data-target="#step3" data-step="3">
+                                        <button type="button" class="step-trigger" role="tab">
+                                            <span class="bs-stepper-circle">
+                                                <i class="fas fa-photo-video step-icon"></i>
+                                                <i class="fas fa-check step-check" style="display: none;"></i>
+                                            </span>
+                                            <span class="bs-stepper-label">Contenido</span>
+                                        </button>
+                                    </div>
+                                    <div class="line"></div>
+                                    <div class="step" data-target="#step4" data-step="4">
+                                        <button type="button" class="step-trigger" role="tab">
+                                            <span class="bs-stepper-circle">
+                                                <i class="fas fa-wifi step-icon"></i>
+                                                <i class="fas fa-check step-check" style="display: none;"></i>
+                                            </span>
+                                            <span class="bs-stepper-label">WiFi</span>
+                                        </button>
+                                    </div>
+                                    <div class="line"></div>
+                                    <div class="step" data-target="#step5" data-step="5">
+                                        <button type="button" class="step-trigger" role="tab">
+                                            <span class="bs-stepper-circle">
+                                                <i class="fas fa-globe step-icon"></i>
+                                                <i class="fas fa-check step-check" style="display: none;"></i>
+                                            </span>
+                                            <span class="bs-stepper-label">Portal</span>
+                                        </button>
+                                    </div>
+                                    <div class="line"></div>
+                                    <div class="step" data-target="#step6" data-step="6">
+                                        <button type="button" class="step-trigger" role="tab">
+                                            <span class="bs-stepper-circle">
+                                                <i class="fas fa-clipboard-check step-icon"></i>
+                                                <i class="fas fa-check step-check" style="display: none;"></i>
+                                            </span>
+                                            <span class="bs-stepper-label">Revisar</span>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
+
 
                             <!-- Navegación del wizard -->
                             <div class="card-footer">
@@ -725,7 +773,7 @@ ob_start();
                                 <button type="button" class="btn btn-primary float-right" id="nextBtn" onclick="changeStep(1)">
                                     Siguiente <i class="fas fa-arrow-right"></i>
                                 </button>
-                                <button type="submit" class="btn btn-success float-right" id="submitBtn" style="display: none;">
+                                <button type="submit" class="btn btn-success float-right btn-lg" id="submitBtn" style="display: none;">
                                     <i class="fas fa-check"></i> Generar Paquete
                                 </button>
                             </div>
@@ -791,16 +839,15 @@ require_once __DIR__ . '/../layouts/base.php';
         music: [],
         games: []
     };
+    let completedSteps = new Set();
 
     $(document).ready(function() {
-        // Debug inicial
-        console.log('=== INICIALIZACIÓN ===');
-        console.log('currentStep inicial:', currentStep);
-        console.log('totalSteps:', totalSteps);
-
         // Inicializar Select2
         $('.select2').select2({
-            theme: 'bootstrap4'
+            theme: 'bootstrap4',
+            width: '100%', // Importante para responsive
+            dropdownAutoWidth: false,
+            dropdownParent: $('body') // Para evitar problemas de overflow
         });
 
         // Si hay empresa preseleccionada
@@ -821,8 +868,8 @@ require_once __DIR__ . '/../layouts/base.php';
                     buses: selected.data('buses')
                 };
 
-                // Mostrar información de la empresa
-                $('#companyInfo').show();
+                // Mostrar información con animación
+                $('#companyInfo').fadeIn(300);
                 $('#companyLogo').attr('src', '<?php echo BASE_URL; ?>../companies/data/' + selectedCompany.logo);
                 $('#companyBuses').text(selectedCompany.buses);
                 $('#primaryColorBadge').css('background-color', selectedCompany.primaryColor);
@@ -843,7 +890,7 @@ require_once __DIR__ . '/../layouts/base.php';
                 // Sugerir SSID
                 $('#wifi_ssid').val(`PLAYMI-${selected.text().replace(/\s+/g, '-').toUpperCase()}`);
             } else {
-                $('#companyInfo').hide();
+                $('#companyInfo').fadeOut(300);
             }
         });
 
@@ -856,8 +903,14 @@ require_once __DIR__ . '/../layouts/base.php';
             updatePortalPreview();
         });
 
-        // Selección de contenido
+        // Selección de contenido con efectos visuales
         $('.content-checkbox').on('change', function() {
+            const $item = $(this).closest('.content-item');
+            if ($(this).is(':checked')) {
+                $item.addClass('selected');
+            } else {
+                $item.removeClass('selected');
+            }
             updateContentCount();
             calculatePackageSize();
         });
@@ -894,14 +947,23 @@ require_once __DIR__ . '/../layouts/base.php';
                     required: 'Ingrese una contraseña',
                     minlength: 'La contraseña debe tener al menos 8 caracteres'
                 }
+            },
+            errorElement: 'span',
+            errorPlacement: function(error, element) {
+                error.addClass('invalid-feedback');
+                element.closest('.form-group').append(error);
+            },
+            highlight: function(element, errorClass, validClass) {
+                $(element).addClass('is-invalid');
+            },
+            unhighlight: function(element, errorClass, validClass) {
+                $(element).removeClass('is-invalid');
             }
         });
 
         // Submit del formulario
         $('#packageForm').on('submit', function(e) {
             e.preventDefault();
-
-            console.log('Formulario enviado'); // Debug
 
             if (!$(this).valid()) {
                 toastr.error('Por favor complete todos los campos requeridos');
@@ -921,12 +983,6 @@ require_once __DIR__ . '/../layouts/base.php';
             // Preparar datos del formulario
             const formData = new FormData(this);
 
-            // Debug - ver qué se está enviando
-            console.log('Datos a enviar:');
-            for (let pair of formData.entries()) {
-                console.log(pair[0] + ': ' + pair[1]);
-            }
-
             // Simular progreso mientras esperamos respuesta
             let progressInterval = setInterval(() => {
                 let currentProgress = parseInt($('#progressBar').css('width'));
@@ -941,12 +997,10 @@ require_once __DIR__ . '/../layouts/base.php';
                 data: formData,
                 processData: false,
                 contentType: false,
-                dataType: 'json', // ← AGREGAR ESTA LÍNEA
+                dataType: 'json',
                 success: function(response) {
                     clearInterval(progressInterval);
-                    console.log('Respuesta:', response);
 
-                    // Ahora response ya es un objeto, no necesitas parsearlo
                     if (response.success) {
                         updateProgress(100, '¡Paquete generado exitosamente!');
 
@@ -955,13 +1009,13 @@ require_once __DIR__ . '/../layouts/base.php';
                             icon: 'success',
                             title: 'Paquete Generado',
                             html: `
-                    <p><strong>ID:</strong> ${response.package_id}</p>
-                    <p><strong>Tamaño:</strong> ${(response.size / 1024 / 1024).toFixed(2)} MB</p>
-                    <p><strong>Contenido:</strong> ${response.content_count} archivos</p>
-                    <a href="${response.download_url}" class="btn btn-success mt-3">
-                        <i class="fas fa-download"></i> Descargar Paquete
-                    </a>
-                `,
+                                <p><strong>ID:</strong> ${response.package_id}</p>
+                                <p><strong>Tamaño:</strong> ${(response.size / 1024 / 1024).toFixed(2)} MB</p>
+                                <p><strong>Contenido:</strong> ${response.content_count} archivos</p>
+                                <a href="${response.download_url}" class="btn btn-success mt-3">
+                                    <i class="fas fa-download"></i> Descargar Paquete
+                                </a>
+                            `,
                             showCancelButton: true,
                             cancelButtonText: 'Cerrar',
                             confirmButtonText: 'Ir a Paquetes'
@@ -985,9 +1039,6 @@ require_once __DIR__ . '/../layouts/base.php';
                     clearInterval(progressInterval);
                     $('#progressModal').modal('hide');
 
-                    console.error('Error AJAX:', status, error);
-                    console.error('Respuesta:', xhr.responseText);
-
                     Swal.fire({
                         icon: 'error',
                         title: 'Error de Conexión',
@@ -996,100 +1047,136 @@ require_once __DIR__ . '/../layouts/base.php';
                 }
             });
         });
+
+        // Actualizar QR cuando cambien los campos WiFi
+        $('#wifi_ssid, #wifi_password, #wifi_hidden').on('input change', function() {
+            clearTimeout(window.qrUpdateTimeout);
+            window.qrUpdateTimeout = setTimeout(updateQRPreview, 500);
+        });
+
+        // Click en pasos completados
+        $('.step-trigger').on('click', function(e) {
+            e.preventDefault();
+            const targetStep = $(this).closest('.step').data('step');
+            if (completedSteps.has(targetStep) || targetStep < currentStep) {
+                goToStep(targetStep);
+            }
+        });
     });
 
     // Cambiar paso del wizard
     function changeStep(direction) {
-        console.log('=== CAMBIO DE PASO ===');
-        console.log('Paso actual antes:', currentStep);
-        console.log('Dirección:', direction);
-
         // Validar paso actual antes de avanzar
         if (direction > 0 && !validateCurrentStep()) {
             return;
         }
 
-        // Ocultar paso actual
-        $(`#step${currentStep}`).removeClass('active');
-        $(`.step[data-target="#step${currentStep}"]`).removeClass('active');
-
-        // Cambiar al nuevo paso
-        currentStep += direction;
-
-        console.log('Nuevo paso:', currentStep);
-        console.log('Total de pasos:', totalSteps);
-
-        // Mostrar nuevo paso
-        $(`#step${currentStep}`).addClass('active');
-        $(`.step[data-target="#step${currentStep}"]`).addClass('active');
-
-        // Actualizar botones
-        updateButtons();
-
-        // Actualizar indicador
-        $('#stepIndicator').text(`Paso ${currentStep} de ${totalSteps}`);
-
-        // Si es el último paso, actualizar resumen
-        if (currentStep === totalSteps) {
-            console.log('¡Llegamos al último paso! Actualizando resumen...');
-            updateReviewStep();
+        // Marcar paso actual como completado si avanzamos
+        if (direction > 0) {
+            markStepAsCompleted(currentStep);
         }
+
+        // Ocultar paso actual con animación
+        $(`#step${currentStep}`).fadeOut(200, function() {
+            $(this).removeClass('active');
+
+            // Cambiar al nuevo paso
+            currentStep += direction;
+
+            // Mostrar nuevo paso con animación
+            $(`#step${currentStep}`).fadeIn(200).addClass('active');
+
+            // Actualizar indicadores
+            updateStepIndicators();
+            updateButtons();
+            $('#stepIndicator').text(`Paso ${currentStep} de ${totalSteps}`);
+
+            // Si es el último paso, actualizar resumen
+            if (currentStep === totalSteps) {
+                updateReviewStep();
+            }
+        });
+    }
+
+    // Ir a un paso específico
+    function goToStep(stepNumber) {
+        if (stepNumber === currentStep) return;
+
+        $(`#step${currentStep}`).fadeOut(200, function() {
+            $(this).removeClass('active');
+            currentStep = stepNumber;
+            $(`#step${currentStep}`).fadeIn(200).addClass('active');
+            updateStepIndicators();
+            updateButtons();
+            $('#stepIndicator').text(`Paso ${currentStep} de ${totalSteps}`);
+        });
+    }
+
+    // Marcar paso como completado
+    function markStepAsCompleted(stepNumber) {
+        completedSteps.add(stepNumber);
+        const $step = $(`.step[data-step="${stepNumber}"]`);
+        $step.addClass('completed');
+        $step.find('.step-icon').hide();
+        $step.find('.step-check').show();
+    }
+
+    // Actualizar indicadores de pasos
+    function updateStepIndicators() {
+        $('.step').removeClass('active');
+        $(`.step[data-step="${currentStep}"]`).addClass('active');
     }
 
     // Validar paso actual
     function validateCurrentStep() {
-        console.log('Validando paso:', currentStep); // Debug
+        let isValid = true;
 
         switch (currentStep) {
             case 1:
                 if (!$('#empresa_id').val()) {
                     toastr.error('Seleccione una empresa');
-                    return false;
-                }
-                if (!$('#nombre_paquete').val()) {
+                    $('#empresa_id').focus();
+                    isValid = false;
+                } else if (!$('#nombre_paquete').val()) {
                     toastr.error('Ingrese un nombre para el paquete');
-                    return false;
+                    $('#nombre_paquete').focus();
+                    isValid = false;
                 }
                 break;
             case 3:
                 if ($('.content-checkbox:checked').length === 0) {
                     toastr.error('Seleccione al menos un elemento de contenido');
-                    return false;
+                    // Hacer highlight en las tabs
+                    $('.nav-tabs').addClass('shake-animation');
+                    setTimeout(() => $('.nav-tabs').removeClass('shake-animation'), 500);
+                    isValid = false;
                 }
                 break;
             case 4:
                 if (!$('#wifi_ssid').val()) {
                     toastr.error('Ingrese el nombre de la red WiFi');
-                    return false;
-                }
-                if (!$('#wifi_password').val() || $('#wifi_password').val().length < 8) {
+                    $('#wifi_ssid').focus();
+                    isValid = false;
+                } else if (!$('#wifi_password').val() || $('#wifi_password').val().length < 8) {
                     toastr.error('La contraseña debe tener al menos 8 caracteres');
-                    return false;
+                    $('#wifi_password').focus();
+                    isValid = false;
                 }
                 break;
         }
-        return true;
+
+        return isValid;
     }
 
     // Actualizar botones de navegación
     function updateButtons() {
-        console.log('=== UPDATE BUTTONS ===');
-        console.log('Paso actual:', currentStep);
-        console.log('Total pasos:', totalSteps);
-
         $('#prevBtn').toggle(currentStep > 1);
         $('#nextBtn').toggle(currentStep < totalSteps);
         $('#submitBtn').toggle(currentStep === totalSteps);
 
-        // Forzar mostrar en paso 6
-        if (currentStep === 6) {
-            $('#nextBtn').hide();
-            $('#submitBtn').show();
-            console.log('Forzando mostrar botón submit en paso 6');
+        if (currentStep === totalSteps) {
+            $('#submitBtn').addClass('pulse-animation');
         }
-
-        console.log('Botón submit visible:', $('#submitBtn').is(':visible'));
-        console.log('Botón next visible:', $('#nextBtn').is(':visible'));
     }
 
     // Actualizar preview del portal
@@ -1112,27 +1199,77 @@ require_once __DIR__ . '/../layouts/base.php';
     function resetColor(type) {
         if (selectedCompany) {
             if (type === 'primary') {
-                $('#color_primario').val(selectedCompany.primaryColor);
+                $('#color_primario').val(selectedCompany.primaryColor).trigger('input');
             } else {
-                $('#color_secundario').val(selectedCompany.secondaryColor);
+                $('#color_secundario').val(selectedCompany.secondaryColor).trigger('input');
             }
-            updatePortalPreview();
         }
     }
 
-    // Actualizar conteo de contenido
+    // Actualizar conteo de contenido con animación
     function updateContentCount() {
         const moviesCount = $('.movie-checkbox:checked').length;
         const musicCount = $('.music-checkbox:checked').length;
         const gamesCount = $('.game-checkbox:checked').length;
+        const totalCount = moviesCount + musicCount + gamesCount;
 
-        $('#selectedMoviesCount').text(moviesCount);
-        $('#selectedMusicCount').text(musicCount);
-        $('#selectedGamesCount').text(gamesCount);
+        // Actualizar contadores con animación
+        animateCounter('#selectedMoviesCount', moviesCount);
+        animateCounter('#selectedMusicCount', musicCount);
+        animateCounter('#selectedGamesCount', gamesCount);
+        animateCounter('#totalContentSelected', totalCount);
+
+        // Actualizar badges en tabs
+        updateTabBadge('#moviesBadge', moviesCount);
+        updateTabBadge('#musicBadge', musicCount);
+        updateTabBadge('#gamesBadge', gamesCount);
+
+        // Actualizar barras de progreso
+        const totalMovies = $('.movie-checkbox').length;
+        const totalMusic = $('.music-checkbox').length;
+        const totalGames = $('.game-checkbox').length;
+
+        $('#moviesProgress').css('width', (moviesCount / totalMovies * 100) + '%');
+        $('#musicProgress').css('width', (musicCount / totalMusic * 100) + '%');
+        $('#gamesProgress').css('width', (gamesCount / totalGames * 100) + '%');
 
         selectedContent.movies = moviesCount;
         selectedContent.music = musicCount;
         selectedContent.games = gamesCount;
+    }
+
+    // Animar contador
+    function animateCounter(selector, newValue) {
+        const $counter = $(selector);
+        const currentValue = parseInt($counter.text()) || 0;
+
+        $({
+            count: currentValue
+        }).animate({
+            count: newValue
+        }, {
+            duration: 300,
+            step: function() {
+                $counter.text(Math.round(this.count));
+            },
+            complete: function() {
+                $counter.text(newValue);
+                if (newValue > currentValue) {
+                    $counter.addClass('bounce-animation');
+                    setTimeout(() => $counter.removeClass('bounce-animation'), 500);
+                }
+            }
+        });
+    }
+
+    // Actualizar badge de tab
+    function updateTabBadge(selector, count) {
+        const $badge = $(selector);
+        if (count > 0) {
+            $badge.text(count).fadeIn();
+        } else {
+            $badge.fadeOut();
+        }
     }
 
     // Calcular tamaño del paquete
@@ -1155,58 +1292,38 @@ require_once __DIR__ . '/../layouts/base.php';
         for (let i = 0; i < 12; i++) {
             password += chars.charAt(Math.floor(Math.random() * chars.length));
         }
-        $('#wifi_password').val(password);
+        $('#wifi_password').val(password).addClass('flash-animation');
+        setTimeout(() => $('#wifi_password').removeClass('flash-animation'), 500);
+        updateQRPreview();
     }
 
-    // Función para actualizar el QR preview
+    // Actualizar QR preview
     function updateQRPreview() {
         const ssid = $('#wifi_ssid').val();
         const password = $('#wifi_password').val();
 
         if (ssid && password && password.length >= 8) {
             const hidden = $('#wifi_hidden').is(':checked') ? 'true' : 'false';
-
-            // Generar URL local para el QR
             const qrUrl = `<?php echo API_URL; ?>qr/generate-wifi-qr.php?ssid=${encodeURIComponent(ssid)}&password=${encodeURIComponent(password)}&hidden=${hidden}`;
 
             $('#qrPreview').html(`
-            <img src="${qrUrl}" alt="WiFi QR Code" style="max-width: 200px; border: 1px solid #ddd; padding: 10px; background: white;">
-            <div class="mt-2">
-                <small class="text-success"><i class="fas fa-check-circle"></i> QR generado correctamente</small>
-            </div>
-        `);
+                <img src="${qrUrl}" alt="WiFi QR Code" style="max-width: 200px; border: 1px solid #ddd; padding: 10px; background: white;" class="fade-in">
+                <div class="mt-2">
+                    <small class="text-success"><i class="fas fa-check-circle"></i> QR generado correctamente</small>
+                </div>
+            `);
 
-            // Actualizar preview de SSID en instrucciones
             $('.wifi-info').html(`WiFi: <strong>${ssid}</strong>`);
         } else {
             $('#qrPreview').html(`
-            <div id="qrPlaceholder" style="width: 200px; height: 200px; margin: 0 auto; background: #f8f9fa; border: 2px dashed #dee2e6; display: flex; align-items: center; justify-content: center; flex-direction: column;">
-                <i class="fas fa-qrcode fa-4x text-muted mb-2"></i>
-                <small class="text-muted">${!ssid ? 'Ingrese el SSID' : 'Contraseña mínimo 8 caracteres'}</small>
-            </div>
-        `);
+                <div id="qrPlaceholder" style="width: 200px; height: 200px; margin: 0 auto; background: #f8f9fa; border: 2px dashed #dee2e6; display: flex; align-items: center; justify-content: center; flex-direction: column;">
+                    <i class="fas fa-qrcode fa-4x text-muted mb-2"></i>
+                    <small class="text-muted">${!ssid ? 'Ingrese el SSID' : 'Contraseña mínimo 8 caracteres'}</small>
+                </div>
+            `);
 
-            // Restaurar texto por defecto
             $('.wifi-info').html('Para conectarte al WiFi del bus');
         }
-    }
-
-    // Actualizar QR cuando cambien los campos WiFi
-    $('#wifi_ssid, #wifi_password, #wifi_hidden').on('input change', function() {
-        // Agregar un pequeño delay para evitar muchas llamadas
-        clearTimeout(window.qrUpdateTimeout);
-        window.qrUpdateTimeout = setTimeout(updateQRPreview, 500);
-    });
-
-    // También actualizar cuando se genere una contraseña
-    function generatePassword() {
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%';
-        let password = '';
-        for (let i = 0; i < 12; i++) {
-            password += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        $('#wifi_password').val(password);
-        updateQRPreview(); // Actualizar QR después de generar contraseña
     }
 
     // Actualizar paso de revisión
@@ -1216,7 +1333,7 @@ require_once __DIR__ . '/../layouts/base.php';
         $('#review_nombre').text($('#nombre_paquete').val());
         $('#review_version').text($('#version_paquete').val() || '1.0');
 
-        // WiFi - Asegurarnos de que toma los valores actuales
+        // WiFi
         $('#review_ssid').text($('#wifi_ssid').val() || 'No configurado');
         $('#review_password').text($('#wifi_password').val() || 'No configurada');
         $('#review_connections').text($('#max_connections').val() || '50');
@@ -1238,8 +1355,229 @@ require_once __DIR__ . '/../layouts/base.php';
     }
 </script>
 
-
 <style>
+    /* Estilos para el wizard mejorado */
+    .bs-stepper-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 2rem;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 0.5rem;
+    }
+
+    .step {
+        flex: 1;
+        text-align: center;
+        position: relative;
+    }
+
+    .step-trigger {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0;
+        width: 100%;
+    }
+
+    .bs-stepper-circle {
+        width: 50px;
+        height: 50px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 500;
+        color: #6c757d;
+        background-color: #e9ecef;
+        border: 2px solid #dee2e6;
+        border-radius: 50%;
+        margin: 0 auto 0.5rem;
+        transition: all 0.3s ease;
+    }
+
+    .step.active .bs-stepper-circle {
+        background-color: #007bff;
+        border-color: #007bff;
+        color: white;
+        transform: scale(1.1);
+    }
+
+    .step.completed .bs-stepper-circle {
+        background-color: #28a745;
+        border-color: #28a745;
+        color: white;
+    }
+
+    .step.completed .step-trigger {
+        cursor: pointer;
+    }
+
+    .bs-stepper-label {
+        display: block;
+        color: #6c757d;
+        font-weight: 500;
+        transition: color 0.3s ease;
+    }
+
+    .step.active .bs-stepper-label {
+        color: #007bff;
+        font-weight: 600;
+    }
+
+    .step.completed .bs-stepper-label {
+        color: #28a745;
+    }
+
+    .line {
+        flex: 1;
+        height: 2px;
+        background-color: #dee2e6;
+        margin: 0 1rem;
+        position: relative;
+        top: -25px;
+    }
+
+    /* Estilos para contenido seleccionado */
+    .content-item {
+        padding: 0.5rem;
+        border: 2px solid transparent;
+        border-radius: 0.5rem;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .content-item:hover {
+        background-color: #f8f9fa;
+        transform: translateY(-2px);
+    }
+
+    .content-item.selected {
+        background-color: #e3f2fd;
+        border-color: #2196f3;
+        box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);
+    }
+
+    .content-item .custom-control-label {
+        cursor: pointer;
+        width: 100%;
+    }
+
+    /* Contadores animados */
+    .content-counter {
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .content-counter:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .counter-animation {
+        font-size: 2rem;
+        font-weight: bold;
+    }
+
+    @keyframes bounce {
+
+        0%,
+        100% {
+            transform: scale(1);
+        }
+
+        50% {
+            transform: scale(1.2);
+        }
+    }
+
+    .bounce-animation {
+        animation: bounce 0.5s ease;
+    }
+
+    /* Animaciones generales */
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .fade-in {
+        animation: fadeIn 0.5s ease;
+    }
+
+    .animated-card {
+        animation: fadeIn 0.5s ease;
+    }
+
+    @keyframes shake {
+
+        0%,
+        100% {
+            transform: translateX(0);
+        }
+
+        25% {
+            transform: translateX(-5px);
+        }
+
+        75% {
+            transform: translateX(5px);
+        }
+    }
+
+    .shake-animation {
+        animation: shake 0.5s ease;
+    }
+
+    @keyframes flash {
+
+        0%,
+        100% {
+            opacity: 1;
+        }
+
+        50% {
+            opacity: 0.5;
+            background-color: #fff3cd;
+        }
+    }
+
+    .flash-animation {
+        animation: flash 0.5s ease;
+    }
+
+    /* Botón de generar paquete */
+    @keyframes pulse {
+        0% {
+            box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.4);
+        }
+
+        70% {
+            box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
+        }
+
+        100% {
+            box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
+        }
+    }
+
+    .pulse-animation {
+        animation: pulse 2s infinite;
+    }
+
+    /* Preview del portal */
+    #portalPreview {
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* Instrucciones preview */
     .instruction-preview {
         font-family: Arial, sans-serif;
         position: relative;
@@ -1256,5 +1594,60 @@ require_once __DIR__ . '/../layouts/base.php';
     .instruction-preview .badge {
         display: inline-block;
         font-family: monospace;
+    }
+
+    /* Progress bar en info boxes */
+    .info-box .progress {
+        height: 5px;
+        margin-top: 5px;
+        background-color: rgba(0, 0, 0, 0.1);
+    }
+
+    .info-box .progress-bar {
+        transition: width 0.6s ease;
+    }
+
+    /* Badges en tabs */
+    .nav-tabs .badge {
+        transition: all 0.3s ease;
+    }
+
+    /* Validación visual */
+    .form-control.is-invalid {
+        border-color: #dc3545;
+        padding-right: calc(1.5em + 0.75rem);
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%23dc3545' viewBox='0 0 12 12'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right calc(0.375em + 0.1875rem) center;
+        background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+    }
+
+    .form-control:focus {
+        border-color: #80bdff;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, .25);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .bs-stepper-header {
+            flex-direction: column;
+        }
+
+        .line {
+            width: 2px;
+            height: 30px;
+            margin: 0.5rem auto;
+            top: 0;
+        }
+
+        .bs-stepper-circle {
+            width: 40px;
+            height: 40px;
+            font-size: 0.9rem;
+        }
+
+        .content-item {
+            margin-bottom: 0.5rem;
+        }
     }
 </style>
