@@ -330,7 +330,7 @@ function generateConfigFiles($basePath, $company, $data)
     );
 
     // generación del QR
-    generatePackageQR($basePath, $wifiConfig);
+    $qrId = generatePackageQR($basePath, $wifiConfig, $packageId, $data['empresa_id'], $data);
 
     // Configuración del portal
     $portalConfig = [
@@ -702,33 +702,147 @@ function deleteDirectory($dir)
 }
 
 /**
- * Generar QR Code WiFi para el paquete
+ * Generar QR Code WiFi para el paquete y registrarlo en BD
  */
-function generatePackageQR($packagePath, $wifiConfig)
+function generatePackageQR($packagePath, $wifiConfig, $packageId, $companyId, $data)
 {
-    require_once '../../libs/phpqrcode/qrlib.php';
+    require_once dirname(__DIR__) . '/../libs/phpqrcode/qrlib.php';
+    require_once dirname(__DIR__) . '/../models/QRCode.php';
+    require_once dirname(__DIR__) . '/../config/database.php';
 
     // Formato WiFi QR
-    $wifiString = "WIFI:T:WPA;S:{$wifiConfig['ssid']};P:{$wifiConfig['password']};H:{$wifiConfig['hidden']};;";
+    $hidden = isset($wifiConfig['hidden']) && $wifiConfig['hidden'] ? 'true' : 'false';
+    $wifiString = "WIFI:T:WPA;S:{$wifiConfig['ssid']};P:{$wifiConfig['password']};H:{$hidden};;";
 
-    // Crear directorio si no existe
+    // Crear directorio para QR en el paquete
     $qrDir = $packagePath . '/config/qr/';
     if (!is_dir($qrDir)) {
         mkdir($qrDir, 0755, true);
     }
 
-    // Generar múltiples formatos del QR
+    // Configuración del QR
+    $errorCorrection = isset($data['qr_correction']) ? $data['qr_correction'] : 'M';
+    $qrSize = 300; // Tamaño estándar para el sistema
+    
+    // Generar múltiples tamaños del QR para el paquete
     $sizes = [
         'small' => ['size' => 5, 'file' => 'wifi-qr-small.png'],
         'medium' => ['size' => 10, 'file' => 'wifi-qr-medium.png'],
         'large' => ['size' => 15, 'file' => 'wifi-qr-large.png'],
-        'print' => ['size' => 20, 'file' => 'wifi-qr-print.png'] // Para imprimir
+        'print' => ['size' => 20, 'file' => 'wifi-qr-print.png']
     ];
 
+    // Generar QRs en el paquete
     foreach ($sizes as $key => $config) {
         $qrPath = $qrDir . $config['file'];
-        QRcode::png($wifiString, $qrPath, QR_ECLEVEL_L, $config['size'], 2);
+        QRcode::png($wifiString, $qrPath, constant('QR_ECLEVEL_' . $errorCorrection), $config['size'], 2);
     }
 
-    return true;
+    // Ahora generar QR para el sistema (companies/[id]/qr-codes/)
+    $companiesQrDir = COMPANIES_PATH . $companyId . '/qr-codes/';
+    if (!is_dir($companiesQrDir)) {
+        mkdir($companiesQrDir, 0755, true);
+    }
+
+    // Generar nombre único para el QR del sistema
+    $qrFilename = 'qr_general_pkg_' . $packageId . '_' . uniqid() . '.png';
+    $qrSystemPath = $companiesQrDir . $qrFilename;
+
+    // Generar QR principal para el sistema
+    QRcode::png($wifiString, $qrSystemPath, constant('QR_ECLEVEL_' . $errorCorrection), $qrSize / 25, 2);
+
+    // Si se requiere logo, agregarlo
+    if (isset($data['qr_include_logo']) && $data['qr_include_logo']) {
+        require_once dirname(__DIR__) . '/../models/Company.php';
+        $companyModel = new Company();
+        $company = $companyModel->findById($companyId);
+        
+        if ($company && !empty($company['logo_path'])) {
+            $logoPath = COMPANIES_PATH . $company['logo_path'];
+            if (file_exists($logoPath)) {
+                addLogoToQR($qrSystemPath, $logoPath);
+            }
+        }
+    }
+
+    // Registrar en base de datos
+    $qrModel = new QRCode();
+    
+    // Usar identificador genérico para todos los buses
+    $numeroBus = 'GENERAL-PKG-' . $packageId;
+    
+    $qrData = [
+        'empresa_id' => $companyId,
+        'numero_bus' => $numeroBus,
+        'wifi_ssid' => $wifiConfig['ssid'],
+        'wifi_password' => $wifiConfig['password'],
+        'portal_url' => 'http://playmi.pe',
+        'archivo_path' => $qrSystemPath,
+        'tamano_qr' => $qrSize,
+        'nivel_correccion' => $errorCorrection,
+        'estado' => 'activo',
+        'package_id' => $packageId // Vinculación con el paquete
+    ];
+
+    $qrId = $qrModel->create($qrData);
+
+    // Log de actividad
+    if ($qrId) {
+        error_log("QR general generado automáticamente para paquete $packageId - QR ID: $qrId");
+    }
+
+    return $qrId;
+}
+
+/**
+ * Función para agregar logo al QR
+ */
+function addLogoToQR($qrPath, $logoPath) {
+    try {
+        $qr = imagecreatefrompng($qrPath);
+        $logo = imagecreatefromstring(file_get_contents($logoPath));
+        
+        if (!$qr || !$logo) {
+            return;
+        }
+        
+        $qrWidth = imagesx($qr);
+        $qrHeight = imagesy($qr);
+        $logoWidth = imagesx($logo);
+        $logoHeight = imagesy($logo);
+        
+        // Logo al 20% del tamaño del QR
+        $logoQrWidth = $qrWidth / 5;
+        $logoQrHeight = $logoHeight * ($logoQrWidth / $logoWidth);
+        
+        $logoX = ($qrWidth - $logoQrWidth) / 2;
+        $logoY = ($qrHeight - $logoQrHeight) / 2;
+        
+        // Fondo blanco para el logo
+        $white = imagecolorallocate($qr, 255, 255, 255);
+        imagefilledrectangle(
+            $qr,
+            $logoX - 5,
+            $logoY - 5,
+            $logoX + $logoQrWidth + 5,
+            $logoY + $logoQrHeight + 5,
+            $white
+        );
+        
+        // Insertar logo
+        imagecopyresampled(
+            $qr, $logo,
+            $logoX, $logoY,
+            0, 0,
+            $logoQrWidth, $logoQrHeight,
+            $logoWidth, $logoHeight
+        );
+        
+        imagepng($qr, $qrPath);
+        imagedestroy($qr);
+        imagedestroy($logo);
+        
+    } catch (Exception $e) {
+        error_log("Error agregando logo al QR: " . $e->getMessage());
+    }
 }

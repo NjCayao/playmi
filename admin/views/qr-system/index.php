@@ -33,6 +33,24 @@ ASSETS_URL . 'plugins/sweetalert2/sweetalert2.min.js',
 // Iniciar buffer de contenido
 ob_start();
 ?>
+
+<!-- Content Header -->
+<div class="content-header">
+    <div class="container-fluid">
+        <div class="row mb-2">
+            <div class="col-sm-6">
+                <h1 class="m-0">Lista de Códigos QR Generados</h1>
+            </div>
+            <div class="col-sm-6">
+                <ol class="breadcrumb float-sm-right">
+                    <li class="breadcrumb-item"><a href="<?php echo BASE_URL; ?>">Dashboard</a></li>
+                    <li class="breadcrumb-item active">Códigos QR</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Estadísticas -->
 <div class="row">
     <div class="col-lg-3 col-6">
@@ -318,6 +336,15 @@ ob_start();
         </div>
     </div>
 </div>
+
+<?php
+// Capturar contenido del buffer
+$content = ob_get_clean();
+
+// Incluir layout base
+require_once '../layouts/base.php';
+?>
+
 <script>
 $(document).ready(function() {
     // Cambiar estado de QR
@@ -400,10 +427,3 @@ $(document).ready(function() {
     <?php endif; ?>
 });
 </script>
-<?php
-// Capturar contenido del buffer
-$content = ob_get_clean();
-
-// Incluir layout base
-require_once '../layouts/base.php';
-?>

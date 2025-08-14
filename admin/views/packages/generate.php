@@ -450,6 +450,45 @@ ob_start();
                                     </div>
                                 </div>
 
+                                <!-- Configuración QR -->
+                                <h5 class="mt-4 mb-3">Configuración del Código QR</h5>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="qr_correction">Nivel de Corrección QR</label>
+                                            <select class="form-control" id="qr_correction" name="qr_correction">
+                                                <option value="L">Bajo (7%) - Más datos, menos resistente</option>
+                                                <option value="M" selected>Medio (15%) - Recomendado</option>
+                                                <option value="Q">Alto (25%) - Resistente a daños</option>
+                                                <option value="H">Muy Alto (30%) - Para incluir logo</option>
+                                            </select>
+                                            <small class="form-text text-muted">
+                                                Mayor corrección = QR más resistente pero menos capacidad de datos
+                                            </small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <div class="custom-control custom-switch">
+                                                <input type="checkbox" class="custom-control-input"
+                                                    id="qr_include_logo" name="qr_include_logo">
+                                                <label class="custom-control-label" for="qr_include_logo">
+                                                    Incluir logo de empresa en QR
+                                                </label>
+                                            </div>
+                                            <small class="form-text text-muted">
+                                                Requiere nivel de corrección Alto (Q) o Muy Alto (H)
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="alert alert-info mt-3">
+                                    <i class="fas fa-info-circle"></i>
+                                    <strong>Nota:</strong> Se generará un código QR único que funcionará para todos los buses de la empresa.
+                                    Este QR se podrá imprimir desde la sección "Sistema QR" después de generar el paquete.
+                                </div>
+
                                 <div class="form-group">
                                     <div class="custom-control custom-switch">
                                         <input type="checkbox" class="custom-control-input" id="wifi_hidden" name="wifi_hidden">
@@ -1302,25 +1341,44 @@ require_once __DIR__ . '/../layouts/base.php';
         const ssid = $('#wifi_ssid').val();
         const password = $('#wifi_password').val();
 
+        // NUEVO: Obtener configuración del QR
+        const correction = $('#qr_correction').val() || 'M';
+        const includeLogo = $('#qr_include_logo').is(':checked');
+        const companyId = $('#empresa_id').val();
+
         if (ssid && password && password.length >= 8) {
             const hidden = $('#wifi_hidden').is(':checked') ? 'true' : 'false';
-            const qrUrl = `<?php echo API_URL; ?>qr/generate-wifi-qr.php?ssid=${encodeURIComponent(ssid)}&password=${encodeURIComponent(password)}&hidden=${hidden}`;
+
+            // MODIFICADO: Agregar nuevos parámetros a la URL
+            const qrUrl = `<?php echo API_URL; ?>qr/generate-wifi-qr.php?` +
+                `ssid=${encodeURIComponent(ssid)}` +
+                `&password=${encodeURIComponent(password)}` +
+                `&hidden=${hidden}` +
+                `&correction=${correction}` +
+                `&include_logo=${includeLogo}` +
+                `&company_id=${companyId}`;
 
             $('#qrPreview').html(`
-                <img src="${qrUrl}" alt="WiFi QR Code" style="max-width: 200px; border: 1px solid #ddd; padding: 10px; background: white;" class="fade-in">
-                <div class="mt-2">
-                    <small class="text-success"><i class="fas fa-check-circle"></i> QR generado correctamente</small>
-                </div>
-            `);
+            <img src="${qrUrl}" 
+                 alt="WiFi QR Code" 
+                 style="max-width: 200px; border: 1px solid #ddd; padding: 10px; background: white;" 
+                 class="fade-in">
+            <div class="mt-2">
+                <small class="text-success">
+                    <i class="fas fa-check-circle"></i> QR generado correctamente
+                    ${includeLogo ? '<br><i class="fas fa-image"></i> Con logo de empresa' : ''}
+                </small>
+            </div>
+        `);
 
             $('.wifi-info').html(`WiFi: <strong>${ssid}</strong>`);
         } else {
             $('#qrPreview').html(`
-                <div id="qrPlaceholder" style="width: 200px; height: 200px; margin: 0 auto; background: #f8f9fa; border: 2px dashed #dee2e6; display: flex; align-items: center; justify-content: center; flex-direction: column;">
-                    <i class="fas fa-qrcode fa-4x text-muted mb-2"></i>
-                    <small class="text-muted">${!ssid ? 'Ingrese el SSID' : 'Contraseña mínimo 8 caracteres'}</small>
-                </div>
-            `);
+            <div id="qrPlaceholder" style="width: 200px; height: 200px; margin: 0 auto; background: #f8f9fa; border: 2px dashed #dee2e6; display: flex; align-items: center; justify-content: center; flex-direction: column;">
+                <i class="fas fa-qrcode fa-4x text-muted mb-2"></i>
+                <small class="text-muted">${!ssid ? 'Ingrese el SSID' : 'Contraseña mínimo 8 caracteres'}</small>
+            </div>
+        `);
 
             $('.wifi-info').html('Para conectarte al WiFi del bus');
         }
@@ -1353,6 +1411,22 @@ require_once __DIR__ . '/../layouts/base.php';
             .text(Math.round(percent) + '%');
         $('#progressStatus').html('<i class="fas fa-cog fa-spin"></i> ' + status);
     }
+
+    // Validación de nivel de corrección con logo
+    $('#qr_include_logo').on('change', function() {
+        if ($(this).is(':checked')) {
+            const currentLevel = $('#qr_correction').val();
+            if (currentLevel === 'L' || currentLevel === 'M') {
+                $('#qr_correction').val('H');
+                toastr.info('Se cambió el nivel de corrección a "Muy Alto" para incluir el logo');
+            }
+        }
+    });
+    //  Actualizar vista previa del QR
+    $('#qr_correction, #qr_include_logo').on('change', function() {
+        clearTimeout(window.qrUpdateTimeout);
+        window.qrUpdateTimeout = setTimeout(updateQRPreview, 300);
+    });
 </script>
 
 <style>
