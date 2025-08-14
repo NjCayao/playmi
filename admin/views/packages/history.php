@@ -69,6 +69,23 @@ foreach ($packages as $package) {
 }
 ?>
 
+<!-- Content Header -->
+<div class="content-header">
+    <div class="container-fluid">
+        <div class="row mb-2">
+            <div class="col-sm-6">
+                <h1 class="m-0">Historial de paquetes generados</h1>
+            </div>
+            <div class="col-sm-6">
+                <ol class="breadcrumb float-sm-right">
+                    <li class="breadcrumb-item"><a href="<?php echo BASE_URL; ?>">Dashboard</a></li>
+                    <li class="breadcrumb-item active">Paquetes</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Filtros y estadísticas -->
 <div class="row">
     <div class="col-md-3">
@@ -431,6 +448,14 @@ function formatFileSize($bytes) {
 }
 ?>
 
+<?php
+// Capturar contenido
+$content = ob_get_clean();
+
+// Incluir layout base
+require_once __DIR__ . '/../layouts/base.php';
+?>
+
 <script>
 $(document).ready(function() {
     // Inicializar Select2
@@ -470,13 +495,15 @@ function initActivityChart() {
     // Datos de ejemplo - en producción vendrían del servidor
     const chartData = <?php echo json_encode($stats['activity_data'] ?? [
         'labels' => ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio'],
-        'datasets' => [{
-            'label' => 'Paquetes Generados',
-            'data' => [12, 19, 15, 25, 22, 30],
-            'borderColor' => '#2563eb',
-            'backgroundColor' => 'rgba(37, 99, 235, 0.1)',
-            'tension' => 0.4
-        }]
+        'datasets' => [
+            (object)[
+                'label' => 'Paquetes Generados',
+                'data' => [12, 19, 15, 25, 22, 30],
+                'borderColor' => '#2563eb',
+                'backgroundColor' => 'rgba(37, 99, 235, 0.1)',
+                'tension' => 0.4
+            ]
+        ]
     ]); ?>;
     
     new Chart(ctx, {
@@ -731,11 +758,3 @@ function exportPDF() {
     window.open('<?php echo API_URL; ?>packages/export-history.php?' + params.toString(), '_blank');
 }
 </script>
-
-<?php
-// Capturar contenido
-$content = ob_get_clean();
-
-// Incluir layout base
-require_once __DIR__ . '/../layouts/base.php';
-?>

@@ -1,18 +1,4 @@
 <?php
-
-/**
- * MÓDULO 2.3.2: Formulario para generar nuevos paquetes personalizados
- * Wizard multi-paso para crear paquetes con contenido específico por empresa
- * 
- * Pasos del wizard:
- * 1. Seleccionar empresa
- * 2. Configurar branding (colores, logo)
- * 3. Seleccionar contenido (películas/música/juegos)
- * 4. Configurar WiFi (SSID, contraseña)
- * 5. Configurar portal (nombre, configuraciones)
- * 6. Revisar y generar
- */
-
 // Incluir configuración y controlador
 require_once __DIR__ . '/../../config/system.php';
 require_once __DIR__ . '/../../controllers/PackageController.php';
@@ -245,7 +231,7 @@ ob_start();
                                 <div class="form-group">
                                     <label for="mensaje_bienvenida">Mensaje de Bienvenida</label>
                                     <textarea class="form-control" id="mensaje_bienvenida" name="mensaje_bienvenida"
-                                        rows="3" placeholder="Bienvenido a bordo! Disfruta del mejor entretenimiento durante tu viaje."></textarea>
+                                        rows="3">Bienvenido a bordo! Disfruta del mejor entretenimiento durante tu viaje.</textarea>
                                 </div>
 
                                 <!-- Preview del portal -->
@@ -258,7 +244,7 @@ ob_start();
                                             style="background-color: #1a1a1a; min-height: 300px;">
                                             <div class="text-center text-white">
                                                 <img id="previewLogo" src="" alt="Logo" style="max-height: 60px;" class="mb-3">
-                                                <h3 id="previewTitle" style="color: var(--preview-primary);">PLAYMI Entertainment</h3>
+                                                <h3 id="previewTitle" style="color: var(--preview-primary);">PLAYMI.PE <br> Entretenimiento que viaja contigo</h3>
                                                 <p id="previewMessage" style="color: var(--preview-secondary);">
                                                     Bienvenido a bordo!
                                                 </p>
@@ -494,24 +480,49 @@ ob_start();
                                     </div>
                                 </div>
 
-                                <!-- Preview del QR Code -->
+                                <!-- Preview del QR Code e Instrucciones -->
                                 <div class="card card-outline card-info">
                                     <div class="card-header">
-                                        <h5 class="card-title">Vista Previa del QR Code WiFi</h5>
+                                        <h5 class="card-title">Vista Previa del QR Code e Instrucciones</h5>
                                     </div>
-                                    <div class="card-body text-center">
-                                        <div id="qrPreview" class="mb-3">
-                                            <div id="qrPlaceholder" style="width: 200px; height: 200px; margin: 0 auto; background: #f8f9fa; border: 2px dashed #dee2e6; display: flex; align-items: center; justify-content: center; flex-direction: column;">
-                                                <i class="fas fa-qrcode fa-4x text-muted mb-2"></i>
-                                                <small class="text-muted">Ingrese los datos WiFi para generar el QR</small>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <h6 class="text-center mb-3">Código QR WiFi</h6>
+                                                <div id="qrPreview" class="text-center mb-3">
+                                                    <div id="qrPlaceholder" style="width: 200px; height: 200px; margin: 0 auto; background: #f8f9fa; border: 2px dashed #dee2e6; display: flex; align-items: center; justify-content: center; flex-direction: column;">
+                                                        <i class="fas fa-qrcode fa-4x text-muted mb-2"></i>
+                                                        <small class="text-muted">Ingrese los datos WiFi para generar el QR</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <h6 class="text-center mb-3">Instrucciones para Usuarios</h6>
+                                                <div class="instruction-preview" style="background: #f8f9fa; padding: 20px; border-radius: 8px; border: 2px solid #dee2e6;">
+                                                    <h4 class="text-center text-primary mb-3">WIFI GRATIS + PELÍCULAS</h4>
+                                                    <ol style="font-size: 16px;">
+                                                        <li class="mb-2">
+                                                            <strong>Escanea el código QR</strong><br>
+                                                            <small class="text-muted wifi-info">Para conectarte al WiFi del bus</small>
+                                                        </li>
+                                                        <li class="mb-2">
+                                                            <strong>Abre tu navegador y busca:</strong><br>
+                                                            <div class="text-center my-2">
+                                                                <span class="badge badge-primary" style="font-size: 20px; padding: 10px 20px;">playmi.pe</span>
+                                                            </div>
+                                                        </li>
+                                                        <li>
+                                                            <strong>¡Disfruta películas, música y juegos GRATIS!</strong>
+                                                        </li>
+                                                    </ol>
+                                                </div>
                                             </div>
                                         </div>
-                                        <p class="text-muted">
-                                            El código QR permitirá a los pasajeros conectarse automáticamente al WiFi
-                                        </p>
-                                        <small class="text-info">
-                                            <i class="fas fa-info-circle"></i> Este QR se incluirá en el paquete generado
-                                        </small>
+
+                                        <div class="alert alert-info mt-3">
+                                            <i class="fas fa-info-circle"></i>
+                                            <strong>Portal Cautivo Configurado:</strong> Los usuarios serán redirigidos automáticamente a <strong>playmi.pe</strong> al abrir cualquier navegador.
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -782,6 +793,11 @@ require_once __DIR__ . '/../layouts/base.php';
     };
 
     $(document).ready(function() {
+        // Debug inicial
+        console.log('=== INICIALIZACIÓN ===');
+        console.log('currentStep inicial:', currentStep);
+        console.log('totalSteps:', totalSteps);
+
         // Inicializar Select2
         $('.select2').select2({
             theme: 'bootstrap4'
@@ -807,7 +823,7 @@ require_once __DIR__ . '/../layouts/base.php';
 
                 // Mostrar información de la empresa
                 $('#companyInfo').show();
-                $('#companyLogo').attr('src', '<?php echo BASE_URL; ?>companies/data/' + selectedCompany.logo);
+                $('#companyLogo').attr('src', '<?php echo BASE_URL; ?>../companies/data/' + selectedCompany.logo);
                 $('#companyBuses').text(selectedCompany.buses);
                 $('#primaryColorBadge').css('background-color', selectedCompany.primaryColor);
                 $('#secondaryColorBadge').css('background-color', selectedCompany.secondaryColor);
@@ -885,6 +901,8 @@ require_once __DIR__ . '/../layouts/base.php';
         $('#packageForm').on('submit', function(e) {
             e.preventDefault();
 
+            console.log('Formulario enviado'); // Debug
+
             if (!$(this).valid()) {
                 toastr.error('Por favor complete todos los campos requeridos');
                 return;
@@ -898,12 +916,24 @@ require_once __DIR__ . '/../layouts/base.php';
 
             // Mostrar modal de progreso
             $('#progressModal').modal('show');
+            updateProgress(0, 'Iniciando generación del paquete...');
 
-            // Simular progreso inicial
-            updateProgress(10, 'Validando configuración...');
-
-            // Enviar formulario vía AJAX
+            // Preparar datos del formulario
             const formData = new FormData(this);
+
+            // Debug - ver qué se está enviando
+            console.log('Datos a enviar:');
+            for (let pair of formData.entries()) {
+                console.log(pair[0] + ': ' + pair[1]);
+            }
+
+            // Simular progreso mientras esperamos respuesta
+            let progressInterval = setInterval(() => {
+                let currentProgress = parseInt($('#progressBar').css('width'));
+                if (currentProgress < 90) {
+                    updateProgress(currentProgress + 10, 'Generando paquete...');
+                }
+            }, 1000);
 
             $.ajax({
                 url: $(this).attr('action'),
@@ -911,30 +941,58 @@ require_once __DIR__ . '/../layouts/base.php';
                 data: formData,
                 processData: false,
                 contentType: false,
-                xhr: function() {
-                    const xhr = new window.XMLHttpRequest();
-                    xhr.upload.addEventListener('progress', function(e) {
-                        if (e.lengthComputable) {
-                            const percentComplete = (e.loaded / e.total) * 100;
-                            updateProgress(percentComplete, 'Enviando datos...');
-                        }
-                    }, false);
-                    return xhr;
-                },
+                dataType: 'json', // ← AGREGAR ESTA LÍNEA
                 success: function(response) {
+                    clearInterval(progressInterval);
+                    console.log('Respuesta:', response);
+
+                    // Ahora response ya es un objeto, no necesitas parsearlo
                     if (response.success) {
-                        updateProgress(100, 'Paquete generado exitosamente!');
-                        setTimeout(() => {
-                            window.location.href = '<?php echo BASE_URL; ?>views/packages/index.php';
-                        }, 2000);
+                        updateProgress(100, '¡Paquete generado exitosamente!');
+
+                        // Mostrar información del paquete generado
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Paquete Generado',
+                            html: `
+                    <p><strong>ID:</strong> ${response.package_id}</p>
+                    <p><strong>Tamaño:</strong> ${(response.size / 1024 / 1024).toFixed(2)} MB</p>
+                    <p><strong>Contenido:</strong> ${response.content_count} archivos</p>
+                    <a href="${response.download_url}" class="btn btn-success mt-3">
+                        <i class="fas fa-download"></i> Descargar Paquete
+                    </a>
+                `,
+                            showCancelButton: true,
+                            cancelButtonText: 'Cerrar',
+                            confirmButtonText: 'Ir a Paquetes'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                window.location.href = '<?php echo BASE_URL; ?>views/packages/index.php';
+                            } else {
+                                $('#progressModal').modal('hide');
+                            }
+                        });
                     } else {
                         $('#progressModal').modal('hide');
-                        toastr.error(response.error || 'Error al generar el paquete');
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: response.error || 'Error al generar el paquete'
+                        });
                     }
                 },
-                error: function() {
+                error: function(xhr, status, error) {
+                    clearInterval(progressInterval);
                     $('#progressModal').modal('hide');
-                    toastr.error('Error de conexión al generar el paquete');
+
+                    console.error('Error AJAX:', status, error);
+                    console.error('Respuesta:', xhr.responseText);
+
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error de Conexión',
+                        text: error
+                    });
                 }
             });
         });
@@ -942,6 +1000,10 @@ require_once __DIR__ . '/../layouts/base.php';
 
     // Cambiar paso del wizard
     function changeStep(direction) {
+        console.log('=== CAMBIO DE PASO ===');
+        console.log('Paso actual antes:', currentStep);
+        console.log('Dirección:', direction);
+
         // Validar paso actual antes de avanzar
         if (direction > 0 && !validateCurrentStep()) {
             return;
@@ -953,6 +1015,9 @@ require_once __DIR__ . '/../layouts/base.php';
 
         // Cambiar al nuevo paso
         currentStep += direction;
+
+        console.log('Nuevo paso:', currentStep);
+        console.log('Total de pasos:', totalSteps);
 
         // Mostrar nuevo paso
         $(`#step${currentStep}`).addClass('active');
@@ -966,12 +1031,15 @@ require_once __DIR__ . '/../layouts/base.php';
 
         // Si es el último paso, actualizar resumen
         if (currentStep === totalSteps) {
+            console.log('¡Llegamos al último paso! Actualizando resumen...');
             updateReviewStep();
         }
     }
 
     // Validar paso actual
     function validateCurrentStep() {
+        console.log('Validando paso:', currentStep); // Debug
+
         switch (currentStep) {
             case 1:
                 if (!$('#empresa_id').val()) {
@@ -1005,9 +1073,23 @@ require_once __DIR__ . '/../layouts/base.php';
 
     // Actualizar botones de navegación
     function updateButtons() {
+        console.log('=== UPDATE BUTTONS ===');
+        console.log('Paso actual:', currentStep);
+        console.log('Total pasos:', totalSteps);
+
         $('#prevBtn').toggle(currentStep > 1);
         $('#nextBtn').toggle(currentStep < totalSteps);
         $('#submitBtn').toggle(currentStep === totalSteps);
+
+        // Forzar mostrar en paso 6
+        if (currentStep === 6) {
+            $('#nextBtn').hide();
+            $('#submitBtn').show();
+            console.log('Forzando mostrar botón submit en paso 6');
+        }
+
+        console.log('Botón submit visible:', $('#submitBtn').is(':visible'));
+        console.log('Botón next visible:', $('#nextBtn').is(':visible'));
     }
 
     // Actualizar preview del portal
@@ -1022,7 +1104,7 @@ require_once __DIR__ . '/../layouts/base.php';
         $('#previewMessage').css('color', secondaryColor).text(message);
 
         if (selectedCompany && selectedCompany.logo) {
-            $('#previewLogo').attr('src', '<?php echo BASE_URL; ?>companies/data/' + selectedCompany.logo);
+            $('#previewLogo').attr('src', '<?php echo BASE_URL; ?>../companies/data/' + selectedCompany.logo);
         }
     }
 
@@ -1093,6 +1175,9 @@ require_once __DIR__ . '/../layouts/base.php';
                 <small class="text-success"><i class="fas fa-check-circle"></i> QR generado correctamente</small>
             </div>
         `);
+
+            // Actualizar preview de SSID en instrucciones
+            $('.wifi-info').html(`WiFi: <strong>${ssid}</strong>`);
         } else {
             $('#qrPreview').html(`
             <div id="qrPlaceholder" style="width: 200px; height: 200px; margin: 0 auto; background: #f8f9fa; border: 2px dashed #dee2e6; display: flex; align-items: center; justify-content: center; flex-direction: column;">
@@ -1100,6 +1185,9 @@ require_once __DIR__ . '/../layouts/base.php';
                 <small class="text-muted">${!ssid ? 'Ingrese el SSID' : 'Contraseña mínimo 8 caracteres'}</small>
             </div>
         `);
+
+            // Restaurar texto por defecto
+            $('.wifi-info').html('Para conectarte al WiFi del bus');
         }
     }
 
@@ -1126,23 +1214,47 @@ require_once __DIR__ . '/../layouts/base.php';
         // Información general
         $('#review_empresa').text($('#empresa_id option:selected').text());
         $('#review_nombre').text($('#nombre_paquete').val());
-        $('#review_version').text($('#version_paquete').val());
+        $('#review_version').text($('#version_paquete').val() || '1.0');
 
-        // WiFi
-        $('#review_ssid').text($('#wifi_ssid').val());
-        $('#review_password').text($('#wifi_password').val());
-        $('#review_connections').text($('#max_connections').val());
+        // WiFi - Asegurarnos de que toma los valores actuales
+        $('#review_ssid').text($('#wifi_ssid').val() || 'No configurado');
+        $('#review_password').text($('#wifi_password').val() || 'No configurada');
+        $('#review_connections').text($('#max_connections').val() || '50');
 
         // Contenido
-        $('#review_movies').text(selectedContent.movies);
-        $('#review_music').text(selectedContent.music);
-        $('#review_games').text(selectedContent.games);
-        $('#review_size').text($('#estimatedSize').text());
+        $('#review_movies').text(selectedContent.movies || '0');
+        $('#review_music').text(selectedContent.music || '0');
+        $('#review_games').text(selectedContent.games || '0');
+        $('#review_size').text($('#estimatedSize').text() || '0 MB');
     }
 
     // Actualizar progreso
     function updateProgress(percent, status) {
-        $('#progressBar').css('width', percent + '%').text(Math.round(percent) + '%');
-        $('#progressStatus').text(status);
+        $('#progressBar')
+            .css('width', percent + '%')
+            .attr('aria-valuenow', percent)
+            .text(Math.round(percent) + '%');
+        $('#progressStatus').html('<i class="fas fa-cog fa-spin"></i> ' + status);
     }
 </script>
+
+
+<style>
+    .instruction-preview {
+        font-family: Arial, sans-serif;
+        position: relative;
+    }
+
+    .instruction-preview h4 {
+        font-weight: bold;
+    }
+
+    .instruction-preview ol {
+        padding-left: 20px;
+    }
+
+    .instruction-preview .badge {
+        display: inline-block;
+        font-family: monospace;
+    }
+</style>
