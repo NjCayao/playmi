@@ -1,34 +1,51 @@
 <?php
-// Incluir configuración y controladores necesarios
-require_once __DIR__ . '/../../config/system.php';
-require_once __DIR__ . '/../../controllers/PackageController.php';
-require_once __DIR__ . '/../../models/Package.php';
-require_once __DIR__ . '/../../models/Company.php';
-require_once __DIR__ . '/../../models/Content.php';
+// admin/api/packages/generate-package.php
 
-// Verificar autenticación
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-if (!isset($_SESSION['admin_logged_in']) || !$_SESSION['admin_logged_in']) {
-    http_response_code(401);
-    echo json_encode(['error' => 'No autorizado']);
-    exit;
+// Configuración inicial
+error_reporting(E_ALL);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
+header('Content-Type: application/json');
+
+// Log para debug
+$debugLog = __DIR__ . '/package_generation.log';
+function logDebug($message) {
+    global $debugLog;
+    file_put_contents($debugLog, date('[Y-m-d H:i:s] ') . $message . "\n", FILE_APPEND);
 }
 
-// Verificar método POST
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['error' => 'Método no permitido']);
-    exit;
-}
+ob_start();
+logDebug("=== INICIO GENERACIÓN PAQUETE ===");
 
-// Aumentar límites para proceso pesado
-set_time_limit(0); // Sin límite de tiempo
-ini_set('memory_limit', '1024M'); // 1GB de memoria
-
-// Función principal de generación
 try {
+    // Incluir configuración y controladores necesarios
+    require_once __DIR__ . '/../../config/system.php';
+    require_once __DIR__ . '/../../controllers/PackageController.php';
+    require_once __DIR__ . '/../../models/Package.php';
+    require_once __DIR__ . '/../../models/Company.php';
+    require_once __DIR__ . '/../../models/Content.php';
+    
+    logDebug("Archivos incluidos correctamente");
+
+    // Verificar autenticación
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    if (!isset($_SESSION['admin_logged_in']) || !$_SESSION['admin_logged_in']) {
+        throw new Exception('No autorizado');
+    }
+
+    // Verificar método POST
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        throw new Exception('Método no permitido');
+    }
+
+    logDebug("POST recibido: " . json_encode($_POST));
+
+    // Aumentar límites para proceso pesado
+    set_time_limit(0);
+    ini_set('memory_limit', '1024M');
+
     // Obtener y validar datos de entrada
     $data = $_POST;
 
@@ -53,16 +70,21 @@ try {
         throw new Exception('La contraseña WiFi debe tener al menos 8 caracteres');
     }
 
+    logDebug("Validaciones completadas");
+
     // Inicializar modelos
-    $packageModel = new Package();
-    $companyModel = new Company();
-    $contentModel = new Content();
+    $db = Database::getInstance()->getConnection();
+    $packageModel = new Package($db);
+    $companyModel = new Company($db);
+    $contentModel = new Content($db);
 
     // Verificar que la empresa existe
     $company = $companyModel->findById($data['empresa_id']);
     if (!$company) {
         throw new Exception('Empresa no encontrada');
     }
+
+    logDebug("Empresa encontrada: " . $company['nombre']);
 
     // Verificar que el contenido existe
     $selectedContent = [];
@@ -77,28 +99,32 @@ try {
         throw new Exception('No se encontró contenido válido');
     }
 
+    logDebug("Contenido seleccionado: " . count($selectedContent) . " archivos");
+
     // Crear registro inicial del paquete
     $packageData = [
         'empresa_id' => $data['empresa_id'],
         'nombre_paquete' => $data['nombre_paquete'],
         'version_paquete' => $data['version_paquete'] ?? '1.0',
-        'generado_por' => $_SESSION['admin_id'],
+        'generado_por' => $_SESSION['admin_id'] ?? 1,
         'estado' => 'generando',
         'notas' => $data['notas'] ?? null
     ];
 
     $packageResult = $packageModel->startGeneration(
         $data['empresa_id'],
-        $_SESSION['admin_id'],
+        $_SESSION['admin_id'] ?? 1,
         $packageData
     );
 
     if (!$packageResult['success']) {
-        throw new Exception('Error al iniciar generación del paquete');
+        throw new Exception('Error al iniciar generación del paquete: ' . ($packageResult['error'] ?? 'Error desconocido'));
     }
 
     $packageId = $packageResult['package_id'];
     $installationKey = $packageResult['installation_key'];
+    
+    logDebug("Paquete registrado en BD con ID: " . $packageId);
 
     // Registrar contenido del paquete
     registerPackageContent($packageId, $data['content_ids']);
@@ -111,20 +137,29 @@ try {
         $tempPath . '/content/movies',
         $tempPath . '/content/music',
         $tempPath . '/content/games',
+        $tempPath . '/content/movies/thumbnails',
+        $tempPath . '/content/music/thumbnails',
+        $tempPath . '/content/games/thumbnails',
         $tempPath . '/config',
+        $tempPath . '/config/qr',
         $tempPath . '/portal',
         $tempPath . '/portal/assets',
         $tempPath . '/portal/assets/css',
         $tempPath . '/portal/assets/js',
         $tempPath . '/portal/assets/images',
-        $tempPath . '/install'
+        $tempPath . '/install',
+        $tempPath . '/print'
     ];
 
     foreach ($packageStructure as $dir) {
-        if (!mkdir($dir, 0755, true)) {
-            throw new Exception('Error creando estructura de directorios');
+        if (!is_dir($dir)) {
+            if (!mkdir($dir, 0755, true)) {
+                throw new Exception('Error creando estructura de directorios: ' . $dir);
+            }
         }
     }
+
+    logDebug("Estructura de directorios creada en: " . $tempPath);
 
     // Copiar contenido seleccionado
     $totalSize = 0;
@@ -134,7 +169,8 @@ try {
         $sourcePath = UPLOADS_PATH . $content['archivo_path'];
 
         if (!file_exists($sourcePath)) {
-            continue; // Saltar si el archivo no existe
+            logDebug("Archivo no encontrado: " . $sourcePath);
+            continue;
         }
 
         // Determinar destino según tipo
@@ -157,15 +193,12 @@ try {
         if (copy($sourcePath, $destPath)) {
             $totalSize += filesize($sourcePath);
             $contentCount++;
+            logDebug("Copiado: " . basename($content['archivo_path']));
 
             // Copiar thumbnail si existe
             if ($content['thumbnail_path']) {
                 $thumbSource = UPLOADS_PATH . $content['thumbnail_path'];
                 $thumbDest = $tempPath . $destFolder . 'thumbnails/' . basename($content['thumbnail_path']);
-
-                if (!is_dir(dirname($thumbDest))) {
-                    mkdir(dirname($thumbDest), 0755, true);
-                }
 
                 if (file_exists($thumbSource)) {
                     copy($thumbSource, $thumbDest);
@@ -174,8 +207,10 @@ try {
         }
     }
 
+    logDebug("Contenido copiado: $contentCount archivos, tamaño total: " . ($totalSize/1024/1024) . " MB");
+
     // Generar archivos de configuración
-    generateConfigFiles($tempPath, $company, $data);
+    generateConfigFiles($tempPath, $company, $data, $packageId);
 
     // Copiar portal web personalizado
     copyPortalFiles($tempPath . '/portal', $company, $data);
@@ -202,7 +237,7 @@ try {
             'games' => count(array_filter($selectedContent, fn($c) => $c['tipo'] == 'juego'))
         ],
         'installation_key' => $installationKey,
-        'checksum' => null // Se calculará después de comprimir
+        'checksum' => null
     ];
 
     file_put_contents(
@@ -213,11 +248,15 @@ try {
     // Comprimir todo en un archivo ZIP
     $zipPath = PACKAGES_PATH . $company['id'] . '/';
     if (!is_dir($zipPath)) {
-        mkdir($zipPath, 0755, true);
+        if (!mkdir($zipPath, 0755, true)) {
+            throw new Exception('Error creando directorio para ZIP: ' . $zipPath);
+        }
     }
 
     $zipFilename = 'package_' . $packageId . '_' . date('YmdHis') . '.zip';
     $zipFullPath = $zipPath . $zipFilename;
+
+    logDebug("Creando ZIP en: " . $zipFullPath);
 
     $zip = new ZipArchive();
     if ($zip->open($zipFullPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== TRUE) {
@@ -246,6 +285,8 @@ try {
     $addDirToZip($tempPath);
     $zip->close();
 
+    logDebug("ZIP creado exitosamente");
+
     // Calcular checksum del archivo ZIP
     $checksum = hash_file('sha256', $zipFullPath);
 
@@ -264,6 +305,11 @@ try {
     // Limpiar archivos temporales
     deleteDirectory($tempPath);
 
+    logDebug("Proceso completado exitosamente");
+
+    // Limpiar buffer y enviar respuesta
+    ob_clean();
+    
     // Respuesta exitosa
     echo json_encode([
         'success' => true,
@@ -275,9 +321,12 @@ try {
         'size' => filesize($zipFullPath),
         'content_count' => $contentCount
     ]);
+
 } catch (Exception $e) {
+    logDebug("ERROR: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+    
     // En caso de error, marcar paquete como fallido si existe
-    if (isset($packageId)) {
+    if (isset($packageId) && isset($packageModel)) {
         $packageModel->updateStatus($packageId, 'error', [
             'error_message' => $e->getMessage()
         ]);
@@ -288,8 +337,10 @@ try {
         deleteDirectory($tempPath);
     }
 
+    ob_clean();
     http_response_code(500);
     echo json_encode([
+        'success' => false,
         'error' => $e->getMessage()
     ]);
 }
@@ -312,7 +363,7 @@ function registerPackageContent($packageId, $contentIds)
 }
 
 // Generar archivos de configuración
-function generateConfigFiles($basePath, $company, $data)
+function generateConfigFiles($basePath, $company, $data, $packageId)
 {
     // Configuración WiFi
     $wifiConfig = [
@@ -329,8 +380,8 @@ function generateConfigFiles($basePath, $company, $data)
         json_encode($wifiConfig, JSON_PRETTY_PRINT)
     );
 
-    // generación del QR
-    $qrId = generatePackageQR($basePath, $wifiConfig, $packageId, $data['empresa_id'], $data);
+    // Generar QR sin logo (simplificado)
+    generatePackageQR($basePath, $wifiConfig, $packageId, $data['empresa_id']);
 
     // Configuración del portal
     $portalConfig = [
@@ -338,11 +389,11 @@ function generateConfigFiles($basePath, $company, $data)
             'id' => $company['id'],
             'name' => $company['nombre'],
             'logo' => $company['logo_path'],
-            'service_name' => $data['portal_name'] ?? $company['nombre_servicio'] ?? 'PLAYMI "Entretenimiento que viaja contigo"'
+            'service_name' => $data['portal_name'] ?? 'PLAYMI Entertainment'
         ],
         'branding' => [
-            'primary_color' => $data['color_primario'] ?? $company['color_primario'] ?? '#2563eb',
-            'secondary_color' => $data['color_secundario'] ?? $company['color_secundario'] ?? '#64748b',
+            'primary_color' => $data['color_primario'] ?? '#2563eb',
+            'secondary_color' => $data['color_secundario'] ?? '#64748b',
             'use_company_logo' => isset($data['usar_logo_empresa']) && $data['usar_logo_empresa'] ? true : false,
             'welcome_message' => $data['mensaje_bienvenida'] ?? 'Bienvenido a bordo!'
         ],
@@ -364,58 +415,26 @@ function generateConfigFiles($basePath, $company, $data)
         json_encode($portalConfig, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
     );
 
-    // Configuración de QR codes
-    $qrConfig = [
-        'wifi_qr' => generateWiFiQRString($wifiConfig),
-        'portal_url' => 'http://playmi.pe',  // Cambiado de 192.168.1.1 a playmi.pe
-        'company_id' => $company['id']
-    ];
-
-    file_put_contents(
-        $basePath . '/config/qr-config.json',
-        json_encode($qrConfig, JSON_PRETTY_PRINT)
-    );
-
-    // Configuración DNS para playmi.pe
-    $dnsConfig = [
-        'domain' => 'playmi.pe',
-        'portal_ip' => '192.168.4.1',
-        'dns_config' => 'address=/playmi.pe/192.168.4.1'
-    ];
-
-    file_put_contents(
-        $basePath . '/config/dns-config.json',
-        json_encode($dnsConfig, JSON_PRETTY_PRINT)
-    );
-
-    // Archivo de configuración dnsmasq para el Pi
-    $dnsmasqConfig = "# PLAYMI DNS Configuration
-# Portal cautivo para playmi.pe
+    // Configuración DNS
+    $dnsConfig = "# PLAYMI DNS Configuration
 interface=wlan0
 dhcp-range=192.168.4.2,192.168.4.100,255.255.255.0,24h
-
-# Resolver playmi.pe localmente
 address=/playmi.pe/192.168.4.1
-
-# Portal cautivo - redirigir todas las consultas DNS a playmi.pe
 address=/#/192.168.4.1
-
-# Configuración adicional
 no-resolv
 server=8.8.8.8
-server=8.8.4.4
-";
+server=8.8.4.4";
 
     file_put_contents(
         $basePath . '/config/dnsmasq-playmi.conf',
-        $dnsmasqConfig
+        $dnsConfig
     );
 
-    // Generar archivo de instrucciones para imprimir
+    // Generar instrucciones imprimibles
     generatePrintableInstructions($basePath, $wifiConfig);
 }
 
-// Nueva función para generar instrucciones imprimibles
+// Generar instrucciones imprimibles
 function generatePrintableInstructions($basePath, $wifiConfig)
 {
     $instructionsHtml = '<!DOCTYPE html>
@@ -484,13 +503,6 @@ function generatePrintableInstructions($basePath, $wifiConfig)
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #999;
-        }
-        .footer {
-            margin-top: 30px;
-            font-size: 18px;
-            color: #2563eb;
-            font-weight: bold;
         }
     </style>
 </head>
@@ -522,23 +534,12 @@ function generatePrintableInstructions($basePath, $wifiConfig)
             <span class="step-number">3</span>
             <strong>¡Disfruta películas, música y juegos GRATIS!</strong>
         </div>
-        
-        <div class="footer">
-            ¡Entretenimiento sin internet!
-        </div>
     </div>
 </body>
 </html>';
 
-    // Crear directorio para archivos de impresión
-    $printDir = $basePath . '/print/';
-    if (!is_dir($printDir)) {
-        mkdir($printDir, 0755, true);
-    }
-
-    // Guardar instrucciones HTML
     file_put_contents(
-        $printDir . 'instrucciones.html',
+        $basePath . '/print/instrucciones.html',
         $instructionsHtml
     );
 }
@@ -546,9 +547,6 @@ function generatePrintableInstructions($basePath, $wifiConfig)
 // Copiar archivos del portal
 function copyPortalFiles($portalPath, $company, $data)
 {
-    // Aquí copiaríamos los archivos del portal web
-    // Por ahora solo creamos un index.html básico
-
     $indexHtml = '<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -570,7 +568,7 @@ function copyPortalFiles($portalPath, $company, $data)
 </head>
 <body>
     <h1>' . htmlspecialchars($data['portal_name'] ?? 'PLAYMI') . '</h1>
-    <h1>' . htmlspecialchars($data['portal_name'] ?? ' Entretenimiento que viaja contigo ') . '</h1>
+    <h2>Entretenimiento que viaja contigo</h2>
     <p>' . htmlspecialchars($data['mensaje_bienvenida'] ?? 'Bienvenido a bordo!') . '</p>
     <p>Portal en construcción...</p>
 </body>
@@ -578,19 +576,18 @@ function copyPortalFiles($portalPath, $company, $data)
 
     file_put_contents($portalPath . '/index.html', $indexHtml);
 
-    // Copiar logo de la empresa si existe
-    if ($company['logo_path'] && file_exists(COMPANIES_PATH . $company['logo_path'])) {
-        copy(
-            COMPANIES_PATH . $company['logo_path'],
-            $portalPath . '/assets/images/company-logo.png'
-        );
+    // Copiar logo si existe
+    if (!empty($company['logo_path'])) {
+        $logoSource = COMPANIES_PATH . $company['logo_path'];
+        if (file_exists($logoSource)) {
+            copy($logoSource, $portalPath . '/assets/images/company-logo.png');
+        }
     }
 }
 
 // Generar scripts de instalación
 function generateInstallScripts($installPath, $data)
 {
-    // Script principal de instalación
     $installScript = '#!/bin/bash
 # PLAYMI Installation Script
 # Generated: ' . date('Y-m-d H:i:s') . '
@@ -604,80 +601,94 @@ echo "==================================="
 WIFI_SSID="' . escapeshellarg($data['wifi_ssid']) . '"
 WIFI_PASSWORD="' . escapeshellarg($data['wifi_password']) . '"
 
-# Función para verificar permisos de root
-check_root() {
-    if [[ $EUID -ne 0 ]]; then
-        echo "Este script debe ejecutarse como root (sudo)"
-        exit 1
-    fi
-}
-
-# Función principal de instalación
+# Función principal
 main() {
-    check_root
-    
     echo "1. Actualizando sistema..."
     apt-get update
     
     echo "2. Instalando dependencias..."
-    apt-get install -y apache2 php libapache2-mod-php hostapd dnsmasq iptables-persistent
+    apt-get install -y apache2 php libapache2-mod-php hostapd dnsmasq
     
-    echo "3. Configurando WiFi Access Point..."
-    # Configuración de hostapd y dnsmasq
+    echo "3. Configurando WiFi..."
+    # Configuración aquí
     
-    echo "4. Configurando DNS y portal cautivo..."
-    cp ../config/dnsmasq-playmi.conf /etc/dnsmasq.d/playmi.conf
-    
-    # Configurar iptables para portal cautivo
-    iptables -t nat -A PREROUTING -p tcp --dport 80 -j DNAT --to-destination 192.168.4.1:80
-    iptables -t nat -A PREROUTING -p tcp --dport 443 -j DNAT --to-destination 192.168.4.1:80
-    netfilter-persistent save
-    
-    echo "5. Copiando archivos del portal..."
+    echo "4. Copiando archivos..."
     cp -r ../portal/* /var/www/html/
+    cp -r ../content /var/www/html/
     
-    echo "6. Configurando permisos..."
+    echo "5. Configurando permisos..."
     chown -R www-data:www-data /var/www/html
     chmod -R 755 /var/www/html
     
-    echo "7. Reiniciando servicios..."
-    systemctl restart apache2
-    systemctl restart hostapd
-    systemctl restart dnsmasq
-    
-    echo "==================================="
     echo "Instalación completada!"
-    echo "SSID: $WIFI_SSID"
-    echo "Portal: http://playmi.pe"
-    echo "==================================="
 }
 
-# Ejecutar instalación
+# Ejecutar
+if [[ $EUID -ne 0 ]]; then
+   echo "Este script debe ejecutarse como root (sudo)"
+   exit 1
+fi
+
 main
 ';
 
     file_put_contents($installPath . '/install.sh', $installScript);
     chmod($installPath . '/install.sh', 0755);
-
-    // Script de configuración de red
-    $networkScript = '#!/bin/bash
-# Network Configuration Script
-
-# Configurar interfaz WiFi como Access Point
-echo "Configurando red WiFi..."
-
-# Contenido de configuración...
-';
-
-    file_put_contents($installPath . '/setup-network.sh', $networkScript);
-    chmod($installPath . '/setup-network.sh', 0755);
 }
 
-// Generar string QR para WiFi
-function generateWiFiQRString($wifiConfig)
+// Generar QR para el paquete (simplificado sin logo)
+function generatePackageQR($packagePath, $wifiConfig, $packageId, $companyId)
 {
-    $hidden = $wifiConfig['hidden'] ? 'true' : 'false';
-    return "WIFI:T:WPA;S:{$wifiConfig['ssid']};P:{$wifiConfig['password']};H:{$hidden};;";
+    require_once dirname(__DIR__) . '/../libs/phpqrcode/qrlib.php';
+    
+    // Formato WiFi QR
+    $hidden = isset($wifiConfig['hidden']) && $wifiConfig['hidden'] ? 'true' : 'false';
+    $wifiString = "WIFI:T:WPA;S:{$wifiConfig['ssid']};P:{$wifiConfig['password']};H:{$hidden};;";
+    
+    // Crear directorio para QR
+    $qrDir = $packagePath . '/config/qr/';
+    if (!is_dir($qrDir)) {
+        mkdir($qrDir, 0755, true);
+    }
+    
+    // Generar múltiples tamaños
+    $sizes = [
+        'small' => ['size' => 5, 'file' => 'wifi-qr-small.png'],
+        'medium' => ['size' => 10, 'file' => 'wifi-qr-medium.png'],
+        'large' => ['size' => 15, 'file' => 'wifi-qr-large.png'],
+        'print' => ['size' => 20, 'file' => 'wifi-qr-print.png']
+    ];
+    
+    foreach ($sizes as $key => $config) {
+        $qrPath = $qrDir . $config['file'];
+        QRcode::png($wifiString, $qrPath, QR_ECLEVEL_H, $config['size'], 2);
+    }
+    
+    logDebug("QR codes generados en: " . $qrDir);
+    
+    // Registrar en BD si existe el modelo
+    try {
+        if (class_exists('QRCode')) {
+            require_once dirname(__DIR__) . '/../models/QRCode.php';
+            $qrModel = new QRCode();
+            
+            $qrData = [
+                'empresa_id' => $companyId,
+                'numero_bus' => 'GENERAL-PKG-' . $packageId,
+                'wifi_ssid' => $wifiConfig['ssid'],
+                'wifi_password' => $wifiConfig['password'],
+                'portal_url' => 'http://playmi.pe',
+                'archivo_path' => 'packages/' . $companyId . '/qr/package_' . $packageId . '_qr.png',
+                'tamano_qr' => 300,
+                'nivel_correccion' => 'H',
+                'estado' => 'activo'
+            ];
+            
+            $qrModel->create($qrData);
+        }
+    } catch (Exception $e) {
+        logDebug("Error registrando QR en BD: " . $e->getMessage());
+    }
 }
 
 // Eliminar directorio recursivamente
@@ -700,149 +711,4 @@ function deleteDirectory($dir)
 
     rmdir($dir);
 }
-
-/**
- * Generar QR Code WiFi para el paquete y registrarlo en BD
- */
-function generatePackageQR($packagePath, $wifiConfig, $packageId, $companyId, $data)
-{
-    require_once dirname(__DIR__) . '/../libs/phpqrcode/qrlib.php';
-    require_once dirname(__DIR__) . '/../models/QRCode.php';
-    require_once dirname(__DIR__) . '/../config/database.php';
-
-    // Formato WiFi QR
-    $hidden = isset($wifiConfig['hidden']) && $wifiConfig['hidden'] ? 'true' : 'false';
-    $wifiString = "WIFI:T:WPA;S:{$wifiConfig['ssid']};P:{$wifiConfig['password']};H:{$hidden};;";
-
-    // Crear directorio para QR en el paquete
-    $qrDir = $packagePath . '/config/qr/';
-    if (!is_dir($qrDir)) {
-        mkdir($qrDir, 0755, true);
-    }
-
-    // Configuración del QR
-    $errorCorrection = isset($data['qr_correction']) ? $data['qr_correction'] : 'M';
-    $qrSize = 300; // Tamaño estándar para el sistema
-    
-    // Generar múltiples tamaños del QR para el paquete
-    $sizes = [
-        'small' => ['size' => 5, 'file' => 'wifi-qr-small.png'],
-        'medium' => ['size' => 10, 'file' => 'wifi-qr-medium.png'],
-        'large' => ['size' => 15, 'file' => 'wifi-qr-large.png'],
-        'print' => ['size' => 20, 'file' => 'wifi-qr-print.png']
-    ];
-
-    // Generar QRs en el paquete
-    foreach ($sizes as $key => $config) {
-        $qrPath = $qrDir . $config['file'];
-        QRcode::png($wifiString, $qrPath, constant('QR_ECLEVEL_' . $errorCorrection), $config['size'], 2);
-    }
-
-    // Ahora generar QR para el sistema (companies/[id]/qr-codes/)
-    $companiesQrDir = COMPANIES_PATH . $companyId . '/qr-codes/';
-    if (!is_dir($companiesQrDir)) {
-        mkdir($companiesQrDir, 0755, true);
-    }
-
-    // Generar nombre único para el QR del sistema
-    $qrFilename = 'qr_general_pkg_' . $packageId . '_' . uniqid() . '.png';
-    $qrSystemPath = $companiesQrDir . $qrFilename;
-
-    // Generar QR principal para el sistema
-    QRcode::png($wifiString, $qrSystemPath, constant('QR_ECLEVEL_' . $errorCorrection), $qrSize / 25, 2);
-
-    // Si se requiere logo, agregarlo
-    if (isset($data['qr_include_logo']) && $data['qr_include_logo']) {
-        require_once dirname(__DIR__) . '/../models/Company.php';
-        $companyModel = new Company();
-        $company = $companyModel->findById($companyId);
-        
-        if ($company && !empty($company['logo_path'])) {
-            $logoPath = COMPANIES_PATH . $company['logo_path'];
-            if (file_exists($logoPath)) {
-                addLogoToQR($qrSystemPath, $logoPath);
-            }
-        }
-    }
-
-    // Registrar en base de datos
-    $qrModel = new QRCode();
-    
-    // Usar identificador genérico para todos los buses
-    $numeroBus = 'GENERAL-PKG-' . $packageId;
-    
-    $qrData = [
-        'empresa_id' => $companyId,
-        'numero_bus' => $numeroBus,
-        'wifi_ssid' => $wifiConfig['ssid'],
-        'wifi_password' => $wifiConfig['password'],
-        'portal_url' => 'http://playmi.pe',
-        'archivo_path' => $qrSystemPath,
-        'tamano_qr' => $qrSize,
-        'nivel_correccion' => $errorCorrection,
-        'estado' => 'activo',
-        'package_id' => $packageId // Vinculación con el paquete
-    ];
-
-    $qrId = $qrModel->create($qrData);
-
-    // Log de actividad
-    if ($qrId) {
-        error_log("QR general generado automáticamente para paquete $packageId - QR ID: $qrId");
-    }
-
-    return $qrId;
-}
-
-/**
- * Función para agregar logo al QR
- */
-function addLogoToQR($qrPath, $logoPath) {
-    try {
-        $qr = imagecreatefrompng($qrPath);
-        $logo = imagecreatefromstring(file_get_contents($logoPath));
-        
-        if (!$qr || !$logo) {
-            return;
-        }
-        
-        $qrWidth = imagesx($qr);
-        $qrHeight = imagesy($qr);
-        $logoWidth = imagesx($logo);
-        $logoHeight = imagesy($logo);
-        
-        // Logo al 20% del tamaño del QR
-        $logoQrWidth = $qrWidth / 5;
-        $logoQrHeight = $logoHeight * ($logoQrWidth / $logoWidth);
-        
-        $logoX = ($qrWidth - $logoQrWidth) / 2;
-        $logoY = ($qrHeight - $logoQrHeight) / 2;
-        
-        // Fondo blanco para el logo
-        $white = imagecolorallocate($qr, 255, 255, 255);
-        imagefilledrectangle(
-            $qr,
-            $logoX - 5,
-            $logoY - 5,
-            $logoX + $logoQrWidth + 5,
-            $logoY + $logoQrHeight + 5,
-            $white
-        );
-        
-        // Insertar logo
-        imagecopyresampled(
-            $qr, $logo,
-            $logoX, $logoY,
-            0, 0,
-            $logoQrWidth, $logoQrHeight,
-            $logoWidth, $logoHeight
-        );
-        
-        imagepng($qr, $qrPath);
-        imagedestroy($qr);
-        imagedestroy($logo);
-        
-    } catch (Exception $e) {
-        error_log("Error agregando logo al QR: " . $e->getMessage());
-    }
-}
+?>

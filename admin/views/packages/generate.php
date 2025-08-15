@@ -3,6 +3,10 @@
 require_once __DIR__ . '/../../config/system.php';
 require_once __DIR__ . '/../../controllers/PackageController.php';
 
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
+
 // Crear instancia del controlador
 $packageController = new PackageController();
 
@@ -450,40 +454,7 @@ ob_start();
                                     </div>
                                 </div>
 
-                                <!-- Configuración QR -->
-                                <h5 class="mt-4 mb-3">Configuración del Código QR</h5>
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="form-group">
-                                            <label for="qr_correction">Nivel de Corrección QR</label>
-                                            <select class="form-control" id="qr_correction" name="qr_correction">
-                                                <option value="L">Bajo (7%) - Más datos, menos resistente</option>
-                                                <option value="M" selected>Medio (15%) - Recomendado</option>
-                                                <option value="Q">Alto (25%) - Resistente a daños</option>
-                                                <option value="H">Muy Alto (30%) - Para incluir logo</option>
-                                            </select>
-                                            <small class="form-text text-muted">
-                                                Mayor corrección = QR más resistente pero menos capacidad de datos
-                                            </small>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="form-group">
-                                            <div class="custom-control custom-switch">
-                                                <input type="checkbox" class="custom-control-input"
-                                                    id="qr_include_logo" name="qr_include_logo">
-                                                <label class="custom-control-label" for="qr_include_logo">
-                                                    Incluir logo de empresa en QR
-                                                </label>
-                                            </div>
-                                            <small class="form-text text-muted">
-                                                Requiere nivel de corrección Alto (Q) o Muy Alto (H)
-                                            </small>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="alert alert-info mt-3">
+                                <div class=" alert-info mt-3">
                                     <i class="fas fa-info-circle"></i>
                                     <strong>Nota:</strong> Se generará un código QR único que funcionará para todos los buses de la empresa.
                                     Este QR se podrá imprimir desde la sección "Sistema QR" después de generar el paquete.
@@ -1022,7 +993,22 @@ require_once __DIR__ . '/../layouts/base.php';
             // Preparar datos del formulario
             const formData = new FormData(this);
 
-            // Simular progreso mientras esperamos respuesta
+            // Debug: verificar datos
+            console.log('=== DATOS A ENVIAR ===');
+            for (let [key, value] of formData.entries()) {
+                console.log(key + ': ' + value);
+            }
+
+            // Verificar que los checkboxes estén incluidos
+            const contentIds = [];
+            $('.content-checkbox:checked').each(function() {
+                contentIds.push($(this).val());
+                formData.append('content_ids[]', $(this).val());
+            });
+            console.log('Content IDs:', contentIds);
+            console.log('=== FIN DATOS ===');
+
+            // Simular progreso
             let progressInterval = setInterval(() => {
                 let currentProgress = parseInt($('#progressBar').css('width'));
                 if (currentProgress < 90) {
@@ -1031,7 +1017,7 @@ require_once __DIR__ . '/../layouts/base.php';
             }, 1000);
 
             $.ajax({
-                url: $(this).attr('action'),
+                url: '<?php echo API_URL; ?>packages/generate-package.php',
                 method: 'POST',
                 data: formData,
                 processData: false,
@@ -1039,32 +1025,15 @@ require_once __DIR__ . '/../layouts/base.php';
                 dataType: 'json',
                 success: function(response) {
                     clearInterval(progressInterval);
+                    console.log('Respuesta del servidor:', response);
 
                     if (response.success) {
                         updateProgress(100, '¡Paquete generado exitosamente!');
 
-                        // Mostrar información del paquete generado
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Paquete Generado',
-                            html: `
-                                <p><strong>ID:</strong> ${response.package_id}</p>
-                                <p><strong>Tamaño:</strong> ${(response.size / 1024 / 1024).toFixed(2)} MB</p>
-                                <p><strong>Contenido:</strong> ${response.content_count} archivos</p>
-                                <a href="${response.download_url}" class="btn btn-success mt-3">
-                                    <i class="fas fa-download"></i> Descargar Paquete
-                                </a>
-                            `,
-                            showCancelButton: true,
-                            cancelButtonText: 'Cerrar',
-                            confirmButtonText: 'Ir a Paquetes'
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                window.location.href = '<?php echo BASE_URL; ?>views/packages/index.php';
-                            } else {
-                                $('#progressModal').modal('hide');
-                            }
-                        });
+                        setTimeout(() => {
+                            $('#progressModal').modal('hide');
+                            toastr.success('Paquete generado correctamente');
+                        }, 1000);
                     } else {
                         $('#progressModal').modal('hide');
                         Swal.fire({
@@ -1077,6 +1046,8 @@ require_once __DIR__ . '/../layouts/base.php';
                 error: function(xhr, status, error) {
                     clearInterval(progressInterval);
                     $('#progressModal').modal('hide');
+                    console.error('Error AJAX:', error);
+                    console.log('Respuesta:', xhr.responseText);
 
                     Swal.fire({
                         icon: 'error',
@@ -1340,35 +1311,23 @@ require_once __DIR__ . '/../layouts/base.php';
     function updateQRPreview() {
         const ssid = $('#wifi_ssid').val();
         const password = $('#wifi_password').val();
-
-        // NUEVO: Obtener configuración del QR
-        const correction = $('#qr_correction').val() || 'M';
-        const includeLogo = $('#qr_include_logo').is(':checked');
         const companyId = $('#empresa_id').val();
 
         if (ssid && password && password.length >= 8) {
             const hidden = $('#wifi_hidden').is(':checked') ? 'true' : 'false';
 
-            // MODIFICADO: Agregar nuevos parámetros a la URL
             const qrUrl = `<?php echo API_URL; ?>qr/generate-wifi-qr.php?` +
                 `ssid=${encodeURIComponent(ssid)}` +
                 `&password=${encodeURIComponent(password)}` +
                 `&hidden=${hidden}` +
-                `&correction=${correction}` +
-                `&include_logo=${includeLogo}` +
-                `&company_id=${companyId}`;
+                `&company_id=${companyId}` +
+                `&_t=${Date.now()}`;
 
             $('#qrPreview').html(`
             <img src="${qrUrl}" 
                  alt="WiFi QR Code" 
-                 style="max-width: 200px; border: 1px solid #ddd; padding: 10px; background: white;" 
-                 class="fade-in">
-            <div class="mt-2">
-                <small class="text-success">
-                    <i class="fas fa-check-circle"></i> QR generado correctamente
-                    ${includeLogo ? '<br><i class="fas fa-image"></i> Con logo de empresa' : ''}
-                </small>
-            </div>
+                 style="max-width: 280px;" 
+                 class="fade-in">            
         `);
 
             $('.wifi-info').html(`WiFi: <strong>${ssid}</strong>`);
@@ -1411,22 +1370,6 @@ require_once __DIR__ . '/../layouts/base.php';
             .text(Math.round(percent) + '%');
         $('#progressStatus').html('<i class="fas fa-cog fa-spin"></i> ' + status);
     }
-
-    // Validación de nivel de corrección con logo
-    $('#qr_include_logo').on('change', function() {
-        if ($(this).is(':checked')) {
-            const currentLevel = $('#qr_correction').val();
-            if (currentLevel === 'L' || currentLevel === 'M') {
-                $('#qr_correction').val('H');
-                toastr.info('Se cambió el nivel de corrección a "Muy Alto" para incluir el logo');
-            }
-        }
-    });
-    //  Actualizar vista previa del QR
-    $('#qr_correction, #qr_include_logo').on('change', function() {
-        clearTimeout(window.qrUpdateTimeout);
-        window.qrUpdateTimeout = setTimeout(updateQRPreview, 300);
-    });
 </script>
 
 <style>
