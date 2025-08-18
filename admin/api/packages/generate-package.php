@@ -9,13 +9,14 @@ header('Content-Type: application/json');
 
 // Log para debug
 $debugLog = __DIR__ . '/package_generation.log';
-function logDebug($message) {
-    global $debugLog;
-    file_put_contents($debugLog, date('[Y-m-d H:i:s] ') . $message . "\n", FILE_APPEND);
+function logDebug($message)
+{
+//     global $debugLog;
+//     file_put_contents($debugLog, date('[Y-m-d H:i:s] ') . $message . "\n", FILE_APPEND);
 }
 
-ob_start();
-logDebug("=== INICIO GENERACIÓN PAQUETE ===");
+// ob_start();
+// logDebug("=== INICIO GENERACIÓN PAQUETE ===");
 
 try {
     // Incluir configuración y controladores necesarios
@@ -24,8 +25,6 @@ try {
     require_once __DIR__ . '/../../models/Package.php';
     require_once __DIR__ . '/../../models/Company.php';
     require_once __DIR__ . '/../../models/Content.php';
-    
-    logDebug("Archivos incluidos correctamente");
 
     // Verificar autenticación
     if (session_status() === PHP_SESSION_NONE) {
@@ -39,8 +38,6 @@ try {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         throw new Exception('Método no permitido');
     }
-
-    logDebug("POST recibido: " . json_encode($_POST));
 
     // Aumentar límites para proceso pesado
     set_time_limit(0);
@@ -70,7 +67,6 @@ try {
         throw new Exception('La contraseña WiFi debe tener al menos 8 caracteres');
     }
 
-    logDebug("Validaciones completadas");
 
     // Inicializar modelos
     $db = Database::getInstance()->getConnection();
@@ -84,8 +80,6 @@ try {
         throw new Exception('Empresa no encontrada');
     }
 
-    logDebug("Empresa encontrada: " . $company['nombre']);
-
     // Verificar que el contenido existe
     $selectedContent = [];
     foreach ($data['content_ids'] as $contentId) {
@@ -98,8 +92,6 @@ try {
     if (empty($selectedContent)) {
         throw new Exception('No se encontró contenido válido');
     }
-
-    logDebug("Contenido seleccionado: " . count($selectedContent) . " archivos");
 
     // Crear registro inicial del paquete
     $packageData = [
@@ -123,8 +115,6 @@ try {
 
     $packageId = $packageResult['package_id'];
     $installationKey = $packageResult['installation_key'];
-    
-    logDebug("Paquete registrado en BD con ID: " . $packageId);
 
     // Registrar contenido del paquete
     registerPackageContent($packageId, $data['content_ids']);
@@ -159,8 +149,6 @@ try {
         }
     }
 
-    logDebug("Estructura de directorios creada en: " . $tempPath);
-
     // Copiar contenido seleccionado
     $totalSize = 0;
     $contentCount = 0;
@@ -169,7 +157,6 @@ try {
         $sourcePath = UPLOADS_PATH . $content['archivo_path'];
 
         if (!file_exists($sourcePath)) {
-            logDebug("Archivo no encontrado: " . $sourcePath);
             continue;
         }
 
@@ -193,7 +180,6 @@ try {
         if (copy($sourcePath, $destPath)) {
             $totalSize += filesize($sourcePath);
             $contentCount++;
-            logDebug("Copiado: " . basename($content['archivo_path']));
 
             // Copiar thumbnail si existe
             if ($content['thumbnail_path']) {
@@ -206,8 +192,6 @@ try {
             }
         }
     }
-
-    logDebug("Contenido copiado: $contentCount archivos, tamaño total: " . ($totalSize/1024/1024) . " MB");
 
     // Generar archivos de configuración
     generateConfigFiles($tempPath, $company, $data, $packageId);
@@ -256,7 +240,6 @@ try {
     $zipFilename = 'package_' . $packageId . '_' . date('YmdHis') . '.zip';
     $zipFullPath = $zipPath . $zipFilename;
 
-    logDebug("Creando ZIP en: " . $zipFullPath);
 
     $zip = new ZipArchive();
     if ($zip->open($zipFullPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== TRUE) {
@@ -285,7 +268,6 @@ try {
     $addDirToZip($tempPath);
     $zip->close();
 
-    logDebug("ZIP creado exitosamente");
 
     // Calcular checksum del archivo ZIP
     $checksum = hash_file('sha256', $zipFullPath);
@@ -305,11 +287,9 @@ try {
     // Limpiar archivos temporales
     deleteDirectory($tempPath);
 
-    logDebug("Proceso completado exitosamente");
-
     // Limpiar buffer y enviar respuesta
     ob_clean();
-    
+
     // Respuesta exitosa
     echo json_encode([
         'success' => true,
@@ -321,10 +301,8 @@ try {
         'size' => filesize($zipFullPath),
         'content_count' => $contentCount
     ]);
-
 } catch (Exception $e) {
-    logDebug("ERROR: " . $e->getMessage() . "\n" . $e->getTraceAsString());
-    
+
     // En caso de error, marcar paquete como fallido si existe
     if (isset($packageId) && isset($packageModel)) {
         $packageModel->updateStatus($packageId, 'error', [
@@ -636,14 +614,9 @@ main
     chmod($installPath . '/install.sh', 0755);
 }
 
-// Generar QR para el paquete (simplificado sin logo)
+// Generar QR para el paquete
 function generatePackageQR($packagePath, $wifiConfig, $packageId, $companyId)
 {
-    require_once dirname(__DIR__) . '/../libs/phpqrcode/qrlib.php';
-    
-    // Formato WiFi QR
-    $hidden = isset($wifiConfig['hidden']) && $wifiConfig['hidden'] ? 'true' : 'false';
-    $wifiString = "WIFI:T:WPA;S:{$wifiConfig['ssid']};P:{$wifiConfig['password']};H:{$hidden};;";
     
     // Crear directorio para QR
     $qrDir = $packagePath . '/config/qr/';
@@ -651,43 +624,128 @@ function generatePackageQR($packagePath, $wifiConfig, $packageId, $companyId)
         mkdir($qrDir, 0755, true);
     }
     
-    // Generar múltiples tamaños
-    $sizes = [
-        'small' => ['size' => 5, 'file' => 'wifi-qr-small.png'],
-        'medium' => ['size' => 10, 'file' => 'wifi-qr-medium.png'],
-        'large' => ['size' => 15, 'file' => 'wifi-qr-large.png'],
-        'print' => ['size' => 20, 'file' => 'wifi-qr-print.png']
-    ];
+    // Generar QR estilizado usando el mismo endpoint que la vista previa
+    $ssid = urlencode($wifiConfig['ssid']);
+    $password = urlencode($wifiConfig['password']);
+    $hidden = isset($wifiConfig['hidden']) && $wifiConfig['hidden'] ? 'true' : 'false';
     
-    foreach ($sizes as $key => $config) {
-        $qrPath = $qrDir . $config['file'];
-        QRcode::png($wifiString, $qrPath, QR_ECLEVEL_H, $config['size'], 2);
+    // URL del generador de QR estilizado
+    $qrUrl = "http://localhost/playmi/admin/api/qr/generate-wifi-qr.php?" .
+             "ssid={$ssid}&password={$password}&hidden={$hidden}&company_id={$companyId}";
+    
+    // Iniciar sesión para la autenticación
+    $context = stream_context_create([
+        "http" => [
+            "method" => "GET",
+            "header" => "Cookie: PHPSESSID=" . session_id() . "\r\n"
+        ]
+    ]);
+    
+    // Descargar el QR estilizado
+    $qrImageData = @file_get_contents($qrUrl, false, $context);
+    
+    if ($qrImageData === false) {
+        
+        // Fallback: usar phpqrcode básico
+        require_once dirname(__DIR__) . '/../libs/phpqrcode/qrlib.php';
+        $wifiString = "WIFI:T:WPA;S:{$wifiConfig['ssid']};P:{$wifiConfig['password']};H:{$hidden};;";
+        
+        $sizes = [
+            'small' => ['size' => 5, 'file' => 'wifi-qr-small.png'],
+            'medium' => ['size' => 10, 'file' => 'wifi-qr-medium.png'],
+            'large' => ['size' => 15, 'file' => 'wifi-qr-large.png'],
+            'print' => ['size' => 20, 'file' => 'wifi-qr-print.png']
+        ];
+        
+        foreach ($sizes as $key => $config) {
+            $qrPath = $qrDir . $config['file'];
+            QRcode::png($wifiString, $qrPath, QR_ECLEVEL_H, $config['size'], 2);
+        }
+    } else {
+        
+        // Guardar el QR estilizado en diferentes tamaños
+        file_put_contents($qrDir . 'wifi-qr-large.png', $qrImageData);
+        file_put_contents($qrDir . 'wifi-qr-print.png', $qrImageData);
+        
+        // Crear versiones más pequeñas
+        $image = imagecreatefromstring($qrImageData);
+        if ($image !== false) {
+            $originalWidth = imagesx($image);
+            $originalHeight = imagesy($image);
+            
+            // Versión mediana
+            $mediumWidth = 300;
+            $mediumHeight = ($originalHeight / $originalWidth) * $mediumWidth;
+            $mediumImage = imagecreatetruecolor($mediumWidth, $mediumHeight);
+            imagecopyresampled($mediumImage, $image, 0, 0, 0, 0, 
+                             $mediumWidth, $mediumHeight, $originalWidth, $originalHeight);
+            imagepng($mediumImage, $qrDir . 'wifi-qr-medium.png');
+            imagedestroy($mediumImage);
+            
+            // Versión pequeña
+            $smallWidth = 150;
+            $smallHeight = ($originalHeight / $originalWidth) * $smallWidth;
+            $smallImage = imagecreatetruecolor($smallWidth, $smallHeight);
+            imagecopyresampled($smallImage, $image, 0, 0, 0, 0, 
+                             $smallWidth, $smallHeight, $originalWidth, $originalHeight);
+            imagepng($smallImage, $qrDir . 'wifi-qr-small.png');
+            imagedestroy($smallImage);
+            
+            imagedestroy($image);
+        }
     }
     
-    logDebug("QR codes generados en: " . $qrDir);
+    // Guardar también una copia en el directorio de la empresa para el sistema QR
+    $companyQrDir = dirname(dirname(dirname(__DIR__))) . '/companies/' . $companyId . '/qr-codes/';
+    if (!is_dir($companyQrDir)) {
+        mkdir($companyQrDir, 0755, true);
+    }
     
-    // Registrar en BD si existe el modelo
+    // Copiar el QR grande para el sistema QR
+    $qrSystemPath = $companyQrDir . 'package_' . $packageId . '_qr.png';
+    $copyResult = copy($qrDir . 'wifi-qr-large.png', $qrSystemPath);
+    
+    // Registrar en BD sin incluir el modelo (evitar conflicto de clases)
     try {
-        if (class_exists('QRCode')) {
-            require_once dirname(__DIR__) . '/../models/QRCode.php';
-            $qrModel = new QRCode();
-            
-            $qrData = [
-                'empresa_id' => $companyId,
-                'numero_bus' => 'GENERAL-PKG-' . $packageId,
-                'wifi_ssid' => $wifiConfig['ssid'],
-                'wifi_password' => $wifiConfig['password'],
-                'portal_url' => 'http://playmi.pe',
-                'archivo_path' => 'packages/' . $companyId . '/qr/package_' . $packageId . '_qr.png',
-                'tamano_qr' => 300,
-                'nivel_correccion' => 'H',
-                'estado' => 'activo'
-            ];
-            
-            $qrModel->create($qrData);
-        }
+        $db = Database::getInstance()->getConnection();
+        
+        $qrData = [
+            'empresa_id' => $companyId,
+            'numero_bus' => 'PKG-' . $packageId,
+            'wifi_ssid' => $wifiConfig['ssid'],
+            'wifi_password' => $wifiConfig['password'],
+            'portal_url' => 'http://playmi.pe',
+            'archivo_path' => 'companies/' . $companyId . '/qr-codes/package_' . $packageId . '_qr.png',
+            'tamano_qr' => 300,
+            'nivel_correccion' => 'H',
+            'estado' => 'activo'
+        ];
+        
+        $sql = "INSERT INTO qr_codes (
+                    empresa_id, numero_bus, wifi_ssid, wifi_password, 
+                    portal_url, archivo_path, tamano_qr, nivel_correccion, 
+                    estado, created_at
+                ) VALUES (
+                    :empresa_id, :numero_bus, :wifi_ssid, :wifi_password,
+                    :portal_url, :archivo_path, :tamano_qr, :nivel_correccion,
+                    :estado, NOW()
+                )";
+        
+        $stmt = $db->prepare($sql);
+        $stmt->execute([
+            ':empresa_id' => $qrData['empresa_id'],
+            ':numero_bus' => $qrData['numero_bus'],
+            ':wifi_ssid' => $qrData['wifi_ssid'],
+            ':wifi_password' => $qrData['wifi_password'],
+            ':portal_url' => $qrData['portal_url'],
+            ':archivo_path' => $qrData['archivo_path'],
+            ':tamano_qr' => $qrData['tamano_qr'],
+            ':nivel_correccion' => $qrData['nivel_correccion'],
+            ':estado' => $qrData['estado']
+        ]);
+        
+        
     } catch (Exception $e) {
-        logDebug("Error registrando QR en BD: " . $e->getMessage());
     }
 }
 
@@ -711,4 +769,3 @@ function deleteDirectory($dir)
 
     rmdir($dir);
 }
-?>

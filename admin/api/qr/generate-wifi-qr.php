@@ -2,8 +2,36 @@
 // admin/api/qr/generate-wifi-qr.php
 session_start();
 
-// Verificación de sesión
-if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
+// Lista de IPs permitidas (localhost y tu servidor)
+$allowedIPs = ['127.0.0.1', '::1', $_SERVER['SERVER_ADDR'] ?? ''];
+
+// Verificar si es una petición interna
+$isInternalRequest = in_array($_SERVER['REMOTE_ADDR'], $allowedIPs);
+
+// Verificar referer (de dónde viene la petición)
+$validReferer = false;
+if (isset($_SERVER['HTTP_REFERER'])) {
+    $refererHost = parse_url($_SERVER['HTTP_REFERER'], PHP_URL_HOST);
+    $currentHost = $_SERVER['HTTP_HOST'];
+    $validReferer = ($refererHost === $currentHost);
+}
+
+// Parámetros válidos
+$hasValidParams = isset($_GET['ssid']) && 
+                  isset($_GET['password']) && 
+                  strlen($_GET['ssid']) > 0 && 
+                  strlen($_GET['password']) >= 8 &&
+                  isset($_GET['company_id']) && 
+                  is_numeric($_GET['company_id']);
+
+// Autorización: Sesión válida O (petición interna Y referer válido Y parámetros válidos)
+$isAuthorized = (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true) ||
+                ($validReferer && $hasValidParams);
+
+if (!$isAuthorized) {
+    // Log de intentos no autorizados (opcional)
+    error_log("QR generation unauthorized attempt from IP: " . $_SERVER['REMOTE_ADDR']);
+    
     header('Content-Type: image/png');
     $img = imagecreate(200, 50);
     $white = imagecolorallocate($img, 255, 255, 255);
@@ -12,6 +40,34 @@ if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== tru
     imagepng($img);
     exit;
 }
+
+// Límite de rate (opcional) - máximo 10 QRs por minuto por IP
+$rateLimitFile = sys_get_temp_dir() . '/qr_rate_' . md5($_SERVER['REMOTE_ADDR']);
+if (file_exists($rateLimitFile)) {
+    $attempts = json_decode(file_get_contents($rateLimitFile), true);
+    $now = time();
+    
+    // Limpiar intentos antiguos (más de 1 minuto)
+    $attempts = array_filter($attempts, function($time) use ($now) {
+        return ($now - $time) < 60;
+    });
+    
+    if (count($attempts) >= 10) {
+        header('Content-Type: image/png');
+        $img = imagecreate(200, 50);
+        $white = imagecolorallocate($img, 255, 255, 255);
+        $red = imagecolorallocate($img, 255, 0, 0);
+        imagestring($img, 5, 10, 15, "Limite excedido", $red);
+        imagepng($img);
+        exit;
+    }
+           
+    $attempts[] = $now;
+} else {
+    $attempts = [time()];
+}
+file_put_contents($rateLimitFile, json_encode($attempts));
+
 
 require_once dirname(dirname(__DIR__)) . '/libs/phpqrcode/qrlib.php';
 

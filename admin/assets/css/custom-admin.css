@@ -143,6 +143,12 @@
     color: white;
 }
 
+.nav-treeview {
+    padding-left: 10px !important;
+    font-size: 14px !important;
+}
+
+
 /* Formularios */
 .form-control {
     border-radius: 6px;

@@ -234,9 +234,7 @@ function isMenuOpen($menuPaths, $currentPath)
                 <li class="nav-item <?php echo isMenuOpen(['qr-system'], $currentPath) ? 'menu-open' : ''; ?>">
                     <a href="#" class="nav-link <?php echo isMenuActive('qr-system', $currentPath) ? 'active' : ''; ?>">
                         <i class="nav-icon fas fa-qrcode"></i>
-                        <p>
-                            Sistema QR
-                            <i class="right fas fa-angle-left"></i>
+                        <p>Sistema QR <i class="right fas fa-angle-left"></i>
                         </p>
                     </a>
                     <ul class="nav nav-treeview">
@@ -247,13 +245,13 @@ function isMenuOpen($menuPaths, $currentPath)
                                 <p>Lista de QR</p>
                             </a>
                         </li>
-                        <li class="nav-item">
+                        <!-- <li class="nav-item">
                             <a href="<?php echo BASE_URL; ?>views/qr-system/generate.php"
                                 class="nav-link <?php echo isMenuActive('qr-system/generate.php', $currentPath) ? 'active' : ''; ?>">
                                 <i class="far fa-plus-square nav-icon"></i>
                                 <p>Generar QR</p>
                             </a>
-                        </li>
+                        </li> -->
                     </ul>
                 </li>
 

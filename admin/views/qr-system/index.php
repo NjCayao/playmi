@@ -237,15 +237,7 @@ ob_start();
                                            data-toggle="tooltip" 
                                            title="Descargar">
                                             <i class="fas fa-download"></i>
-                                        </a>
-                                        <button type="button" 
-                                                class="btn btn-warning btn-toggle-status" 
-                                                data-id="<?php echo $qr['id']; ?>"
-                                                data-status="<?php echo $qr['estado']; ?>"
-                                                data-toggle="tooltip" 
-                                                title="Cambiar estado">
-                                            <i class="fas fa-toggle-<?php echo $qr['estado'] == 'activo' ? 'on' : 'off'; ?>"></i>
-                                        </button>
+                                        </a>                                        
                                         <button type="button" 
                                                 class="btn btn-primary btn-preview" 
                                                 data-id="<?php echo $qr['id']; ?>"
@@ -346,46 +338,7 @@ require_once '../layouts/base.php';
 ?>
 
 <script>
-$(document).ready(function() {
-    // Cambiar estado de QR
-    $('.btn-toggle-status').on('click', function() {
-        const btn = $(this);
-        const qrId = btn.data('id');
-        const currentStatus = btn.data('status');
-        const newStatus = currentStatus === 'activo' ? 'inactivo' : 'activo';
-        
-        Swal.fire({
-            title: '¿Cambiar estado?',
-            text: `El QR se marcará como ${newStatus}`,
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: 'Sí, cambiar',
-            cancelButtonText: 'Cancelar'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                $.ajax({
-                    url: '<?php echo API_URL; ?>qr/update-status.php',
-                    method: 'POST',
-                    data: {
-                        qr_id: qrId,
-                        status: newStatus
-                    },
-                    success: function(response) {
-                        if (response.success) {
-                            Swal.fire('¡Actualizado!', response.message, 'success');
-                            setTimeout(() => location.reload(), 1500);
-                        } else {
-                            Swal.fire('Error', response.error || 'Error al actualizar', 'error');
-                        }
-                    },
-                    error: function() {
-                        Swal.fire('Error', 'Error de conexión', 'error');
-                    }
-                });
-            }
-        });
-    });
-    
+$(document).ready(function() {   
     // Vista previa de QR
     $('.btn-preview').on('click', function() {
         const qrId = $(this).data('id');
