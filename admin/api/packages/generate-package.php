@@ -11,8 +11,8 @@ header('Content-Type: application/json');
 $debugLog = __DIR__ . '/package_generation.log';
 function logDebug($message)
 {
-//     global $debugLog;
-//     file_put_contents($debugLog, date('[Y-m-d H:i:s] ') . $message . "\n", FILE_APPEND);
+    //     global $debugLog;
+    //     file_put_contents($debugLog, date('[Y-m-d H:i:s] ') . $message . "\n", FILE_APPEND);
 }
 
 // ob_start();
@@ -192,6 +192,119 @@ try {
             }
         }
     }
+
+
+    // Copiar publicidad seleccionada
+    if (
+        !empty($data['video_inicio_id']) || !empty($data['video_mitad_id']) ||
+        !empty($data['banner_header_id']) || !empty($data['banner_footer_id']) ||
+        !empty($data['banner_catalogo_id'])
+    ) {
+
+        // Crear directorios de publicidad
+        $adsPath = $tempPath . '/advertising';
+        mkdir($adsPath, 0755, true);
+        mkdir($adsPath . '/videos', 0755, true);
+        mkdir($adsPath . '/banners', 0755, true);
+
+        // Copiar videos
+        if (!empty($data['video_inicio_id'])) {
+            copyAdvertisingFile('video', $data['video_inicio_id'], $adsPath . '/videos/inicio.mp4');
+        }
+        if (!empty($data['video_mitad_id'])) {
+            copyAdvertisingFile('video', $data['video_mitad_id'], $adsPath . '/videos/mitad.mp4');
+        }
+
+        // Copiar banners
+        if (!empty($data['banner_header_id'])) {
+            copyAdvertisingFile('banner', $data['banner_header_id'], $adsPath . '/banners/header.jpg');
+        }
+        if (!empty($data['banner_footer_id'])) {
+            copyAdvertisingFile('banner', $data['banner_footer_id'], $adsPath . '/banners/footer.jpg');
+        }
+        if (!empty($data['banner_catalogo_id'])) {
+            copyAdvertisingFile('banner', $data['banner_catalogo_id'], $adsPath . '/banners/catalogo.jpg');
+        }
+
+        // Generar configuración de publicidad
+        generateAdvertisingConfig($tempPath, $data);
+    }
+
+    // Función para copiar archivo de publicidad
+    function copyAdvertisingFile($type, $id, $destination)
+    {
+        require_once __DIR__ . '/../../models/Advertising.php';
+        $advertisingModel = new Advertising();
+
+        if ($type === 'video') {
+            $ad = $advertisingModel->getVideoById($id);
+            $sourcePath = UPLOADS_PATH . $ad['archivo_path'];
+        } else {
+            $ad = $advertisingModel->getBannerById($id);
+            $sourcePath = UPLOADS_PATH . $ad['imagen_path'];
+        }
+
+        if (file_exists($sourcePath)) {
+            copy($sourcePath, $destination);
+        }
+    }
+
+    // Función para generar configuración de publicidad
+    function generateAdvertisingConfig($basePath, $data)
+    {
+        $config = [
+            'videos' => [
+                'inicio' => [
+                    'enabled' => !empty($data['video_inicio_id']),
+                    'file' => 'advertising/videos/inicio.mp4',
+                    'trigger_time' => 300, // 5 minutos
+                    'skippable' => isset($data['video_skip_allowed']) && $data['video_skip_allowed'],
+                    'skip_after' => 5,
+                    'mutable' => isset($data['video_mute_allowed']) && $data['video_mute_allowed']
+                ],
+                'mitad' => [
+                    'enabled' => !empty($data['video_mitad_id']),
+                    'file' => 'advertising/videos/mitad.mp4',
+                    'trigger_type' => 'midroll',
+                    'min_content_duration' => 1800, // 30 minutos
+                    'skippable' => isset($data['video_skip_allowed']) && $data['video_skip_allowed'],
+                    'skip_after' => 5,
+                    'mutable' => isset($data['video_mute_allowed']) && $data['video_mute_allowed']
+                ]
+            ],
+            'banners' => [
+                'header' => [
+                    'enabled' => !empty($data['banner_header_id']),
+                    'file' => 'advertising/banners/header.jpg',
+                    'position' => 'top',
+                    'clickable' => true
+                ],
+                'footer' => [
+                    'enabled' => !empty($data['banner_footer_id']),
+                    'file' => 'advertising/banners/footer.jpg',
+                    'position' => 'bottom',
+                    'clickable' => true
+                ],
+                'catalogo' => [
+                    'enabled' => !empty($data['banner_catalogo_id']),
+                    'file' => 'advertising/banners/catalogo.jpg',
+                    'frequency' => $data['banner_catalogo_frequency'] ?? 3,
+                    'clickable' => true
+                ]
+            ],
+            'tracking' => [
+                'impressions' => isset($data['track_impressions']) && $data['track_impressions'],
+                'clicks' => isset($data['track_clicks']) && $data['track_clicks'],
+                'completion' => isset($data['track_completion']) && $data['track_completion']
+            ]
+        ];
+
+        file_put_contents(
+            $basePath . '/config/advertising.json',
+            json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
+        );
+    }
+
 
     // Generar archivos de configuración
     generateConfigFiles($tempPath, $company, $data, $packageId);
@@ -617,22 +730,22 @@ main
 // Generar QR para el paquete
 function generatePackageQR($packagePath, $wifiConfig, $packageId, $companyId)
 {
-    
+
     // Crear directorio para QR
     $qrDir = $packagePath . '/config/qr/';
     if (!is_dir($qrDir)) {
         mkdir($qrDir, 0755, true);
     }
-    
+
     // Generar QR estilizado usando el mismo endpoint que la vista previa
     $ssid = urlencode($wifiConfig['ssid']);
     $password = urlencode($wifiConfig['password']);
     $hidden = isset($wifiConfig['hidden']) && $wifiConfig['hidden'] ? 'true' : 'false';
-    
+
     // URL del generador de QR estilizado
     $qrUrl = "http://localhost/playmi/admin/api/qr/generate-wifi-qr.php?" .
-             "ssid={$ssid}&password={$password}&hidden={$hidden}&company_id={$companyId}";
-    
+        "ssid={$ssid}&password={$password}&hidden={$hidden}&company_id={$companyId}";
+
     // Iniciar sesión para la autenticación
     $context = stream_context_create([
         "http" => [
@@ -640,75 +753,95 @@ function generatePackageQR($packagePath, $wifiConfig, $packageId, $companyId)
             "header" => "Cookie: PHPSESSID=" . session_id() . "\r\n"
         ]
     ]);
-    
+
     // Descargar el QR estilizado
     $qrImageData = @file_get_contents($qrUrl, false, $context);
-    
+
     if ($qrImageData === false) {
-        
+
         // Fallback: usar phpqrcode básico
         require_once dirname(__DIR__) . '/../libs/phpqrcode/qrlib.php';
         $wifiString = "WIFI:T:WPA;S:{$wifiConfig['ssid']};P:{$wifiConfig['password']};H:{$hidden};;";
-        
+
         $sizes = [
             'small' => ['size' => 5, 'file' => 'wifi-qr-small.png'],
             'medium' => ['size' => 10, 'file' => 'wifi-qr-medium.png'],
             'large' => ['size' => 15, 'file' => 'wifi-qr-large.png'],
             'print' => ['size' => 20, 'file' => 'wifi-qr-print.png']
         ];
-        
+
         foreach ($sizes as $key => $config) {
             $qrPath = $qrDir . $config['file'];
             QRcode::png($wifiString, $qrPath, QR_ECLEVEL_H, $config['size'], 2);
         }
     } else {
-        
+
         // Guardar el QR estilizado en diferentes tamaños
         file_put_contents($qrDir . 'wifi-qr-large.png', $qrImageData);
         file_put_contents($qrDir . 'wifi-qr-print.png', $qrImageData);
-        
+
         // Crear versiones más pequeñas
         $image = imagecreatefromstring($qrImageData);
         if ($image !== false) {
             $originalWidth = imagesx($image);
             $originalHeight = imagesy($image);
-            
+
             // Versión mediana
             $mediumWidth = 300;
             $mediumHeight = ($originalHeight / $originalWidth) * $mediumWidth;
             $mediumImage = imagecreatetruecolor($mediumWidth, $mediumHeight);
-            imagecopyresampled($mediumImage, $image, 0, 0, 0, 0, 
-                             $mediumWidth, $mediumHeight, $originalWidth, $originalHeight);
+            imagecopyresampled(
+                $mediumImage,
+                $image,
+                0,
+                0,
+                0,
+                0,
+                $mediumWidth,
+                $mediumHeight,
+                $originalWidth,
+                $originalHeight
+            );
             imagepng($mediumImage, $qrDir . 'wifi-qr-medium.png');
             imagedestroy($mediumImage);
-            
+
             // Versión pequeña
             $smallWidth = 150;
             $smallHeight = ($originalHeight / $originalWidth) * $smallWidth;
             $smallImage = imagecreatetruecolor($smallWidth, $smallHeight);
-            imagecopyresampled($smallImage, $image, 0, 0, 0, 0, 
-                             $smallWidth, $smallHeight, $originalWidth, $originalHeight);
+            imagecopyresampled(
+                $smallImage,
+                $image,
+                0,
+                0,
+                0,
+                0,
+                $smallWidth,
+                $smallHeight,
+                $originalWidth,
+                $originalHeight
+            );
             imagepng($smallImage, $qrDir . 'wifi-qr-small.png');
             imagedestroy($smallImage);
-            
+
             imagedestroy($image);
         }
     }
-    
+
     // Guardar también una copia en el directorio de la empresa para el sistema QR
     $companyQrDir = dirname(dirname(dirname(__DIR__))) . '/companies/' . $companyId . '/qr-codes/';
     if (!is_dir($companyQrDir)) {
         mkdir($companyQrDir, 0755, true);
     }
-    
+
     // Copiar el QR grande para el sistema QR
     $qrSystemPath = $companyQrDir . 'package_' . $packageId . '_qr.png';
     $copyResult = copy($qrDir . 'wifi-qr-large.png', $qrSystemPath);
-    
+
     // Registrar en BD sin incluir el modelo (evitar conflicto de clases)
     try {
         $db = Database::getInstance()->getConnection();
-        
+
         $qrData = [
             'empresa_id' => $companyId,
             'numero_bus' => 'PKG-' . $packageId,
@@ -720,7 +853,7 @@ function generatePackageQR($packagePath, $wifiConfig, $packageId, $companyId)
             'nivel_correccion' => 'H',
             'estado' => 'activo'
         ];
-        
+
         $sql = "INSERT INTO qr_codes (
                     empresa_id, numero_bus, wifi_ssid, wifi_password, 
                     portal_url, archivo_path, tamano_qr, nivel_correccion, 
@@ -730,7 +863,7 @@ function generatePackageQR($packagePath, $wifiConfig, $packageId, $companyId)
                     :portal_url, :archivo_path, :tamano_qr, :nivel_correccion,
                     :estado, NOW()
                 )";
-        
+
         $stmt = $db->prepare($sql);
         $stmt->execute([
             ':empresa_id' => $qrData['empresa_id'],
@@ -743,8 +876,6 @@ function generatePackageQR($packagePath, $wifiConfig, $packageId, $companyId)
             ':nivel_correccion' => $qrData['nivel_correccion'],
             ':estado' => $qrData['estado']
         ]);
-        
-        
     } catch (Exception $e) {
     }
 }

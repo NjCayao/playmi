@@ -654,123 +654,345 @@ ob_start();
                                         </div>
                                     </div>
                                 </div>
+                            </div>
 
-                                <div class="card mt-3 animated-card">
-                                    <div class="card-header bg-success">
-                                        <h5 class="card-title mb-0">
-                                            <i class="fas fa-photo-video"></i> Contenido Seleccionado
+
+                            <!-- Step 7: Publicidad -->
+                            <div id="step7" class="content">
+                                <h4>Paso 7: Configurar Publicidad</h4>
+                                <p class="text-muted">Configure videos publicitarios y banners para monetización</p>
+
+                                <!-- Estadísticas de publicidad disponible -->
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <div class="info-box bg-gradient-info">
+                                            <span class="info-box-icon"><i class="fas fa-video"></i></span>
+                                            <div class="info-box-content">
+                                                <span class="info-box-text">Videos Disponibles</span>
+                                                <span class="info-box-number" id="availableVideosCount">0</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="info-box bg-gradient-warning">
+                                            <span class="info-box-icon"><i class="fas fa-image"></i></span>
+                                            <div class="info-box-content">
+                                                <span class="info-box-text">Banners Disponibles</span>
+                                                <span class="info-box-number" id="availableBannersCount">0</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Videos Publicitarios -->
+                                <div class="card card-primary card-outline">
+                                    <div class="card-header">
+                                        <h5 class="card-title">
+                                            <i class="fas fa-video"></i> Videos Publicitarios
                                         </h5>
+                                        <div class="card-tools">
+                                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                                <i class="fas fa-minus"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                     <div class="card-body">
                                         <div class="row">
-                                            <div class="col-md-4">
-                                                <div class="info-box bg-danger">
-                                                    <span class="info-box-icon"><i class="fas fa-film"></i></span>
-                                                    <div class="info-box-content">
-                                                        <span class="info-box-text">Películas</span>
-                                                        <span class="info-box-number" id="review_movies">0</span>
-                                                    </div>
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label for="video_inicio_id">Video al inicio (5 minutos)</label>
+                                                    <select class="form-control select2" id="video_inicio_id" name="video_inicio_id">
+                                                        <option value="">Sin publicidad al inicio</option>
+                                                        <!-- Se llenará dinámicamente -->
+                                                    </select>
+                                                    <small class="form-text text-muted">
+                                                        Se reproducirá a los 5 minutos de iniciada la película
+                                                    </small>
                                                 </div>
                                             </div>
-                                            <div class="col-md-4">
-                                                <div class="info-box bg-success">
-                                                    <span class="info-box-icon"><i class="fas fa-music"></i></span>
-                                                    <div class="info-box-content">
-                                                        <span class="info-box-text">Música</span>
-                                                        <span class="info-box-number" id="review_music">0</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-4">
-                                                <div class="info-box bg-warning">
-                                                    <span class="info-box-icon"><i class="fas fa-gamepad"></i></span>
-                                                    <div class="info-box-content">
-                                                        <span class="info-box-text">Juegos</span>
-                                                        <span class="info-box-number" id="review_games">0</span>
-                                                    </div>
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label for="video_mitad_id">Video a la mitad</label>
+                                                    <select class="form-control select2" id="video_mitad_id" name="video_mitad_id">
+                                                        <option value="">Sin publicidad a la mitad</option>
+                                                        <!-- Se llenará dinámicamente -->
+                                                    </select>
+                                                    <small class="form-text text-muted">
+                                                        Solo en contenido mayor a 30 minutos
+                                                    </small>
                                                 </div>
                                             </div>
                                         </div>
 
                                         <div class="alert alert-info">
                                             <i class="fas fa-info-circle"></i>
-                                            <strong>Tamaño total estimado:</strong> <span id="review_size">0 MB</span>
+                                            <strong>Comportamiento:</strong> El video principal se pausará automáticamente,
+                                            se reproducirá la publicidad sin controles, y luego continuará automáticamente.
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label>Configuración de Videos</label>
+                                            <div class="custom-control custom-checkbox">
+                                                <input type="checkbox" class="custom-control-input" id="video_skip_allowed"
+                                                    name="video_skip_allowed" checked>
+                                                <label class="custom-control-label" for="video_skip_allowed">
+                                                    Permitir saltar publicidad después de 5 segundos
+                                                </label>
+                                            </div>
+                                            <div class="custom-control custom-checkbox">
+                                                <input type="checkbox" class="custom-control-input" id="video_mute_allowed"
+                                                    name="video_mute_allowed">
+                                                <label class="custom-control-label" for="video_mute_allowed">
+                                                    Permitir silenciar publicidad
+                                                </label>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div class="form-group">
-                                    <label for="notas">Notas adicionales (opcional)</label>
-                                    <textarea class="form-control" id="notas" name="notas" rows="3"
-                                        placeholder="Notas o comentarios sobre este paquete..."></textarea>
+                                <!-- Banners -->
+                                <div class="card card-warning card-outline mt-3">
+                                    <div class="card-header">
+                                        <h5 class="card-title">
+                                            <i class="fas fa-image"></i> Banners Publicitarios
+                                        </h5>
+                                        <div class="card-tools">
+                                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                                <i class="fas fa-minus"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                <div class="form-group">
+                                                    <label for="banner_header_id">Banner Superior</label>
+                                                    <select class="form-control select2" id="banner_header_id" name="banner_header_id">
+                                                        <option value="">Sin banner superior</option>
+                                                        <!-- Se llenará dinámicamente -->
+                                                    </select>
+                                                    <small class="form-text text-muted">1920x200px</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="form-group">
+                                                    <label for="banner_footer_id">Banner Inferior</label>
+                                                    <select class="form-control select2" id="banner_footer_id" name="banner_footer_id">
+                                                        <option value="">Sin banner inferior</option>
+                                                        <!-- Se llenará dinámicamente -->
+                                                    </select>
+                                                    <small class="form-text text-muted">1920x100px</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="form-group">
+                                                    <label for="banner_catalogo_id">Banner en Catálogo</label>
+                                                    <select class="form-control select2" id="banner_catalogo_id" name="banner_catalogo_id">
+                                                        <option value="">Sin banner en catálogo</option>
+                                                        <!-- Se llenará dinámicamente -->
+                                                    </select>
+                                                    <small class="form-text text-muted">300x250px</small>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label>Frecuencia de Banners en Catálogo</label>
+                                            <select class="form-control" name="banner_catalogo_frequency">
+                                                <option value="3">Cada 3 elementos</option>
+                                                <option value="5">Cada 5 elementos</option>
+                                                <option value="10">Cada 10 elementos</option>
+                                            </select>
+                                        </div>
+                                    </div>
                                 </div>
 
-                                <div class="alert alert-warning">
-                                    <i class="fas fa-exclamation-triangle"></i>
-                                    <strong>Importante:</strong> La generación del paquete puede tomar varios minutos
-                                    dependiendo de la cantidad de contenido seleccionado. No cierre esta ventana durante el proceso.
+                                <!-- Preview de Publicidad -->
+                                <div class="card card-info card-outline mt-3">
+                                    <div class="card-header">
+                                        <h5 class="card-title">
+                                            <i class="fas fa-eye"></i> Vista Previa de Ubicación
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="advertising-preview" style="background: #1a1a1a; padding: 20px; border-radius: 8px;">
+                                            <!-- Header Banner Preview -->
+                                            <div id="headerBannerPreview" class="banner-preview" style="height: 60px; background: #333; margin-bottom: 10px; display: none;">
+                                                <img src="" alt="Header Banner" style="width: 100%; height: 100%; object-fit: contain;">
+                                            </div>
+
+                                            <!-- Content Area -->
+                                            <div style="background: #222; padding: 20px; min-height: 300px; color: white; text-align: center;">
+                                                <h4>Área de Contenido Principal</h4>
+                                                <p>Películas, Música, Juegos</p>
+
+                                                <!-- Catalog Banner Example -->
+                                                <div id="catalogBannerPreview" class="banner-preview" style="width: 300px; height: 250px; background: #444; margin: 20px auto; display: none;">
+                                                    <img src="" alt="Catalog Banner" style="width: 100%; height: 100%; object-fit: contain;">
+                                                </div>
+                                            </div>
+
+                                            <!-- Footer Banner Preview -->
+                                            <div id="footerBannerPreview" class="banner-preview" style="height: 40px; background: #333; margin-top: 10px; display: none;">
+                                                <img src="" alt="Footer Banner" style="width: 100%; height: 100%; object-fit: contain;">
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
 
-                                <div class="bs-stepper-header" role="tablist">
-                                    <div class="step active" data-target="#step1" data-step="1">
-                                        <button type="button" class="step-trigger" role="tab">
-                                            <span class="bs-stepper-circle">
-                                                <i class="fas fa-building step-icon"></i>
-                                                <i class="fas fa-check step-check" style="display: none;"></i>
-                                            </span>
-                                            <span class="bs-stepper-label">Empresa</span>
-                                        </button>
+                                <!-- Métricas y Reportes -->
+                                <div class="form-group mt-3">
+                                    <label>Configuración de Métricas</label>
+                                    <div class="custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" id="track_impressions"
+                                            name="track_impressions" checked>
+                                        <label class="custom-control-label" for="track_impressions">
+                                            Registrar impresiones de publicidad
+                                        </label>
                                     </div>
-                                    <div class="line"></div>
-                                    <div class="step" data-target="#step2" data-step="2">
-                                        <button type="button" class="step-trigger" role="tab">
-                                            <span class="bs-stepper-circle">
-                                                <i class="fas fa-palette step-icon"></i>
-                                                <i class="fas fa-check step-check" style="display: none;"></i>
-                                            </span>
-                                            <span class="bs-stepper-label">Branding</span>
-                                        </button>
+                                    <div class="custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" id="track_clicks"
+                                            name="track_clicks" checked>
+                                        <label class="custom-control-label" for="track_clicks">
+                                            Registrar clics en banners
+                                        </label>
                                     </div>
-                                    <div class="line"></div>
-                                    <div class="step" data-target="#step3" data-step="3">
-                                        <button type="button" class="step-trigger" role="tab">
-                                            <span class="bs-stepper-circle">
-                                                <i class="fas fa-photo-video step-icon"></i>
-                                                <i class="fas fa-check step-check" style="display: none;"></i>
-                                            </span>
-                                            <span class="bs-stepper-label">Contenido</span>
-                                        </button>
+                                    <div class="custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" id="track_completion"
+                                            name="track_completion" checked>
+                                        <label class="custom-control-label" for="track_completion">
+                                            Registrar videos completados vs saltados
+                                        </label>
                                     </div>
-                                    <div class="line"></div>
-                                    <div class="step" data-target="#step4" data-step="4">
-                                        <button type="button" class="step-trigger" role="tab">
-                                            <span class="bs-stepper-circle">
-                                                <i class="fas fa-wifi step-icon"></i>
-                                                <i class="fas fa-check step-check" style="display: none;"></i>
-                                            </span>
-                                            <span class="bs-stepper-label">WiFi</span>
-                                        </button>
+                                </div>
+                            </div>
+
+
+                            <div class="card mt-3 animated-card">
+                                <div class="card-header bg-success">
+                                    <h5 class="card-title mb-0">
+                                        <i class="fas fa-photo-video"></i> Contenido Seleccionado
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <div class="info-box bg-danger">
+                                                <span class="info-box-icon"><i class="fas fa-film"></i></span>
+                                                <div class="info-box-content">
+                                                    <span class="info-box-text">Películas</span>
+                                                    <span class="info-box-number" id="review_movies">0</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="info-box bg-success">
+                                                <span class="info-box-icon"><i class="fas fa-music"></i></span>
+                                                <div class="info-box-content">
+                                                    <span class="info-box-text">Música</span>
+                                                    <span class="info-box-number" id="review_music">0</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="info-box bg-warning">
+                                                <span class="info-box-icon"><i class="fas fa-gamepad"></i></span>
+                                                <div class="info-box-content">
+                                                    <span class="info-box-text">Juegos</span>
+                                                    <span class="info-box-number" id="review_games">0</span>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div class="line"></div>
-                                    <div class="step" data-target="#step5" data-step="5">
-                                        <button type="button" class="step-trigger" role="tab">
-                                            <span class="bs-stepper-circle">
-                                                <i class="fas fa-globe step-icon"></i>
-                                                <i class="fas fa-check step-check" style="display: none;"></i>
-                                            </span>
-                                            <span class="bs-stepper-label">Portal</span>
-                                        </button>
+
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-info-circle"></i>
+                                        <strong>Tamaño total estimado:</strong> <span id="review_size">0 MB</span>
                                     </div>
-                                    <div class="line"></div>
-                                    <div class="step" data-target="#step6" data-step="6">
-                                        <button type="button" class="step-trigger" role="tab">
-                                            <span class="bs-stepper-circle">
-                                                <i class="fas fa-clipboard-check step-icon"></i>
-                                                <i class="fas fa-check step-check" style="display: none;"></i>
-                                            </span>
-                                            <span class="bs-stepper-label">Revisar</span>
-                                        </button>
-                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="notas">Notas adicionales (opcional)</label>
+                                <textarea class="form-control" id="notas" name="notas" rows="3"
+                                    placeholder="Notas o comentarios sobre este paquete..."></textarea>
+                            </div>
+
+                            <div class="alert-warning">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <strong>Importante:</strong> La generación del paquete puede tomar varios minutos
+                                dependiendo de la cantidad de contenido seleccionado. No cierre esta ventana durante el proceso.
+                            </div>
+
+                            <div class="bs-stepper-header" role="tablist">
+                                <div class="step active" data-target="#step1" data-step="1">
+                                    <button type="button" class="step-trigger" role="tab">
+                                        <span class="bs-stepper-circle">
+                                            <i class="fas fa-building step-icon"></i>
+                                            <i class="fas fa-check step-check" style="display: none;"></i>
+                                        </span>
+                                        <span class="bs-stepper-label">Empresa</span>
+                                    </button>
+                                </div>
+                                <div class="line"></div>
+                                <div class="step" data-target="#step2" data-step="2">
+                                    <button type="button" class="step-trigger" role="tab">
+                                        <span class="bs-stepper-circle">
+                                            <i class="fas fa-palette step-icon"></i>
+                                            <i class="fas fa-check step-check" style="display: none;"></i>
+                                        </span>
+                                        <span class="bs-stepper-label">Branding</span>
+                                    </button>
+                                </div>
+                                <div class="line"></div>
+                                <div class="step" data-target="#step3" data-step="3">
+                                    <button type="button" class="step-trigger" role="tab">
+                                        <span class="bs-stepper-circle">
+                                            <i class="fas fa-photo-video step-icon"></i>
+                                            <i class="fas fa-check step-check" style="display: none;"></i>
+                                        </span>
+                                        <span class="bs-stepper-label">Contenido</span>
+                                    </button>
+                                </div>
+                                <div class="line"></div>
+                                <div class="step" data-target="#step4" data-step="4">
+                                    <button type="button" class="step-trigger" role="tab">
+                                        <span class="bs-stepper-circle">
+                                            <i class="fas fa-wifi step-icon"></i>
+                                            <i class="fas fa-check step-check" style="display: none;"></i>
+                                        </span>
+                                        <span class="bs-stepper-label">WiFi</span>
+                                    </button>
+                                </div>
+                                <div class="line"></div>
+                                <div class="step" data-target="#step5" data-step="5">
+                                    <button type="button" class="step-trigger" role="tab">
+                                        <span class="bs-stepper-circle">
+                                            <i class="fas fa-globe step-icon"></i>
+                                            <i class="fas fa-check step-check" style="display: none;"></i>
+                                        </span>
+                                        <span class="bs-stepper-label">Portal</span>
+                                    </button>
+                                </div>
+                                <div class="line"></div>
+                                <div class="step" data-target="#step6" data-step="6">
+                                    <button type="button" class="step-trigger" role="tab">
+                                        <span class="bs-stepper-circle">
+                                            <i class="fas fa-ad step-icon"></i>
+                                            <i class="fas fa-check step-check" style="display: none;"></i>
+                                        </span>
+                                        <span class="bs-stepper-label">Publicidad</span>
+                                    </button>
+                                </div>
+                                <div class="line"></div>
+                                <div class="step" data-target="#step6" data-step="6">
+                                    <button type="button" class="step-trigger" role="tab">
+                                        <span class="bs-stepper-circle">
+                                            <i class="fas fa-clipboard-check step-icon"></i>
+                                            <i class="fas fa-check step-check" style="display: none;"></i>
+                                        </span>
+                                        <span class="bs-stepper-label">Revisar</span>
+                                    </button>
                                 </div>
                             </div>
 
@@ -842,7 +1064,7 @@ require_once __DIR__ . '/../layouts/base.php';
 <script>
     // Variables globales
     let currentStep = 1;
-    const totalSteps = 6;
+    const totalSteps = 7;
     let selectedCompany = null;
     let selectedContent = {
         movies: [],
@@ -902,7 +1124,13 @@ require_once __DIR__ . '/../layouts/base.php';
             } else {
                 $('#companyInfo').fadeOut(300);
             }
+
+            if (selectedCompany && selectedCompany.id) {
+                loadCompanyAdvertising(selectedCompany.id);
+            }
+
         });
+
 
         // Preview de colores
         $('#color_primario, #color_secundario').on('input', function() {
@@ -1072,6 +1300,62 @@ require_once __DIR__ . '/../layouts/base.php';
                 goToStep(targetStep);
             }
         });
+    });
+
+    // Función para cargar publicidad de la empresa
+    function loadCompanyAdvertising(companyId) {
+        $.ajax({
+            url: '<?php echo API_URL; ?>advertising/get-company-ads.php',
+            method: 'GET',
+            data: {
+                company_id: companyId
+            },
+            success: function(response) {
+                if (response.success) {
+                    // Llenar selects de videos
+                    fillAdvertisingSelect('#video_inicio_id', response.videos.filter(v => v.tipo_video === 'inicio'), 'video');
+                    fillAdvertisingSelect('#video_mitad_id', response.videos.filter(v => v.tipo_video === 'mitad'), 'video');
+
+                    // Llenar selects de banners
+                    fillAdvertisingSelect('#banner_header_id', response.banners.filter(b => b.tipo_banner === 'header'), 'banner');
+                    fillAdvertisingSelect('#banner_footer_id', response.banners.filter(b => b.tipo_banner === 'footer'), 'banner');
+                    fillAdvertisingSelect('#banner_catalogo_id', response.banners.filter(b => b.tipo_banner === 'catalogo'), 'banner');
+
+                    // Actualizar contadores
+                    $('#availableVideosCount').text(response.videos.length);
+                    $('#availableBannersCount').text(response.banners.length);
+                }
+            }
+        });
+    }
+
+    // Función para llenar selects de publicidad
+    function fillAdvertisingSelect(selector, items, type) {
+        const $select = $(selector);
+        const emptyText = $select.find('option:first').text();
+
+        $select.empty().append(`<option value="">${emptyText}</option>`);
+
+        items.forEach(item => {
+            const text = type === 'video' ?
+                `${item.id} - Duración: ${item.duracion}s` :
+                `${item.id} - ${item.ancho}x${item.alto}px`;
+
+            $select.append(`<option value="${item.id}" data-path="${item.archivo_path || item.imagen_path}">${text}</option>`);
+        });
+    }
+
+    // Preview de banners cuando se seleccionen
+    $('#banner_header_id, #banner_footer_id, #banner_catalogo_id').on('change', function() {
+        const bannerId = $(this).val();
+        const bannerPath = $(this).find(':selected').data('path');
+        const previewId = this.id.replace('_id', 'Preview');
+
+        if (bannerId && bannerPath) {
+            $(`#${previewId}`).show().find('img').attr('src', '<?php echo UPLOADS_URL; ?>' + bannerPath);
+        } else {
+            $(`#${previewId}`).hide();
+        }
     });
 
     // Cambiar paso del wizard
@@ -1360,6 +1644,22 @@ require_once __DIR__ . '/../layouts/base.php';
         $('#review_music').text(selectedContent.music || '0');
         $('#review_games').text(selectedContent.games || '0');
         $('#review_size').text($('#estimatedSize').text() || '0 MB');
+
+        // Agregar información de publicidad
+        const videoInicio = $('#video_inicio_id option:selected').text();
+        const videoMitad = $('#video_mitad_id option:selected').text();
+        const bannerHeader = $('#banner_header_id option:selected').text();
+        const bannerFooter = $('#banner_footer_id option:selected').text();
+        const bannerCatalogo = $('#banner_catalogo_id option:selected').text();
+
+        // Mostrar en el resumen (agregar estos elementos al HTML del paso 6)
+        $('#review_video_inicio').text(videoInicio !== 'Sin publicidad al inicio' ? videoInicio : 'No');
+        $('#review_video_mitad').text(videoMitad !== 'Sin publicidad a la mitad' ? videoMitad : 'No');
+        $('#review_banners').text(
+            (bannerHeader !== 'Sin banner superior' ||
+                bannerFooter !== 'Sin banner inferior' ||
+                bannerCatalogo !== 'Sin banner en catálogo') ? 'Sí' : 'No'
+        );
     }
 
     // Actualizar progreso
