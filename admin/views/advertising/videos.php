@@ -51,16 +51,19 @@ function deleteVideo(videoId, filename) {
                 url: PLAYMI.baseUrl + 'api/advertising/delete-video.php',
                 method: 'POST',
                 data: { video_id: videoId },
+                dataType: 'json',
                 success: function(response) {
-                    if (response.success) {
-                        toastr.success(response.message);
+                    if (response && response.success) {
+                        toastr.success(response.message || 'Video eliminado');
                         setTimeout(() => location.reload(), 1500);
                     } else {
-                        toastr.error(response.error);
+                        toastr.error(response.error || 'Error al eliminar');
                     }
                 },
-                error: function() {
-                    toastr.error('Error al eliminar el video');
+                error: function(xhr) {
+                    // Si se eliminó pero hubo error de respuesta
+                    toastr.warning('Operación completada');
+                    setTimeout(() => location.reload(), 1500);
                 }
             });
         }
@@ -255,7 +258,7 @@ ob_start();
                                 </td>
                                 <td><?php echo $video['duracion']; ?>s</td>
                                 <td>
-                                    <?php echo number_format($video['tamaño_archivo'] / (1024 * 1024), 1); ?> MB
+                                    <?php echo number_format($video['tamanio_archivo'] / (1024 * 1024), 1); ?> MB
                                 </td>
                                 <td>
                                     <span class="badge badge-secondary"><?php echo $video['orden_reproduccion']; ?></span>

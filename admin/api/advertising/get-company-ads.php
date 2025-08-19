@@ -1,36 +1,38 @@
 <?php
-/**
- * API para obtener publicidad de una empresa
- */
-
 header('Content-Type: application/json');
 
 try {
     require_once __DIR__ . '/../../config/system.php';
-    require_once __DIR__ . '/../../controllers/BaseController.php';
     require_once __DIR__ . '/../../models/Advertising.php';
     
-    // Verificar autenticación
-    session_start();
-    $baseController = new BaseController();
-    if (!$baseController->isAuthenticated()) {
+    // Verificar si la sesión ya está iniciada
+    if (session_status() == PHP_SESSION_NONE) {
+        session_start();
+    }
+    
+    if (!isset($_SESSION['admin_logged_in']) || !$_SESSION['admin_logged_in']) {
         throw new Exception('No autorizado');
     }
     
-    // Validar empresa
     $companyId = $_GET['company_id'] ?? null;
     if (!$companyId) {
         throw new Exception('ID de empresa requerido');
     }
     
-    // Obtener publicidad activa
     $advertisingModel = new Advertising();
-    $ads = $advertisingModel->getActiveAdsByCompany($companyId);
+    
+    // Obtener videos y banners de la empresa
+    $videos = $advertisingModel->getVideos($companyId);
+    $banners = $advertisingModel->getBanners($companyId);
+    
+    // Filtrar solo los activos
+    $activeVideos = array_filter($videos, function($v) { return $v['activo'] == 1; });
+    $activeBanners = array_filter($banners, function($b) { return $b['activo'] == 1; });
     
     echo json_encode([
         'success' => true,
-        'videos' => $ads['videos'],
-        'banners' => $ads['banners']
+        'videos' => array_values($activeVideos),
+        'banners' => array_values($activeBanners)
     ]);
     
 } catch (Exception $e) {

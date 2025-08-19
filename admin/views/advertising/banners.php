@@ -1,28 +1,17 @@
 <?php
 /**
- * Gestión de Banners Publicitarios PLAYMI Admin
+ * Gestión de Videos Publicitarios PLAYMI Admin
  */
-
-// IMPORTANTE: Iniciar sesión ANTES de incluir system.php
-if (session_status() == PHP_SESSION_NONE) {
-    session_start();
-}
-
 // Incluir configuración y controladores
 require_once '../../config/system.php';
 require_once '../../controllers/AdvertisingController.php';
-
-// Verificar autenticación
-if (!isset($_SESSION['admin_logged_in']) || !$_SESSION['admin_logged_in']) {
-    header('Location: ' . BASE_URL . 'login.php');
-    exit();
-}
 
 // Crear instancia del controlador
 $advertisingController = new AdvertisingController();
 
 // Obtener datos
 $viewData = $advertisingController->banners();
+
 
 // Variables para la vista
 $pageTitle = 'Banners Publicitarios - PLAYMI Admin';
@@ -104,16 +93,19 @@ function toggleBannerStatus(bannerId, currentStatus) {
 function previewBanner(bannerPath) {
     const modal = $('#bannerPreviewModal');
     const img = $('#previewBanner');
-    
+
     img.attr('src', PLAYMI.baseUrl + '../content/' + bannerPath);
     modal.modal('show');
 }
 
+// Cerrar banner al cerrar modal
+$('#bannerPreviewModal').on('hidden.bs.modal', function() {
+    $('#previewBanner')[0].pause();
+});
+
 // Filtros
-$(document).ready(function() {
-    $('#filterForm select').on('change', function() {
-        $('#filterForm').submit();
-    });
+$('#filterForm select').on('change', function() {
+    $('#filterForm').submit();
 });
 ";
 

@@ -190,6 +190,15 @@ class AdvertisingController extends BaseController
             // Obtener empresas
             $companies = $this->companyModel->getActiveCompanies();
 
+            // Calcular estadísticas
+            $stats = [
+                'total_banners' => count($banners),
+                'total_header' => count(array_filter($banners, fn($b) => $b['tipo_banner'] === 'header')),
+                'total_footer' => count(array_filter($banners, fn($b) => $b['tipo_banner'] === 'footer')),
+                'total_catalogo' => count(array_filter($banners, fn($b) => $b['tipo_banner'] === 'catalogo')),
+                'empresas_con_publicidad' => $this->advertisingModel->countCompaniesWithAds()
+            ];
+
             return [
                 'banners' => $banners,
                 'companies' => $companies,
@@ -197,6 +206,7 @@ class AdvertisingController extends BaseController
                     'company_id' => $companyId,
                     'tipo' => $tipo
                 ],
+                'stats' => $stats, // <-- AGREGAR ESTA LÍNEA
                 'banner_types' => [
                     'header' => 'Banner Superior',
                     'footer' => 'Banner Inferior',
@@ -330,52 +340,61 @@ class AdvertisingController extends BaseController
         try {
             $this->requireAuth();
 
+            // Solo manejar POST para APIs
             if (!$this->isPost()) {
                 $this->jsonResponse(['error' => 'Método no permitido'], 405);
+                return;
             }
 
+            // Validar ID
+            if (!$id || !is_numeric($id)) {
+                $this->jsonResponse(['error' => 'ID inválido'], 400);
+                return;
+            }
+
+            // Obtener información del archivo antes de eliminar
             if ($type === 'video') {
-                $ad = $this->advertisingModel->getVideoById($id);
-                if (!$ad) {
-                    $this->jsonResponse(['error' => 'Video no encontrado'], 404);
-                }
-
-                // Eliminar archivo
-                $filePath = UPLOADS_PATH . $ad['archivo_path'];
-                if (file_exists($filePath)) {
-                    @unlink($filePath);
-                }
-
-                // Eliminar registro
-                $result = $this->advertisingModel->deleteVideo($id);
+                $item = $this->advertisingModel->getVideoById($id);
+                $filePath = $item ? UPLOADS_PATH . $item['archivo_path'] : null;
             } else {
-                $banner = $this->advertisingModel->getBannerById($id);
-                if (!$banner) {
-                    $this->jsonResponse(['error' => 'Banner no encontrado'], 404);
-                }
-
-                // Eliminar archivo
-                $filePath = UPLOADS_PATH . $banner['imagen_path'];
-                if (file_exists($filePath)) {
-                    @unlink($filePath);
-                }
-
-                // Eliminar registro
-                $result = $this->advertisingModel->deleteBanner($id);
+                $item = $this->advertisingModel->getBannerById($id);
+                $filePath = $item ? UPLOADS_PATH . $item['imagen_path'] : null;
             }
 
-            if ($result) {
-                $this->logActivity('delete_ad', $type === 'video' ? 'publicidad_empresa' : 'banners_empresa', $id);
+            if (!$item) {
+                $this->jsonResponse(['error' => ucfirst($type) . ' no encontrado'], 404);
+                return;
+            }
+
+            // Eliminar de la base de datos
+            $deleted = $type === 'video'
+                ? $this->advertisingModel->deleteVideo($id)
+                : $this->advertisingModel->deleteBanner($id);
+
+            if ($deleted) {
+                // Eliminar archivo físico
+                if ($filePath && file_exists($filePath)) {
+                    @unlink($filePath);
+                }
+
+                // Registrar actividad
+                $this->logActivity(
+                    'delete_' . $type,
+                    $type === 'video' ? 'publicidad_empresa' : 'banners_empresa',
+                    $id,
+                    $item,
+                    null
+                );
 
                 $this->jsonResponse([
                     'success' => true,
-                    'message' => ucfirst($type) . ' eliminado exitosamente'
+                    'message' => ucfirst($type) . ' eliminado correctamente'
                 ]);
             } else {
-                $this->jsonResponse(['error' => 'Error al eliminar'], 500);
+                $this->jsonResponse(['error' => 'Error al eliminar ' . $type], 500);
             }
         } catch (Exception $e) {
-            $this->logError("Error en delete advertising: " . $e->getMessage());
+            $this->logError("Error en delete: " . $e->getMessage());
             $this->jsonResponse(['error' => 'Error interno del sistema'], 500);
         }
     }

@@ -199,7 +199,7 @@ try {
         !empty($data['video_inicio_id']) || !empty($data['video_mitad_id']) ||
         !empty($data['banner_header_id']) || !empty($data['banner_footer_id']) ||
         !empty($data['banner_catalogo_id'])
-    ) {
+        ) {
 
         // Crear directorios de publicidad
         $adsPath = $tempPath . '/advertising';
@@ -228,6 +228,70 @@ try {
 
         // Generar configuración de publicidad
         generateAdvertisingConfig($tempPath, $data);
+
+
+        if (!empty($data['video_inicio_id'])) {
+            $stmt = $db->prepare("
+                INSERT INTO paquete_publicidad_videos 
+                (paquete_id, publicidad_id, tipo_reproduccion) 
+                VALUES (?, ?, 'inicio')
+            ");
+            $stmt->execute([$packageId, $data['video_inicio_id']]);
+        }
+
+        if (!empty($data['video_mitad_id'])) {
+            $stmt = $db->prepare("
+                INSERT INTO paquete_publicidad_videos 
+                (paquete_id, publicidad_id, tipo_reproduccion) 
+                VALUES (?, ?, 'mitad')
+            ");
+            $stmt->execute([$packageId, $data['video_mitad_id']]);
+        }
+
+        // Guardar banners en BD
+        if (!empty($data['banner_header_id'])) {
+            $stmt = $db->prepare("
+                INSERT INTO paquete_publicidad_banners 
+                (paquete_id, banner_id, tipo_ubicacion) 
+                VALUES (?, ?, 'header')
+            ");
+            $stmt->execute([$packageId, $data['banner_header_id']]);
+        }
+
+        if (!empty($data['banner_footer_id'])) {
+            $stmt = $db->prepare("
+                INSERT INTO paquete_publicidad_banners 
+                (paquete_id, banner_id, tipo_ubicacion) 
+                VALUES (?, ?, 'footer')
+            ");
+            $stmt->execute([$packageId, $data['banner_footer_id']]);
+        }
+
+        if (!empty($data['banner_catalogo_id'])) {
+            $stmt = $db->prepare("
+                INSERT INTO paquete_publicidad_banners 
+                (paquete_id, banner_id, tipo_ubicacion) 
+                VALUES (?, ?, 'catalogo')
+            ");
+            $stmt->execute([$packageId, $data['banner_catalogo_id']]);
+        }
+
+        // Guardar configuración de publicidad
+        $adConfig = [
+            'video_skip_allowed' => isset($data['video_skip_allowed']) ? 1 : 0,
+            'video_mute_allowed' => isset($data['video_mute_allowed']) ? 1 : 0,
+            'banner_catalogo_frequency' => $data['banner_catalogo_frequency'] ?? 5,
+            'track_impressions' => isset($data['track_impressions']) ? 1 : 0,
+            'track_clicks' => isset($data['track_clicks']) ? 1 : 0,
+            'track_completion' => isset($data['track_completion']) ? 1 : 0
+        ];
+
+        $stmt = $db->prepare("
+            UPDATE company_packages 
+            SET advertising_config = ? 
+            WHERE id = ?
+        ");
+        $stmt->execute([json_encode($adConfig), $packageId]);
     }
 
     // Función para copiar archivo de publicidad

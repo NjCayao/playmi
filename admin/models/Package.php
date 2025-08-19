@@ -90,6 +90,97 @@ class Package extends BaseModel
     }
 
     /**
+     * Obtener detalles completos del paquete incluyendo publicidad
+     */
+    public function getPackageDetails($packageId)
+    {
+        try {
+            // Obtener información básica del paquete
+            $package = $this->findById($packageId);
+            if (!$package) {
+                return null;
+            }
+
+            // Obtener contenido del paquete
+            $sql = "SELECT c.* FROM contenido_multimedia c
+                JOIN paquetes_contenido pc ON c.id = pc.contenido_id
+                WHERE pc.paquete_id = ?";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$packageId]);
+            $package['contenido'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Obtener videos publicitarios del paquete
+            $sql = "SELECT pv.*, pe.tipo_video, pe.archivo_path, pe.duracion 
+                FROM paquete_publicidad_videos pv
+                JOIN publicidad_empresa pe ON pv.publicidad_id = pe.id
+                WHERE pv.paquete_id = ?";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$packageId]);
+            $package['videos_publicidad'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Obtener banners del paquete
+            $sql = "SELECT pb.*, be.tipo_banner, be.imagen_path, be.ancho, be.alto 
+                FROM paquete_publicidad_banners pb
+                JOIN banners_empresa be ON pb.banner_id = be.id
+                WHERE pb.paquete_id = ?";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$packageId]);
+            $package['banners_publicidad'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            return $package;
+        } catch (Exception $e) {
+            $this->logError("Error en getPackageDetails: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Obtener publicidad asociada al paquete
+     */
+    public function getPackageAdvertising($packageId)
+    {
+        try {
+            $advertising = [
+                'videos' => [],
+                'banners' => []
+            ];
+
+            // Obtener videos
+            $sql = "SELECT pv.tipo_reproduccion, pe.* 
+                FROM paquete_publicidad_videos pv
+                JOIN publicidad_empresa pe ON pv.publicidad_id = pe.id
+                WHERE pv.paquete_id = ?";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$packageId]);
+            $advertising['videos'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Obtener banners
+            $sql = "SELECT pb.tipo_ubicacion, be.* 
+                FROM paquete_publicidad_banners pb
+                JOIN banners_empresa be ON pb.banner_id = be.id
+                WHERE pb.paquete_id = ?";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$packageId]);
+            $advertising['banners'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Obtener configuración
+            $sql = "SELECT advertising_config FROM company_packages WHERE id = ?";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$packageId]);
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($result && $result['advertising_config']) {
+                $advertising['config'] = json_decode($result['advertising_config'], true);
+            }
+
+            return $advertising;
+        } catch (Exception $e) {
+            $this->logError("Error en getPackageAdvertising: " . $e->getMessage());
+            return ['videos' => [], 'banners' => []];
+        }
+    }
+
+    /**
      * Iniciar generación de paquete
      */
     public function startGeneration($companyId, $generatedBy, $packageData = [])
@@ -101,7 +192,8 @@ class Package extends BaseModel
                 'version_paquete' => $packageData['version'] ?? '1.0',
                 'generado_por' => $generatedBy,
                 'estado' => 'generando',
-                'clave_instalacion' => $this->generateInstallationKey()
+                'clave_instalacion' => $this->generateInstallationKey(),
+                'notas' => $packageData['notas'] ?? null  
             ];
 
             // Obtener datos de la empresa para calcular fecha de vencimiento

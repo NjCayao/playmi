@@ -12,6 +12,7 @@ define('SITE_URL', 'http://localhost/playmi/'); // URL del sitio principal
 define('BASE_URL', SITE_URL . 'admin/'); // URL del panel admin
 define('ASSETS_URL', BASE_URL . 'assets/');
 define('API_URL', BASE_URL . 'api/');
+define('UPLOADS_URL', SITE_URL . 'content/');
 
 // Rutas de directorios
 define('ROOT_PATH', dirname(dirname(__FILE__)) . '/');

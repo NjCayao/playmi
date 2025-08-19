@@ -34,14 +34,15 @@ $breadcrumbs = [
 // CSS adicional
 $additionalCSS = [
     ASSETS_URL . 'plugins/select2/css/select2.min.css',
-    ASSETS_URL . 'plugins/select2-bootstrap4-theme/select2-bootstrap4.min.css'
+    ASSETS_URL . 'plugins/select2-bootstrap4-theme/select2-bootstrap4.min.css',
+    BASE_URL . 'views/packages/css/generate.css'
 ];
 
 // JS adicional
 $additionalJS = [
     ASSETS_URL . 'plugins/select2/js/select2.full.min.js',
     ASSETS_URL . 'plugins/jquery-validation/jquery.validate.min.js',
-    ASSETS_URL . 'plugins/jquery-validation/additional-methods.min.js'
+    ASSETS_URL . 'plugins/jquery-validation/additional-methods.min.js',
 ];
 
 // Iniciar buffer de contenido
@@ -1304,6 +1305,8 @@ require_once __DIR__ . '/../layouts/base.php';
 
     // Función para cargar publicidad de la empresa
     function loadCompanyAdvertising(companyId) {
+        console.log('Cargando publicidad para empresa:', companyId); // Debug
+
         $.ajax({
             url: '<?php echo API_URL; ?>advertising/get-company-ads.php',
             method: 'GET',
@@ -1311,6 +1314,8 @@ require_once __DIR__ . '/../layouts/base.php';
                 company_id: companyId
             },
             success: function(response) {
+                console.log('Respuesta publicidad:', response); // Debug
+
                 if (response.success) {
                     // Llenar selects de videos
                     fillAdvertisingSelect('#video_inicio_id', response.videos.filter(v => v.tipo_video === 'inicio'), 'video');
@@ -1325,6 +1330,10 @@ require_once __DIR__ . '/../layouts/base.php';
                     $('#availableVideosCount').text(response.videos.length);
                     $('#availableBannersCount').text(response.banners.length);
                 }
+            },
+            error: function(xhr, status, error) {
+                console.error('Error cargando publicidad:', error); // Debug
+                console.log('Respuesta:', xhr.responseText); // Debug
             }
         });
     }
@@ -1671,300 +1680,3 @@ require_once __DIR__ . '/../layouts/base.php';
         $('#progressStatus').html('<i class="fas fa-cog fa-spin"></i> ' + status);
     }
 </script>
-
-<style>
-    /* Estilos para el wizard mejorado */
-    .bs-stepper-header {
-        display: flex;
-        align-items: center;
-        margin-bottom: 2rem;
-        padding: 1rem;
-        background: #f8f9fa;
-        border-radius: 0.5rem;
-    }
-
-    .step {
-        flex: 1;
-        text-align: center;
-        position: relative;
-    }
-
-    .step-trigger {
-        background: none;
-        border: none;
-        cursor: pointer;
-        padding: 0;
-        width: 100%;
-    }
-
-    .bs-stepper-circle {
-        width: 50px;
-        height: 50px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 500;
-        color: #6c757d;
-        background-color: #e9ecef;
-        border: 2px solid #dee2e6;
-        border-radius: 50%;
-        margin: 0 auto 0.5rem;
-        transition: all 0.3s ease;
-    }
-
-    .step.active .bs-stepper-circle {
-        background-color: #007bff;
-        border-color: #007bff;
-        color: white;
-        transform: scale(1.1);
-    }
-
-    .step.completed .bs-stepper-circle {
-        background-color: #28a745;
-        border-color: #28a745;
-        color: white;
-    }
-
-    .step.completed .step-trigger {
-        cursor: pointer;
-    }
-
-    .bs-stepper-label {
-        display: block;
-        color: #6c757d;
-        font-weight: 500;
-        transition: color 0.3s ease;
-    }
-
-    .step.active .bs-stepper-label {
-        color: #007bff;
-        font-weight: 600;
-    }
-
-    .step.completed .bs-stepper-label {
-        color: #28a745;
-    }
-
-    .line {
-        flex: 1;
-        height: 2px;
-        background-color: #dee2e6;
-        margin: 0 1rem;
-        position: relative;
-        top: -25px;
-    }
-
-    /* Estilos para contenido seleccionado */
-    .content-item {
-        padding: 0.5rem;
-        border: 2px solid transparent;
-        border-radius: 0.5rem;
-        transition: all 0.3s ease;
-        cursor: pointer;
-    }
-
-    .content-item:hover {
-        background-color: #f8f9fa;
-        transform: translateY(-2px);
-    }
-
-    .content-item.selected {
-        background-color: #e3f2fd;
-        border-color: #2196f3;
-        box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);
-    }
-
-    .content-item .custom-control-label {
-        cursor: pointer;
-        width: 100%;
-    }
-
-    /* Contadores animados */
-    .content-counter {
-        transition: all 0.3s ease;
-        cursor: pointer;
-    }
-
-    .content-counter:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
-    }
-
-    .counter-animation {
-        font-size: 2rem;
-        font-weight: bold;
-    }
-
-    @keyframes bounce {
-
-        0%,
-        100% {
-            transform: scale(1);
-        }
-
-        50% {
-            transform: scale(1.2);
-        }
-    }
-
-    .bounce-animation {
-        animation: bounce 0.5s ease;
-    }
-
-    /* Animaciones generales */
-    @keyframes fadeIn {
-        from {
-            opacity: 0;
-            transform: translateY(10px);
-        }
-
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-
-    .fade-in {
-        animation: fadeIn 0.5s ease;
-    }
-
-    .animated-card {
-        animation: fadeIn 0.5s ease;
-    }
-
-    @keyframes shake {
-
-        0%,
-        100% {
-            transform: translateX(0);
-        }
-
-        25% {
-            transform: translateX(-5px);
-        }
-
-        75% {
-            transform: translateX(5px);
-        }
-    }
-
-    .shake-animation {
-        animation: shake 0.5s ease;
-    }
-
-    @keyframes flash {
-
-        0%,
-        100% {
-            opacity: 1;
-        }
-
-        50% {
-            opacity: 0.5;
-            background-color: #fff3cd;
-        }
-    }
-
-    .flash-animation {
-        animation: flash 0.5s ease;
-    }
-
-    /* Botón de generar paquete */
-    @keyframes pulse {
-        0% {
-            box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.4);
-        }
-
-        70% {
-            box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
-        }
-
-        100% {
-            box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
-        }
-    }
-
-    .pulse-animation {
-        animation: pulse 2s infinite;
-    }
-
-    /* Preview del portal */
-    #portalPreview {
-        position: relative;
-        overflow: hidden;
-    }
-
-    /* Instrucciones preview */
-    .instruction-preview {
-        font-family: Arial, sans-serif;
-        position: relative;
-    }
-
-    .instruction-preview h4 {
-        font-weight: bold;
-    }
-
-    .instruction-preview ol {
-        padding-left: 20px;
-    }
-
-    .instruction-preview .badge {
-        display: inline-block;
-        font-family: monospace;
-    }
-
-    /* Progress bar en info boxes */
-    .info-box .progress {
-        height: 5px;
-        margin-top: 5px;
-        background-color: rgba(0, 0, 0, 0.1);
-    }
-
-    .info-box .progress-bar {
-        transition: width 0.6s ease;
-    }
-
-    /* Badges en tabs */
-    .nav-tabs .badge {
-        transition: all 0.3s ease;
-    }
-
-    /* Validación visual */
-    .form-control.is-invalid {
-        border-color: #dc3545;
-        padding-right: calc(1.5em + 0.75rem);
-        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%23dc3545' viewBox='0 0 12 12'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3e%3c/svg%3e");
-        background-repeat: no-repeat;
-        background-position: right calc(0.375em + 0.1875rem) center;
-        background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
-    }
-
-    .form-control:focus {
-        border-color: #80bdff;
-        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, .25);
-    }
-
-    /* Responsive */
-    @media (max-width: 768px) {
-        .bs-stepper-header {
-            flex-direction: column;
-        }
-
-        .line {
-            width: 2px;
-            height: 30px;
-            margin: 0.5rem auto;
-            top: 0;
-        }
-
-        .bs-stepper-circle {
-            width: 40px;
-            height: 40px;
-            font-size: 0.9rem;
-        }
-
-        .content-item {
-            margin-bottom: 0.5rem;
-        }
-    }
-</style>
