@@ -8,7 +8,7 @@ try {
     // Verificar si la sesión ya está iniciada
     if (session_status() == PHP_SESSION_NONE) {
         session_start();
-    }
+    }  
     
     if (!isset($_SESSION['admin_logged_in']) || !$_SESSION['admin_logged_in']) {
         throw new Exception('No autorizado');

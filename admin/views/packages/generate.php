@@ -1039,6 +1039,39 @@ ob_start();
     </div>
 </div>
 
+
+<!-- Modal para previsualizar videos -->
+<div class="modal fade" id="videoPreviewModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Vista Previa del Video Publicitario</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" style="background: #000; padding: 0;">
+                <div class="video-container" style="position: relative; width: 100%; height: 0; padding-bottom: 56.25%;">
+                    <video id="previewVideoPlayer"
+                        controls
+                        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"
+                        preload="metadata">
+                        Tu navegador no soporta la reproducción de videos.
+                    </video>
+                </div>
+                <div class="p-3 bg-light">
+                    <p class="mb-1"><strong>Información del Video:</strong></p>
+                    <span class="badge badge-info">Duración: <span id="videoDurationInfo">-</span>s</span>
+                    <span class="badge badge-secondary">Tipo: <span id="videoTypeInfo">-</span></span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <?php
 function formatFileSize($bytes)
 {
@@ -1358,14 +1391,114 @@ require_once __DIR__ . '/../layouts/base.php';
     $('#banner_header_id, #banner_footer_id, #banner_catalogo_id').on('change', function() {
         const bannerId = $(this).val();
         const bannerPath = $(this).find(':selected').data('path');
-        const previewId = this.id.replace('_id', 'Preview');
+        const bannerType = this.id.replace('banner_', '').replace('_id', '');
+
+        // Actualizar la vista previa en la sección "Vista Previa de Ubicación"
+        const previewId = bannerType + 'BannerPreview';
 
         if (bannerId && bannerPath) {
-            $(`#${previewId}`).show().find('img').attr('src', '<?php echo UPLOADS_URL; ?>' + bannerPath);
+            // Construir la URL correcta de la imagen
+            const imageUrl = '<?php echo BASE_URL; ?>../content/' + bannerPath;
+
+            // Mostrar el banner en la vista previa
+            $(`#${previewId}`).show().find('img').attr('src', imageUrl);
+
+            // También actualizar en la sección principal si existe
+            const mainPreviewId = this.id.replace('_id', 'Preview');
+            if ($(`#${mainPreviewId}`).length) {
+                $(`#${mainPreviewId}`).show().find('img').attr('src', imageUrl);
+            }
         } else {
             $(`#${previewId}`).hide();
         }
     });
+
+    // Preview de videos (agregar información visual)
+    $('#video_inicio_id, #video_mitad_id').on('change', function() {
+        const videoId = $(this).val();
+        const videoPath = $(this).find(':selected').data('path');
+        const videoDuration = $(this).find(':selected').data('duracion') || $(this).find(':selected').text().match(/(\d+)s/)?.[1];
+
+        // Limpiar indicadores anteriores
+        $('#videoInicioIndicator, #videoMitadIndicator').remove();
+
+        if (videoId && videoDuration) {
+            const videoType = this.id.includes('inicio') ? 'inicio' : 'mitad';
+            const videoTypeText = videoType === 'inicio' ? 'al inicio' : 'a la mitad';
+
+            // Crear indicador con botón de preview
+            const indicator = `
+            <div id="video${videoType.charAt(0).toUpperCase() + videoType.slice(1)}Indicator" 
+                 class="text-center mb-2 p-2 bg-warning rounded">
+                <i class="fas fa-play-circle"></i> 
+                Video de ${videoDuration}s ${videoTypeText} de la película
+                <button type="button" class="btn btn-sm btn-primary ml-2" 
+                        onclick="previewVideo('${videoPath}', '${videoDuration}', '${videoTypeText}')">
+                    <i class="fas fa-eye"></i> Ver Video
+                </button>
+            </div>
+        `;
+
+            if (videoType === 'inicio') {
+                $('#headerBannerPreview').before(indicator);
+            } else {
+                $('#catalogBannerPreview').after(indicator);
+            }
+        }
+    });
+
+    // Función para previsualizar video
+    function previewVideo(videoPath, duration, type) {
+        if (!videoPath) {
+            toastr.error('No se puede cargar el video');
+            return;
+        }
+
+        // Construir URL completa del video
+        const videoUrl = '<?php echo BASE_URL; ?>../content/' + videoPath;
+
+        // Obtener el elemento de video
+        const videoPlayer = document.getElementById('previewVideoPlayer');
+
+        // Limpiar y configurar
+        videoPlayer.pause();
+        videoPlayer.src = videoUrl;
+
+        // Forzar la visualización cuando se carguen los metadatos
+        videoPlayer.addEventListener('loadedmetadata', function() {
+            console.log('Video cargado - Dimensiones:', videoPlayer.videoWidth + 'x' + videoPlayer.videoHeight);
+
+            // Ajustar el contenedor al aspect ratio del video
+            const aspectRatio = videoPlayer.videoHeight / videoPlayer.videoWidth;
+            const container = document.querySelector('.video-container');
+            container.style.paddingBottom = (aspectRatio * 100) + '%';
+
+            // Asegurarse de que el video sea visible
+            videoPlayer.style.display = 'block';
+            videoPlayer.style.visibility = 'visible';
+        });
+
+        // Manejar errores
+        videoPlayer.addEventListener('error', function(e) {
+            console.error('Error al cargar video:', e);
+            const errorMsg = videoPlayer.error ? videoPlayer.error.message : 'Error desconocido';
+            toastr.error('Error al cargar el video: ' + errorMsg);
+        });
+
+        // Actualizar información
+        $('#videoDurationInfo').text(duration);
+        $('#videoTypeInfo').text(type);
+
+        // Mostrar modal
+        $('#videoPreviewModal').modal('show');
+
+        // Limpiar eventos cuando se cierre el modal
+        $('#videoPreviewModal').off('hidden.bs.modal').on('hidden.bs.modal', function() {
+            videoPlayer.pause();
+            videoPlayer.currentTime = 0;
+            videoPlayer.src = '';
+        });
+    }
 
     // Cambiar paso del wizard
     function changeStep(direction) {
