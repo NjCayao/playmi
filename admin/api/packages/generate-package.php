@@ -194,12 +194,88 @@ try {
     }
 
 
+    // Función para copiar archivo de publicidad
+    function copyAdvertisingFile($type, $id, $destination)
+    {
+        require_once __DIR__ . '/../../models/Advertising.php';
+        $advertisingModel = new Advertising();
+
+        if ($type === 'video') {
+            $ad = $advertisingModel->getVideoById($id);
+            $sourcePath = UPLOADS_PATH . $ad['archivo_path'];
+        } else {
+            $ad = $advertisingModel->getBannerById($id);
+            $sourcePath = UPLOADS_PATH . $ad['imagen_path'];
+        }
+
+        if (file_exists($sourcePath)) {
+            copy($sourcePath, $destination);
+        }
+    }
+
+    // Función para generar configuración de publicidad
+    function generateAdvertisingConfig($basePath, $data)
+    {
+        $config = [
+            'videos' => [
+                'inicio' => [
+                    'enabled' => !empty($data['video_inicio_id']),
+                    'file' => 'advertising/videos/inicio.mp4',
+                    'trigger_time' => 300, // 5 minutos
+                    'skippable' => isset($data['video_skip_allowed']) && $data['video_skip_allowed'],
+                    'skip_after' => 5,
+                    'mutable' => isset($data['video_mute_allowed']) && $data['video_mute_allowed']
+                ],
+                'mitad' => [
+                    'enabled' => !empty($data['video_mitad_id']),
+                    'file' => 'advertising/videos/mitad.mp4',
+                    'trigger_type' => 'midroll',
+                    'min_content_duration' => 1800, // 30 minutos
+                    'skippable' => isset($data['video_skip_allowed']) && $data['video_skip_allowed'],
+                    'skip_after' => 5,
+                    'mutable' => isset($data['video_mute_allowed']) && $data['video_mute_allowed']
+                ]
+            ],
+            'banners' => [
+                'header' => [
+                    'enabled' => !empty($data['banner_header_id']),
+                    'file' => 'advertising/banners/header.jpg',
+                    'position' => 'top',
+                    'clickable' => true
+                ],
+                'footer' => [
+                    'enabled' => !empty($data['banner_footer_id']),
+                    'file' => 'advertising/banners/footer.jpg',
+                    'position' => 'bottom',
+                    'clickable' => true
+                ],
+                'catalogo' => [
+                    'enabled' => !empty($data['banner_catalogo_id']),
+                    'file' => 'advertising/banners/catalogo.jpg',
+                    'frequency' => $data['banner_catalogo_frequency'] ?? 3,
+                    'clickable' => true
+                ]
+            ],
+            'tracking' => [
+                'impressions' => isset($data['track_impressions']) && $data['track_impressions'],
+                'clicks' => isset($data['track_clicks']) && $data['track_clicks'],
+                'completion' => isset($data['track_completion']) && $data['track_completion']
+            ]
+        ];
+
+        file_put_contents(
+            $basePath . '/config/advertising.json',
+            json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
+        );
+    }
+
+
     // Copiar publicidad seleccionada
     if (
         !empty($data['video_inicio_id']) || !empty($data['video_mitad_id']) ||
         !empty($data['banner_header_id']) || !empty($data['banner_footer_id']) ||
         !empty($data['banner_catalogo_id'])
-        ) {
+    ) {
 
         // Crear directorios de publicidad
         $adsPath = $tempPath . '/advertising';
@@ -287,86 +363,11 @@ try {
         ];
 
         $stmt = $db->prepare("
-            UPDATE company_packages 
+            UPDATE paquetes_generados 
             SET advertising_config = ? 
             WHERE id = ?
         ");
         $stmt->execute([json_encode($adConfig), $packageId]);
-    }
-
-    // Función para copiar archivo de publicidad
-    function copyAdvertisingFile($type, $id, $destination)
-    {
-        require_once __DIR__ . '/../../models/Advertising.php';
-        $advertisingModel = new Advertising();
-
-        if ($type === 'video') {
-            $ad = $advertisingModel->getVideoById($id);
-            $sourcePath = UPLOADS_PATH . $ad['archivo_path'];
-        } else {
-            $ad = $advertisingModel->getBannerById($id);
-            $sourcePath = UPLOADS_PATH . $ad['imagen_path'];
-        }
-
-        if (file_exists($sourcePath)) {
-            copy($sourcePath, $destination);
-        }
-    }
-
-    // Función para generar configuración de publicidad
-    function generateAdvertisingConfig($basePath, $data)
-    {
-        $config = [
-            'videos' => [
-                'inicio' => [
-                    'enabled' => !empty($data['video_inicio_id']),
-                    'file' => 'advertising/videos/inicio.mp4',
-                    'trigger_time' => 300, // 5 minutos
-                    'skippable' => isset($data['video_skip_allowed']) && $data['video_skip_allowed'],
-                    'skip_after' => 5,
-                    'mutable' => isset($data['video_mute_allowed']) && $data['video_mute_allowed']
-                ],
-                'mitad' => [
-                    'enabled' => !empty($data['video_mitad_id']),
-                    'file' => 'advertising/videos/mitad.mp4',
-                    'trigger_type' => 'midroll',
-                    'min_content_duration' => 1800, // 30 minutos
-                    'skippable' => isset($data['video_skip_allowed']) && $data['video_skip_allowed'],
-                    'skip_after' => 5,
-                    'mutable' => isset($data['video_mute_allowed']) && $data['video_mute_allowed']
-                ]
-            ],
-            'banners' => [
-                'header' => [
-                    'enabled' => !empty($data['banner_header_id']),
-                    'file' => 'advertising/banners/header.jpg',
-                    'position' => 'top',
-                    'clickable' => true
-                ],
-                'footer' => [
-                    'enabled' => !empty($data['banner_footer_id']),
-                    'file' => 'advertising/banners/footer.jpg',
-                    'position' => 'bottom',
-                    'clickable' => true
-                ],
-                'catalogo' => [
-                    'enabled' => !empty($data['banner_catalogo_id']),
-                    'file' => 'advertising/banners/catalogo.jpg',
-                    'frequency' => $data['banner_catalogo_frequency'] ?? 3,
-                    'clickable' => true
-                ]
-            ],
-            'tracking' => [
-                'impressions' => isset($data['track_impressions']) && $data['track_impressions'],
-                'clicks' => isset($data['track_clicks']) && $data['track_clicks'],
-                'completion' => isset($data['track_completion']) && $data['track_completion']
-            ]
-        ];
-
-        file_put_contents(
-            $basePath . '/config/advertising.json',
-            json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
-        );
     }
 
 

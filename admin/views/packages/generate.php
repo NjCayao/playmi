@@ -1031,7 +1031,26 @@ ob_start();
                         role="progressbar" style="width: 0%" id="progressBar">0%</div>
                 </div>
                 <p class="text-center" id="progressStatus">Iniciando generación...</p>
-                <div class="text-center">
+
+                <!-- Información adicional de progreso -->
+                <div class="row mt-3">
+                    <div class="col-6 text-center">
+                        <small class="text-muted">Tiempo transcurrido</small>
+                        <div class="font-weight-bold" id="elapsedTime">00:00</div>
+                    </div>
+                    <div class="col-6 text-center">
+                        <small class="text-muted">Tiempo restante</small>
+                        <div class="font-weight-bold text-primary" id="remainingTime">Calculando...</div>
+                    </div>
+                </div>
+
+                <div class="mt-3 text-center">
+                    <small class="text-muted">
+                        <span id="filesProcessed">0</span> / <span id="totalFiles">0</span> archivos procesados
+                    </small>
+                </div>
+
+                <div class="text-center mt-3">
                     <i class="fas fa-cog fa-spin fa-3x text-primary"></i>
                 </div>
             </div>
@@ -1106,6 +1125,8 @@ require_once __DIR__ . '/../layouts/base.php';
         games: []
     };
     let completedSteps = new Set();
+
+    window.currentProgressInterval = null;
 
     $(document).ready(function() {
         // Inicializar Select2
@@ -1252,32 +1273,20 @@ require_once __DIR__ . '/../layouts/base.php';
             $('#progressModal').modal('show');
             updateProgress(0, 'Iniciando generación del paquete...');
 
+            // Variables para el tracking del progreso
+            let packageId = null;
+            let startTime = Date.now();
+            let progressInterval = null;
+
             // Preparar datos del formulario
             const formData = new FormData(this);
 
-            // Debug: verificar datos
-            console.log('=== DATOS A ENVIAR ===');
-            for (let [key, value] of formData.entries()) {
-                console.log(key + ': ' + value);
-            }
-
-            // Verificar que los checkboxes estén incluidos
-            const contentIds = [];
+            // Asegurarse de que los content_ids estén incluidos
             $('.content-checkbox:checked').each(function() {
-                contentIds.push($(this).val());
                 formData.append('content_ids[]', $(this).val());
             });
-            console.log('Content IDs:', contentIds);
-            console.log('=== FIN DATOS ===');
 
-            // Simular progreso
-            let progressInterval = setInterval(() => {
-                let currentProgress = parseInt($('#progressBar').css('width'));
-                if (currentProgress < 90) {
-                    updateProgress(currentProgress + 10, 'Generando paquete...');
-                }
-            }, 1000);
-
+            // Iniciar generación
             $.ajax({
                 url: '<?php echo API_URL; ?>packages/generate-package.php',
                 method: 'POST',
@@ -1286,16 +1295,16 @@ require_once __DIR__ . '/../layouts/base.php';
                 contentType: false,
                 dataType: 'json',
                 success: function(response) {
-                    clearInterval(progressInterval);
-                    console.log('Respuesta del servidor:', response);
+                    console.log('Respuesta inicial:', response);
 
-                    if (response.success) {
-                        updateProgress(100, '¡Paquete generado exitosamente!');
+                    if (response.success && response.package_id) {
+                        packageId = response.package_id;
 
-                        setTimeout(() => {
-                            $('#progressModal').modal('hide');
-                            toastr.success('Paquete generado correctamente');
-                        }, 1000);
+                        // Iniciar monitoreo de progreso real
+                        window.currentProgressInterval = setInterval(() => {
+                            checkRealProgress(packageId, startTime);
+                        }, 1000); // Verificar cada segundo
+
                     } else {
                         $('#progressModal').modal('hide');
                         Swal.fire({
@@ -1306,7 +1315,6 @@ require_once __DIR__ . '/../layouts/base.php';
                     }
                 },
                 error: function(xhr, status, error) {
-                    clearInterval(progressInterval);
                     $('#progressModal').modal('hide');
                     console.error('Error AJAX:', error);
                     console.log('Respuesta:', xhr.responseText);
@@ -1319,6 +1327,137 @@ require_once __DIR__ . '/../layouts/base.php';
                 }
             });
         });
+
+        // Función para verificar el progreso real
+        function checkRealProgress(packageId, startTime) {
+            $.ajax({
+                url: '<?php echo API_URL; ?>packages/check-progress.php',
+                method: 'GET',
+                data: {
+                    package_id: packageId
+                },
+                dataType: 'json',
+                success: function(data) {
+                    console.log('Progreso:', data); // Debug
+
+                    if (data.error) {
+                        console.error('Error:', data.error);
+                        return;
+                    }
+
+                    // Actualizar barra de progreso
+                    const progress = data.progress || 0;
+                    updateProgress(progress, data.message || 'Procesando...');
+
+                    // Actualizar contadores de archivos
+                    $('#filesProcessed').text(data.files_processed || 0);
+                    $('#totalFiles').text(data.total_files || 0);
+
+                    // Calcular tiempos
+                    updateTimeInfo(startTime, progress);
+
+                    // Si está completo o hay error
+                    if (data.status === 'listo' || data.status === 'error') {
+                        if (window.currentProgressInterval) {
+                            clearInterval(window.currentProgressInterval);
+                            window.currentProgressInterval = null;
+                        }
+
+                        if (data.status === 'listo') {
+                            setTimeout(() => {
+                                handleSuccess(data, packageId);
+                            }, 500);
+                        } else {
+                            handleError(data.error || 'Error al generar el paquete');
+                        }
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error verificando progreso:', error);
+                    console.log('Respuesta:', xhr.responseText);
+                }
+            });
+        }
+
+        // Función para actualizar información de tiempo
+        function updateTimeInfo(startTime, progress) {
+            const now = Date.now();
+            const elapsed = (now - startTime) / 1000; // en segundos
+
+            // Formato de tiempo transcurrido
+            const elapsedMinutes = Math.floor(elapsed / 60);
+            const elapsedSeconds = Math.floor(elapsed % 60);
+            $('#elapsedTime').text(
+                String(elapsedMinutes).padStart(2, '0') + ':' +
+                String(elapsedSeconds).padStart(2, '0')
+            );
+
+            // Calcular tiempo restante
+            if (progress > 0 && progress < 100) {
+                const totalEstimated = (elapsed / progress) * 100;
+                const remaining = totalEstimated - elapsed;
+
+                if (remaining > 0) {
+                    const remainingMinutes = Math.floor(remaining / 60);
+                    const remainingSeconds = Math.floor(remaining % 60);
+
+                    if (remainingMinutes > 0) {
+                        $('#remainingTime').text(remainingMinutes + 'm ' + remainingSeconds + 's');
+                    } else {
+                        $('#remainingTime').text(remainingSeconds + ' segundos');
+                    }
+                } else {
+                    $('#remainingTime').text('Finalizando...');
+                }
+            } else if (progress === 0) {
+                $('#remainingTime').text('Calculando...');
+            } else {
+                $('#remainingTime').text('Completado');
+            }
+        }
+
+        // Función para manejar éxito
+        function handleSuccess(data, packageId) {
+            updateProgress(100, '¡Paquete generado exitosamente!');
+
+            setTimeout(() => {
+                $('#progressModal').modal('hide');
+
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Éxito!',
+                    html: `
+                <p>El paquete se ha generado correctamente.</p>
+                <p><strong>ID:</strong> ${packageId}</p>
+                <p><strong>Tamaño:</strong> ${data.package_size || 'N/A'}</p>
+                ${data.installation_key ? `<p><strong>Clave de instalación:</strong> <code>${data.installation_key}</code></p>` : ''}
+            `,
+                    showCancelButton: true,
+                    confirmButtonText: 'Descargar',
+                    cancelButtonText: 'Ver paquetes'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        window.location.href = data.download_url;
+                    } else {
+                        window.location.href = '<?php echo BASE_URL; ?>views/packages/index.php';
+                    }
+                });
+            }, 1000);
+        }
+
+
+        // Función para manejar errores
+        function handleError(errorMessage) {
+            $('#progressModal').modal('hide');
+
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: errorMessage
+            });
+        }
+
+
 
         // Actualizar QR cuando cambien los campos WiFi
         $('#wifi_ssid, #wifi_password, #wifi_hidden').on('input change', function() {
@@ -1449,41 +1588,122 @@ require_once __DIR__ . '/../layouts/base.php';
 
     // Función para previsualizar video
     function previewVideo(videoPath, duration, type) {
+
+        // Verificar información del video
+        $.get('<?php echo API_URL; ?>utils/video-info.php?path=' + encodeURIComponent(videoPath), function(info) {
+            console.log('Información del archivo de video:', info);
+        });
+
+        console.log('BASE_URL:', '<?php echo BASE_URL; ?>');
+        console.log('videoPath:', videoPath);
+
         if (!videoPath) {
             toastr.error('No se puede cargar el video');
             return;
         }
 
-        // Construir URL completa del video
-        const videoUrl = '<?php echo BASE_URL; ?>../content/' + videoPath;
+        // Construir URL correctamente
+        const videoUrl = '<?php echo str_replace('/admin/', '/', BASE_URL); ?>content/' + videoPath;
+        console.log('URL final:', videoUrl);
 
-        // Obtener el elemento de video
-        const videoPlayer = document.getElementById('previewVideoPlayer');
+        // Obtener el contenedor del video
+        const videoContainer = document.querySelector('.video-container');
 
-        // Limpiar y configurar
-        videoPlayer.pause();
-        videoPlayer.src = videoUrl;
+        // Limpiar el contenedor
+        videoContainer.innerHTML = '';
 
-        // Forzar la visualización cuando se carguen los metadatos
-        videoPlayer.addEventListener('loadedmetadata', function() {
-            console.log('Video cargado - Dimensiones:', videoPlayer.videoWidth + 'x' + videoPlayer.videoHeight);
+        // Crear un nuevo elemento de video
+        const newVideo = document.createElement('video');
+        newVideo.id = 'previewVideoPlayer';
+        newVideo.controls = true;
+        newVideo.style.cssText = 'position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; background: #000;';
 
-            // Ajustar el contenedor al aspect ratio del video
-            const aspectRatio = videoPlayer.videoHeight / videoPlayer.videoWidth;
-            const container = document.querySelector('.video-container');
-            container.style.paddingBottom = (aspectRatio * 100) + '%';
+        // CAMBIO IMPORTANTE: Asignar la URL directamente al video
+        newVideo.src = videoUrl;
 
-            // Asegurarse de que el video sea visible
-            videoPlayer.style.display = 'block';
-            videoPlayer.style.visibility = 'visible';
+        // Agregar el nuevo video al contenedor
+        videoContainer.appendChild(newVideo);
+
+        // Configurar eventos
+        newVideo.addEventListener('error', function(e) {
+            // Ignorar errores si no hay src (cuando se está cerrando)
+            if (!newVideo.src || newVideo.src === '') {
+                return;
+            }
+
+            console.error('Error del video:', {
+                error: newVideo.error,
+                networkState: newVideo.networkState,
+                readyState: newVideo.readyState
+            });
+
+            // Mostrar mensaje de error más detallado
+            let errorMessage = 'Error desconocido';
+            if (newVideo.error) {
+                switch (newVideo.error.code) {
+                    case 1:
+                        errorMessage = 'La carga del video fue abortada';
+                        break;
+                    case 2:
+                        errorMessage = 'Error de red al cargar el video';
+                        break;
+                    case 3:
+                        errorMessage = 'Error al decodificar el video (formato no soportado)';
+                        break;
+                    case 4:
+                        errorMessage = 'Formato de video no soportado';
+                        break;
+                }
+            }
+
+            toastr.error('Error al cargar el video: ' + errorMessage);
         });
 
-        // Manejar errores
-        videoPlayer.addEventListener('error', function(e) {
-            console.error('Error al cargar video:', e);
-            const errorMsg = videoPlayer.error ? videoPlayer.error.message : 'Error desconocido';
-            toastr.error('Error al cargar el video: ' + errorMsg);
+        newVideo.addEventListener('canplay', function() {
+            console.log('Video listo para reproducir');
         });
+
+        newVideo.addEventListener('error', function(e) {
+            console.error('Error del video:', {
+                error: newVideo.error,
+                networkState: newVideo.networkState,
+                readyState: newVideo.readyState
+            });
+
+            // Mostrar mensaje de error más detallado
+            let errorMessage = 'Error desconocido';
+            if (newVideo.error) {
+                switch (newVideo.error.code) {
+                    case 1:
+                        errorMessage = 'La carga del video fue abortada';
+                        break;
+                    case 2:
+                        errorMessage = 'Error de red al cargar el video';
+                        break;
+                    case 3:
+                        errorMessage = 'Error al decodificar el video (formato no soportado)';
+                        break;
+                    case 4:
+                        errorMessage = 'Formato de video no soportado';
+                        break;
+                }
+            }
+
+            toastr.error('Error al cargar el video: ' + errorMessage);
+
+            // Mostrar información de debug
+            videoContainer.innerHTML = `
+            <div class="alert alert-danger m-3">
+                <h5>Error al cargar video</h5>
+                <p>Ruta: ${videoPath}</p>
+                <p>URL: ${videoUrl}</p>
+                <p>Error: ${errorMessage}</p>
+            </div>
+        `;
+        });
+
+        // Cargar el video
+        newVideo.load();
 
         // Actualizar información
         $('#videoDurationInfo').text(duration);
@@ -1492,11 +1712,18 @@ require_once __DIR__ . '/../layouts/base.php';
         // Mostrar modal
         $('#videoPreviewModal').modal('show');
 
-        // Limpiar eventos cuando se cierre el modal
+        // Limpiar cuando se cierre el modal
         $('#videoPreviewModal').off('hidden.bs.modal').on('hidden.bs.modal', function() {
-            videoPlayer.pause();
-            videoPlayer.currentTime = 0;
-            videoPlayer.src = '';
+            // Pausar el video
+            if (newVideo) {
+                newVideo.pause();
+
+                // Remover event listeners para evitar errores falsos
+                newVideo.removeEventListener('error', null);
+
+                // Limpiar el contenedor sin generar errores
+                videoContainer.innerHTML = '';
+            }
         });
     }
 
@@ -1813,3 +2040,35 @@ require_once __DIR__ . '/../layouts/base.php';
         $('#progressStatus').html('<i class="fas fa-cog fa-spin"></i> ' + status);
     }
 </script>
+
+<style>
+    /* Asegurar que el video sea visible */
+    #videoPreviewModal .modal-body {
+        background-color: #000 !important;
+        padding: 0 !important;
+    }
+
+    #videoPreviewModal video {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        background-color: #000 !important;
+        z-index: 1 !important;
+    }
+
+    .video-container {
+        background: #000 !important;
+        position: relative !important;
+        overflow: hidden !important;
+    }
+
+    /* Forzar que el video use todo el espacio */
+    .video-container video {
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: contain !important;
+    }
+</style>

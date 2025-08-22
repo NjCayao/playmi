@@ -183,100 +183,109 @@ class Package extends BaseModel
     /**
      * Iniciar generación de paquete
      */
-    public function startGeneration($companyId, $generatedBy, $packageData = [])
+    public function startGeneration($empresaId, $userId, $packageData)
     {
         try {
-            $data = [
-                'empresa_id' => $companyId,
-                'nombre_paquete' => $packageData['nombre'] ?? "Paquete_" . date('Y-m-d_H-i-s'),
-                'version_paquete' => $packageData['version'] ?? '1.0',
-                'generado_por' => $generatedBy,
-                'estado' => 'generando',
-                'clave_instalacion' => $this->generateInstallationKey(),
-                'notas' => $packageData['notas'] ?? null  
-            ];
+            // Generar clave de instalación única
+            $installationKey = $this->generateInstallationKey();
 
-            // Obtener datos de la empresa para calcular fecha de vencimiento
-            require_once 'Company.php';
-            $companyModel = new Company();
-            $company = $companyModel->findById($companyId);
+            // Preparar datos para insertar
+            $sql = "INSERT INTO paquetes_generados (
+                    empresa_id,
+                    nombre_paquete,
+                    version_paquete,
+                    generado_por,
+                    estado,
+                    notas,
+                    clave_instalacion,
+                    fecha_generacion,
+                    fecha_vencimiento_licencia
+                ) VALUES (
+                    :empresa_id,
+                    :nombre_paquete,
+                    :version_paquete,
+                    :generado_por,
+                    :estado,
+                    :notas,
+                    :clave_instalacion,
+                    NOW(),
+                    (SELECT fecha_vencimiento FROM companies WHERE id = :empresa_id_2)
+                )";
 
-            if ($company) {
-                $data['fecha_vencimiento_licencia'] = $company['fecha_vencimiento'];
-            }
+            $stmt = $this->db->prepare($sql);
+            $result = $stmt->execute([
+                ':empresa_id' => $empresaId,
+                ':nombre_paquete' => $packageData['nombre_paquete'],
+                ':version_paquete' => $packageData['version_paquete'] ?? '1.0',
+                ':generado_por' => $userId,
+                ':estado' => 'generando',
+                ':notas' => $packageData['notas'] ?? null,
+                ':clave_instalacion' => $installationKey,
+                ':empresa_id_2' => $empresaId
+            ]);
 
-            $packageId = $this->create($data);
-
-            if ($packageId) {
+            if ($result) {
                 return [
                     'success' => true,
-                    'package_id' => $packageId,
-                    'installation_key' => $data['clave_instalacion']
+                    'package_id' => $this->db->lastInsertId(),
+                    'installation_key' => $installationKey
                 ];
             }
 
-            return ['error' => 'Error al iniciar la generación del paquete'];
+            return ['success' => false, 'error' => 'Error al crear registro del paquete'];
         } catch (Exception $e) {
-            $this->logError("Error en startGeneration: " . $e->getMessage());
-            return ['error' => 'Error interno del sistema'];
+            return ['success' => false, 'error' => $e->getMessage()];
         }
     }
 
     /**
      * Actualizar estado del paquete
      */
-    public function updateStatus($packageId, $newStatus, $additionalData = [])
+    public function updateStatus($packageId, $status, $additionalData = [])
     {
         try {
-            $validStatuses = ['generando', 'listo', 'descargado', 'instalado', 'vencido'];
-            if (!in_array($newStatus, $validStatuses)) {
-                return ['error' => 'Estado no válido'];
-            }
+            $sql = "UPDATE paquetes_generados SET estado = :estado WHERE id = :id";
 
-            $updateData = array_merge(['estado' => $newStatus], $additionalData);
-            $result = $this->update($packageId, $updateData);
+            $stmt = $this->db->prepare($sql);
+            $result = $stmt->execute([
+                ':estado' => $status,
+                ':id' => $packageId
+            ]);
 
-            if ($result) {
-                return ['success' => true, 'message' => 'Estado actualizado correctamente'];
-            }
-
-            return ['error' => 'Error al actualizar el estado'];
+            return $result;
         } catch (Exception $e) {
-            $this->logError("Error en updateStatus: " . $e->getMessage());
-            return ['error' => 'Error interno del sistema'];
+            return false;
         }
     }
 
     /**
      * Marcar paquete como completado
      */
-    public function markAsComplete($packageId, $packagePath, $packageSize, $contentCount)
+    public function markAsComplete($packageId, $filePath, $fileSize, $contentCount)
     {
         try {
-            $checksum = $this->generateChecksum($packagePath);
+            $checksum = hash_file('sha256', $filePath);
 
-            $data = [
-                'estado' => 'listo',
-                'ruta_paquete' => $packagePath,
-                'tamanio_paquete' => $packageSize,
-                'cantidad_contenido' => $contentCount,
-                'checksum' => $checksum
-            ];
+            $sql = "UPDATE paquetes_generados SET 
+                estado = 'listo',
+                ruta_paquete = :ruta_paquete,
+                tamanio_paquete = :tamanio_paquete,
+                cantidad_contenido = :cantidad_contenido,
+                checksum = :checksum
+                WHERE id = :id";
 
-            $result = $this->update($packageId, $data);
+            $stmt = $this->db->prepare($sql);
+            $result = $stmt->execute([
+                ':ruta_paquete' => $filePath,
+                ':tamanio_paquete' => $fileSize,
+                ':cantidad_contenido' => $contentCount,
+                ':checksum' => $checksum,
+                ':id' => $packageId
+            ]);
 
-            if ($result) {
-                return [
-                    'success' => true,
-                    'message' => 'Paquete completado exitosamente',
-                    'checksum' => $checksum
-                ];
-            }
-
-            return ['error' => 'Error al marcar paquete como completado'];
+            return ['success' => $result];
         } catch (Exception $e) {
-            $this->logError("Error en markAsComplete: " . $e->getMessage());
-            return ['error' => 'Error interno del sistema'];
+            return ['success' => false, 'error' => $e->getMessage()];
         }
     }
 
