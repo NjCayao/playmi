@@ -31,3 +31,36 @@ Diseño del adhesivo para el bus:
 │   y juegos GRATIS!              │
 └─────────────────────────────────┘
 
+# ESTRUCTURA DE CARPETAS - PASSENGER PORTAL
+ * Crear estas carpetas en la raíz del proyecto PLAYMI
+
+
+ passenger-portal/
+ ├── index.php                    # Página principal tipo Netflix
+ ├── movies.php                   # Catálogo de películas
+ ├── music.php                    # Reproductor de música
+ ├── games.php                    # Catálogo de juegos
+ ├── player/
+ │   ├── video-player.php         # Reproductor de video con publicidad
+ │   ├── music-player.php         # Reproductor de audio
+ │   └── game-launcher.php        # Lanzador de juegos
+ ├── assets/
+ │   ├── css/
+ │   │   ├── netflix-style.css    # Estilos principales tipo Netflix
+ │   │   ├── player.css           # Estilos para reproductores
+ │   │   └── mobile.css           # Optimizaciones móviles
+ │   ├── js/
+ │   │   ├── portal-main.js       # JavaScript principal
+ │   │   ├── video-player.js      # Control de video + publicidad
+ │   │   ├── music-player.js      # Control de música
+ │   │   └── touch-controls.js    # Gestos táctiles
+ │   └── images/
+ │       ├── logo-default.png     # Logo por defecto
+ │       └── icons/               # Iconos del sistema
+ ├── api/
+ │   ├── get-content.php          # API para obtener contenido
+ │   ├── get-advertising.php      # API para publicidad
+ │   ├── track-usage.php          # Tracking de uso
+ │   └── company-branding.php     # Obtener personalización
+ └── config/
+     └── portal-config.php        # Configuración del portal

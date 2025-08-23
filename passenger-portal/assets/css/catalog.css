@@ -1,0 +1,478 @@
+/**
+ * passenger-portal/assets/css/catalog.css
+ * Estilos para páginas de catálogo (películas, música, juegos)
+ */
+
+/* Variables del catálogo */
+:root {
+    --catalog-item-bg: #2a2a2a;
+    --catalog-item-hover: #333333;
+    --catalog-border-radius: 8px;
+    --catalog-gap: 1.5rem;
+    --catalog-transition: all 0.3s ease;
+}
+
+/* Contenedor principal del catálogo */
+.catalog-container {
+    padding: 2rem 4%;
+    min-height: calc(100vh - 68px);
+}
+
+/* Header del catálogo */
+.catalog-header {
+    margin-bottom: 2rem;
+}
+
+.catalog-title {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+.catalog-description {
+    color: var(--text-secondary);
+    font-size: 1.125rem;
+    margin-bottom: 2rem;
+}
+
+/* Filtros y controles */
+.catalog-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    padding: 1rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.filter-group {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.filter-dropdown {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: var(--catalog-transition);
+}
+
+.filter-dropdown:hover {
+    background: var(--hover-bg);
+    border-color: var(--company-primary);
+}
+
+.view-toggles {
+    display: flex;
+    gap: 0.5rem;
+    background: var(--bg-card);
+    padding: 0.25rem;
+    border-radius: 4px;
+}
+
+.view-toggle {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: 0.5rem;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: var(--catalog-transition);
+}
+
+.view-toggle.active {
+    background: var(--company-primary);
+    color: white;
+}
+
+/* Grid de catálogo */
+.catalog-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: var(--catalog-gap);
+    animation: fadeIn 0.5s ease-out;
+}
+
+.catalog-grid.list-view {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+}
+
+/* Items del catálogo */
+.catalog-item {
+    background: var(--catalog-item-bg);
+    border-radius: var(--catalog-border-radius);
+    overflow: hidden;
+    cursor: pointer;
+    transition: var(--catalog-transition);
+    position: relative;
+}
+
+.catalog-item:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    background: var(--catalog-item-hover);
+}
+
+/* Thumbnail */
+.item-thumbnail {
+    width: 100%;
+    aspect-ratio: 16/9;
+    object-fit: cover;
+    transition: var(--catalog-transition);
+}
+
+.catalog-item:hover .item-thumbnail {
+    transform: scale(1.05);
+}
+
+.thumbnail-wrapper {
+    position: relative;
+    overflow: hidden;
+}
+
+/* Overlay en hover */
+.item-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0) 70%);
+    opacity: 0;
+    transition: opacity 0.3s;
+    display: flex;
+    align-items: flex-end;
+    padding: 1rem;
+}
+
+.catalog-item:hover .item-overlay {
+    opacity: 1;
+}
+
+.overlay-actions {
+    display: flex;
+    gap: 0.5rem;
+    width: 100%;
+}
+
+.play-button {
+    flex: 1;
+    background: var(--company-primary);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: transform 0.2s;
+}
+
+.play-button:hover {
+    transform: scale(1.05);
+}
+
+.info-button {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: none;
+    padding: 0.5rem;
+    border-radius: 4px;
+    width: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Información del item */
+.item-info {
+    padding: 1rem;
+}
+
+.item-title {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.item-meta {
+    display: flex;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+}
+
+.meta-separator {
+    color: var(--text-secondary);
+    opacity: 0.5;
+}
+
+.item-description {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Badges */
+.item-badges {
+    display: flex;
+    gap: 0.5rem;
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+}
+
+.badge {
+    padding: 0.25rem 0.5rem;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    font-size: 0.75rem;
+    border-radius: 3px;
+    font-weight: 600;
+}
+
+.badge.hd {
+    background: #1e88e5;
+}
+
+.badge.new {
+    background: var(--company-primary);
+}
+
+.badge.popular {
+    background: #f57c00;
+}
+
+/* Vista de lista */
+.catalog-grid.list-view .catalog-item {
+    display: flex;
+    height: 120px;
+}
+
+.catalog-grid.list-view .thumbnail-wrapper {
+    width: 200px;
+    flex-shrink: 0;
+}
+
+.catalog-grid.list-view .item-thumbnail {
+    height: 100%;
+}
+
+.catalog-grid.list-view .item-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.catalog-grid.list-view .item-description {
+    -webkit-line-clamp: 3;
+}
+
+/* Estados de carga */
+.catalog-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 400px;
+}
+
+.loading-spinner {
+    width: 48px;
+    height: 48px;
+    border: 3px solid rgba(255, 255, 255, 0.1);
+    border-top-color: var(--company-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+/* Estado vacío */
+.catalog-empty {
+    text-align: center;
+    padding: 4rem 2rem;
+}
+
+.empty-icon {
+    font-size: 4rem;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+}
+
+.empty-message {
+    font-size: 1.25rem;
+    color: var(--text-secondary);
+    margin-bottom: 2rem;
+}
+
+/* Paginación */
+.catalog-pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 3rem;
+    padding: 2rem 0;
+}
+
+.pagination-button {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: var(--catalog-transition);
+}
+
+.pagination-button:hover:not(:disabled) {
+    background: var(--hover-bg);
+    border-color: var(--company-primary);
+}
+
+.pagination-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.pagination-info {
+    color: var(--text-secondary);
+}
+
+/* Búsqueda en catálogo */
+.catalog-search {
+    position: relative;
+    max-width: 400px;
+}
+
+.search-input {
+    width: 100%;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 0.75rem 1rem 0.75rem 3rem;
+    border-radius: 50px;
+    font-size: 0.875rem;
+    transition: var(--catalog-transition);
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: var(--company-primary);
+    background: var(--hover-bg);
+}
+
+.search-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-secondary);
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .catalog-grid {
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .catalog-container {
+        padding: 1rem 4%;
+    }
+    
+    .catalog-title {
+        font-size: 1.5rem;
+    }
+    
+    .catalog-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .filter-group {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .catalog-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 1rem;
+    }
+    
+    .catalog-grid.list-view .catalog-item {
+        height: 100px;
+    }
+    
+    .catalog-grid.list-view .thumbnail-wrapper {
+        width: 150px;
+    }
+    
+    .item-description {
+        display: none;
+    }
+    
+    .catalog-search {
+        max-width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .catalog-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 0.75rem;
+    }
+    
+    .item-info {
+        padding: 0.75rem;
+    }
+    
+    .item-title {
+        font-size: 0.875rem;
+    }
+    
+    .item-meta {
+        font-size: 0.75rem;
+    }
+}
+
+/* Animaciones */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Tema oscuro (default) */
+.catalog-container {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}

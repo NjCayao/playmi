@@ -1,0 +1,444 @@
+/**
+ * passenger-portal/assets/css/player.css
+ * Estilos compartidos para todos los reproductores
+ */
+
+/* Variables personalizables */
+:root {
+    --player-bg: #000000;
+    --player-controls-bg: rgba(0, 0, 0, 0.9);
+    --player-text: #ffffff;
+    --player-text-secondary: #b3b3b3;
+    --player-progress-bg: rgba(255, 255, 255, 0.3);
+    --player-progress-fill: var(--company-primary, #e50914);
+    --player-hover: rgba(255, 255, 255, 0.1);
+}
+
+/* Reset para reproductores */
+.player-container * {
+    box-sizing: border-box;
+}
+
+/* Contenedor base del reproductor */
+.player-container {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    background: var(--player-bg);
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+}
+
+/* Controles del reproductor */
+.player-controls {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--player-controls-bg);
+    backdrop-filter: blur(10px);
+    padding: 1.5rem 2rem;
+    transition: transform 0.3s ease;
+}
+
+.player-controls.hidden {
+    transform: translateY(100%);
+}
+
+/* Barra de progreso universal */
+.progress-container {
+    margin-bottom: 1rem;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 4px;
+    background: var(--player-progress-bg);
+    border-radius: 2px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.progress-bar:hover {
+    height: 6px;
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--player-progress-fill);
+    border-radius: 2px;
+    width: 0%;
+    position: relative;
+    transition: width 0.1s linear;
+}
+
+.progress-handle {
+    position: absolute;
+    right: -8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    background: white;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.progress-bar:hover .progress-handle {
+    opacity: 1;
+}
+
+/* Buffering indicator */
+.progress-buffered {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    width: 0%;
+}
+
+/* Tiempo */
+.time-display {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.875rem;
+    color: var(--player-text-secondary);
+    margin-top: 0.5rem;
+}
+
+/* Botones de control */
+.control-buttons {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+    margin: 1.5rem 0;
+}
+
+.control-btn {
+    background: none;
+    border: none;
+    color: var(--player-text);
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.control-btn:hover {
+    background: var(--player-hover);
+    transform: scale(1.1);
+}
+
+.control-btn:active {
+    transform: scale(0.95);
+}
+
+.control-btn.active {
+    color: var(--player-progress-fill);
+}
+
+/* Botón principal play/pause */
+.play-pause-btn {
+    width: 56px;
+    height: 56px;
+    background: white;
+    color: black;
+    border-radius: 50%;
+    font-size: 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.play-pause-btn:hover {
+    transform: scale(1.15);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* Control de volumen */
+.volume-control {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 120px;
+}
+
+.volume-slider {
+    flex: 1;
+    height: 4px;
+    background: var(--player-progress-bg);
+    border-radius: 2px;
+    cursor: pointer;
+    position: relative;
+}
+
+.volume-fill {
+    height: 100%;
+    background: var(--player-text);
+    border-radius: 2px;
+    width: 70%;
+}
+
+.volume-icon {
+    font-size: 1.125rem;
+    width: 24px;
+}
+
+/* Información de la pista */
+.track-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.track-thumbnail {
+    width: 48px;
+    height: 48px;
+    border-radius: 4px;
+    object-fit: cover;
+}
+
+.track-details {
+    flex: 1;
+    overflow: hidden;
+}
+
+.track-title {
+    font-weight: 600;
+    color: var(--player-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.track-artist {
+    font-size: 0.875rem;
+    color: var(--player-text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Botones adicionales */
+.player-actions {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.action-btn {
+    background: rgba(0, 0, 0, 0.6);
+    border: none;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: background 0.2s;
+}
+
+.action-btn:hover {
+    background: rgba(0, 0, 0, 0.8);
+}
+
+/* Pantalla completa */
+.fullscreen-btn {
+    position: absolute;
+    bottom: 1rem;
+    right: 1rem;
+}
+
+/* Loading spinner */
+.player-loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 48px;
+    height: 48px;
+}
+
+.loading-spinner {
+    width: 100%;
+    height: 100%;
+    border: 3px solid rgba(255, 255, 255, 0.1);
+    border-top-color: var(--player-progress-fill);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Overlay de publicidad */
+.ad-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.ad-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.ad-content {
+    text-align: center;
+    padding: 2rem;
+}
+
+.ad-title {
+    font-size: 1.5rem;
+    color: var(--player-progress-fill);
+    margin-bottom: 1rem;
+}
+
+.ad-countdown {
+    font-size: 3rem;
+    font-weight: 700;
+    color: white;
+    margin: 1rem 0;
+}
+
+.ad-message {
+    color: var(--player-text-secondary);
+    margin-bottom: 1.5rem;
+}
+
+.skip-button {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: all 0.2s;
+}
+
+.skip-button:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .player-controls {
+        padding: 1rem;
+    }
+    
+    .control-buttons {
+        gap: 1rem;
+    }
+    
+    .control-btn {
+        padding: 0.75rem;
+    }
+    
+    .play-pause-btn {
+        width: 48px;
+        height: 48px;
+        font-size: 18px;
+    }
+    
+    .volume-control {
+        display: none;
+    }
+    
+    .track-info {
+        margin-bottom: 0.5rem;
+    }
+    
+    .player-actions {
+        top: 0.5rem;
+        right: 0.5rem;
+    }
+}
+
+/* Touch-friendly para móviles */
+@media (hover: none) {
+    .control-btn {
+        padding: 0.75rem;
+    }
+    
+    .progress-bar {
+        height: 8px;
+    }
+    
+    .progress-handle {
+        opacity: 1;
+        width: 20px;
+        height: 20px;
+        right: -10px;
+    }
+}
+
+/* Animaciones */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.player-controls {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* Estados especiales */
+.player-container.loading .player-loading {
+    display: block;
+}
+
+.player-container.error {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.error-message {
+    color: var(--player-text-secondary);
+    font-size: 1.125rem;
+}
+
+.retry-button {
+    background: var(--player-progress-fill);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: transform 0.2s;
+}
+
+.retry-button:hover {
+    transform: scale(1.05);
+}
