@@ -16,7 +16,7 @@ define('PORTAL_PATH', dirname(__DIR__) . '/');
 define('CONTENT_PATH', dirname(dirname(__DIR__)) . '/content/');
 
 // Configuración de publicidad
-define('AD_DELAY_MINUTES', 5);          // Mostrar publicidad cada 5 minutos
+define('AD_DELAY_MINUTES', 5);          // Mostrar publicidad a los 5 minutos
 define('AD_DURATION_SECONDS', 30);       // Duración de publicidad
 define('AD_SKIP_AFTER_SECONDS', 5);      // Permitir saltar después de 5 segundos (opcional)
 define('AD_MID_MOVIE_ENABLED', true);    // Publicidad a mitad de película
