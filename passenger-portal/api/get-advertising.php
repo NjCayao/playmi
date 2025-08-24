@@ -1,76 +1,69 @@
 <?php
 /**
  * passenger-portal/api/get-advertising.php
- * API para obtener publicidad según empresa y paquete
+ * API para obtener videos publicitarios de la empresa
  */
 
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
 
+// Verificar acceso
+if (!defined('PORTAL_ACCESS')) {
+    define('PORTAL_ACCESS', true);
+}
+
+require_once '../config/portal-config.php';
 require_once '../../admin/config/database.php';
-require_once '../../admin/models/Advertising.php';
+
+// Obtener parámetros
+$company_id = isset($_GET['company_id']) ? intval($_GET['company_id']) : 0;
+
+if ($company_id == 0) {
+    echo json_encode([
+        'success' => false,
+        'error' => 'ID de empresa no válido'
+    ]);
+    exit;
+}
 
 try {
-    $companyId = (int)($_GET['company_id'] ?? 1);
-    $adType = $_GET['type'] ?? 'all'; // 'inicio', 'mitad', 'all'
+    $db = Database::getInstance()->getConnection();
     
-    // Crear instancia del modelo
-    $advertisingModel = new Advertising();
+    // Obtener videos publicitarios activos de la empresa
+    $sql = "SELECT 
+                id,
+                tipo_video,
+                archivo_path,
+                duracion,
+                orden_reproduccion
+            FROM publicidad_empresa 
+            WHERE empresa_id = ? 
+                AND activo = 1 
+            ORDER BY tipo_video, orden_reproduccion";
     
-    // Obtener publicidad activa
-    $ads = [];
+    $stmt = $db->prepare($sql);
+    $stmt->execute([$company_id]);
+    $ads = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    if ($adType === 'all' || $adType === 'video') {
-        // Obtener videos publicitarios
-        $videos = $advertisingModel->getVideos($companyId);
-        
-        foreach ($videos as $video) {
-            if ($video['activo']) {
-                $ads[] = [
-                    'id' => $video['id'],
-                    'type' => 'video',
-                    'position' => $video['tipo_video'], // 'inicio' o 'mitad'
-                    'archivo_path' => $video['archivo_path'],
-                    'duration' => $video['duracion'],
-                    'order' => $video['orden_reproduccion']
-                ];
-            }
+    // Verificar que los archivos existan
+    $validAds = [];
+    foreach ($ads as $ad) {
+        $filePath = UPLOADS_PATH . $ad['archivo_path'];
+        if (file_exists($filePath)) {
+            $validAds[] = $ad;
+        } else {
+            error_log("Archivo publicitario no encontrado: " . $filePath);
         }
     }
-    
-    if ($adType === 'all' || $adType === 'banner') {
-        // Obtener banners
-        $banners = $advertisingModel->getBanners($companyId);
-        
-        foreach ($banners as $banner) {
-            if ($banner['activo']) {
-                $ads[] = [
-                    'id' => $banner['id'],
-                    'type' => 'banner',
-                    'position' => $banner['tipo_banner'], // 'header', 'footer', 'catalogo'
-                    'imagen_path' => $banner['imagen_path'],
-                    'width' => $banner['ancho'],
-                    'height' => $banner['alto'],
-                    'order' => $banner['orden_visualizacion']
-                ];
-            }
-        }
-    }
-    
-    // Ordenar por orden de reproducción/visualización
-    usort($ads, function($a, $b) {
-        return $a['order'] - $b['order'];
-    });
     
     echo json_encode([
         'success' => true,
-        'ads' => $ads,
-        'company_id' => $companyId,
-        'timestamp' => date('Y-m-d H:i:s')
+        'ads' => $validAds,
+        'count' => count($validAds)
     ]);
     
 } catch (Exception $e) {
-    http_response_code(500);
+    error_log("Error en get-advertising.php: " . $e->getMessage());
+    
     echo json_encode([
         'success' => false,
         'error' => 'Error al obtener publicidad',

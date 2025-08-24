@@ -281,13 +281,17 @@ const VideoPlayer = {
     // Mostrar/ocultar controles
     showControls() {
         const controls = document.getElementById('controlsOverlay');
+        const backButton = document.getElementById('backButton');
+        
         controls.classList.remove('hidden');
+        if (backButton) backButton.classList.add('visible');
         
         // Ocultar después de 3 segundos de inactividad
         clearTimeout(this.hideControlsTimer);
         this.hideControlsTimer = setTimeout(() => {
             if (this.isPlaying && !this.isAdPlaying) {
                 controls.classList.add('hidden');
+                if (backButton) backButton.classList.remove('visible');
             }
         }, 3000);
     },
