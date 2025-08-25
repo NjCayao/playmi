@@ -228,7 +228,7 @@ $searchQuery = isset($_GET['q']) ? trim($_GET['q']) : '';
     </style>
     
     <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/fonts/font-awesome/css/all.min.css">
 </head>
 <body>
     <!-- Header -->

@@ -161,7 +161,7 @@ $videoUrl = CONTENT_URL . $videoData['file_path'];
     </div>
     
     <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/fonts/font-awesome/css/all.min.css">
     
     <!-- JavaScript del reproductor -->
     <script src="../assets/js/video-player.js"></script>
