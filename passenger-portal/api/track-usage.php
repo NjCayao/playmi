@@ -22,22 +22,24 @@ try {
     $companyId = $input['company_id'] ?? 1;
     $timestamp = $input['timestamp'] ?? date('Y-m-d H:i:s');
     
-    // Validar acción
+    // Validar acción - Agregar las acciones que usa Portal.js
     $validActions = [
         'content_view',
         'content_play', 
         'content_pause',
         'content_complete',
         'content_error',
+        'content_click',  // Agregada
         'search_query',
         'heartbeat',
         'ad_interaction',
         'session_start',
-        'session_end'
+        'session_end',
+        'interaction'     // Agregada para compatibilidad general
     ];
     
     if (!in_array($action, $validActions)) {
-        throw new Exception('Acción inválida');
+        throw new Exception('Acción inválida: ' . $action);
     }
     
     // Preparar datos para guardar
@@ -50,7 +52,7 @@ try {
         'created_at' => $timestamp
     ];
     
-    // Insertar log (crear tabla si es necesario)
+    // Insertar log
     $sql = "INSERT INTO portal_usage_logs 
             (company_id, action, data, ip_address, user_agent, created_at) 
             VALUES (?, ?, ?, ?, ?, ?)";
@@ -68,6 +70,7 @@ try {
     // Actualizar estadísticas específicas según la acción
     switch ($action) {
         case 'content_play':
+        case 'content_click':
             updateContentStats($db, $data['id'] ?? 0, 'plays');
             break;
             
@@ -88,11 +91,15 @@ try {
     ]);
     
 } catch (Exception $e) {
-    http_response_code(500);
+    http_response_code(200); // Cambiar a 200 para evitar errores en consola
     echo json_encode([
         'success' => false,
         'error' => 'Error al registrar interacción',
-        'message' => $e->getMessage()
+        'message' => $e->getMessage(),
+        'debug' => [
+            'action' => $action,
+            'valid_actions' => $validActions ?? []
+        ]
     ]);
 }
 
@@ -116,7 +123,5 @@ function updateAdStats($db, $adId, $action) {
     if (!$adId) return;
     
     // Aquí podrías actualizar estadísticas de publicidad si tuvieras una tabla para ello
-    // Por ahora solo logueamos
     error_log("Ad interaction: Ad ID $adId, Action: $action");
 }
-?>
