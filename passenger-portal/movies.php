@@ -1,7 +1,8 @@
 <?php
+
 /**
  * passenger-portal/movies.php
- * Catálogo de películas estilo Netflix - Interfaz de categoría
+ * Catálogo de películas estilo Netflix - Con carruseles por género
  */
 
 define('PORTAL_ACCESS', true);
@@ -10,422 +11,476 @@ require_once '../admin/config/database.php';
 
 $companyConfig = getCompanyConfig();
 
+// Determinar vista actual
+$viewMode = $_GET['view'] ?? 'browse';
+$selectedGenre = $_GET['g'] ?? '';
+
 // Inicializar variables
 $allMovies = [];
+$moviesByGenre = [];
 $genres = [];
 $years = [];
-$ratings = [];
 $featuredMovies = [];
 
 try {
     $db = Database::getInstance()->getConnection();
-    
+
     // Obtener todas las películas activas
     $sql = "SELECT id, titulo, descripcion, tipo, duracion, anio_lanzamiento, 
-            calificacion, genero, archivo_path, thumbnail_path, created_at,
+            calificacion, genero, categoria, archivo_path, thumbnail_path, created_at,
             descargas_count
             FROM contenido 
             WHERE tipo = 'pelicula' AND estado = 'activo' 
             ORDER BY created_at DESC";
-    
+
     $stmt = $db->prepare($sql);
     $stmt->execute();
     $allMovies = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    // Extraer géneros, años y calificaciones únicos
+
+    // Organizar películas por género
     foreach ($allMovies as $movie) {
-        if (!empty($movie['genero']) && !in_array($movie['genero'], $genres)) {
-            $genres[] = $movie['genero'];
+        // Extraer géneros únicos
+        if (!empty($movie['genero'])) {
+            $genre = $movie['genero'];
+            if (!in_array($genre, $genres)) {
+                $genres[] = $genre;
+            }
+            // Agrupar películas por género
+            if (!isset($moviesByGenre[$genre])) {
+                $moviesByGenre[$genre] = [];
+            }
+            $moviesByGenre[$genre][] = $movie;
         }
+
+        // Extraer años
         if (!empty($movie['anio_lanzamiento']) && !in_array($movie['anio_lanzamiento'], $years)) {
             $years[] = $movie['anio_lanzamiento'];
         }
-        if (!empty($movie['calificacion']) && !in_array($movie['calificacion'], $ratings)) {
-            $ratings[] = $movie['calificacion'];
-        }
     }
-    
+
     sort($genres);
     rsort($years);
-    sort($ratings);
-    
-    // Seleccionar películas destacadas (las 6 más vistas)
-    $featuredMovies = array_slice($allMovies, 0, 6);
-    
+
+    // Películas destacadas (más vistas)
+    $featuredMovies = array_slice($allMovies, 0, 10);
 } catch (Exception $e) {
     error_log("Error loading movies: " . $e->getMessage());
 }
 ?>
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Películas - <?php echo htmlspecialchars($companyConfig['company_name']); ?></title>
-    
+
     <!-- CSS -->
     <link rel="stylesheet" href="assets/css/netflix-style.css">
     <link rel="stylesheet" href="assets/css/mobile.css">
-    
-    <!-- CSS específico para la página de películas estilo Netflix -->
+
+    <!-- CSS específico para películas estilo Netflix con carruseles -->
     <style>
         :root {
             --company-primary: <?php echo $companyConfig['primary_color']; ?>;
             --company-secondary: <?php echo $companyConfig['secondary_color']; ?>;
         }
-        
-        /* Override del header para esta página */
+
+        /* Header siempre visible */
         .portal-header {
-            background: rgb(20,20,20);
-            background: linear-gradient(180deg, rgba(0,0,0,0.7) 10%, transparent);
+            background: rgba(20, 20, 20, 0.9);
+            backdrop-filter: blur(10px);
         }
-        
+
         /* Contenedor principal */
-        .browse-container {
+        .movies-browse-container {
             min-height: 100vh;
             background: #141414;
             padding-top: 68px;
         }
-        
-        /* Hero Section estilo Netflix Browse */
-        .browse-hero {
+
+        /* Hero más pequeño para movies */
+        .movies-hero {
             position: relative;
-            height: 100vh;
-            min-height: 500px;
-            margin-top: -68px;
+            height: 40vh;
+            min-height: 300px;
             overflow: hidden;
+            margin-bottom: 2rem;
         }
-        
-        .hero-featured {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-        }
-        
-        .hero-backdrop {
+
+        .movies-hero-backdrop {
             width: 100%;
             height: 100%;
             object-fit: cover;
+            filter: brightness(0.4);
         }
-        
-        .hero-gradient {
+
+        .movies-hero-gradient {
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background: linear-gradient(to right, 
-                rgba(0,0,0,0.8) 0%,
-                rgba(0,0,0,0.4) 60%,
-                transparent 100%);
+            background: linear-gradient(to bottom,
+                    transparent 0%,
+                    rgba(20, 20, 20, 0.7) 50%,
+                    #141414 100%);
         }
-        
-        .hero-bottom-gradient {
+
+        .movies-hero-content {
             position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 40%;
-            background: linear-gradient(to top, 
-                #141414 0%,
-                rgba(20,20,20,0.7) 50%,
-                transparent 100%);
-        }
-        
-        .hero-content {
-            position: absolute;
-            top: 35%;
+            bottom: 2rem;
             left: 60px;
-            max-width: 500px;
-            z-index: 10;
+            z-index: 2;
         }
-        
-        .hero-title {
-            font-size: 3.5rem;
-            font-weight: 800;
-            margin-bottom: 1rem;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.75);
-        }
-        
-        .hero-subtitle {
-            font-size: 1.5rem;
-            color: #fff;
-            margin-bottom: 1.5rem;
-            font-weight: 400;
-        }
-        
-        .hero-description {
-            font-size: 1.125rem;
-            line-height: 1.6;
-            color: #fff;
-            margin-bottom: 2rem;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.75);
-        }
-        
-        /* Navegación secundaria estilo Netflix */
-        .secondary-nav {
-            position: absolute;
-            top: 80px;
-            left: 60px;
-            z-index: 20;
-            display: flex;
-            align-items: center;
-            gap: 3rem;
-        }
-        
-        .nav-title {
+
+        .movies-hero-title {
             font-size: 2.5rem;
             font-weight: 700;
-            color: white;
+            margin-bottom: 0.5rem;
         }
-        
-        .genre-selector-nav {
-            position: relative;
+
+        /* Navegación y filtros */
+        .movies-nav {
+            padding: 1.5rem 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 2rem;
         }
-        
-        .genre-dropdown-toggle {
-            background: transparent;
-            border: 1px solid rgba(255,255,255,0.4);
+
+        .movies-nav-title {
+            font-size: 1.75rem;
+            font-weight: 600;
+        }
+
+        .movies-filters {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        /* Dropdown mejorado */
+        .filter-select {
+            background: #000000;
+            border: 1px solid rgba(255, 255, 255, 0.3);
             color: white;
             padding: 0.5rem 2rem 0.5rem 1rem;
             font-size: 0.875rem;
             cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 2rem;
-            transition: all 0.2s;
-            position: relative;
-            font-weight: 500;
+            border-radius: 2px;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='white' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.7rem center;
+            min-width: 120px;
         }
-        
-        .genre-dropdown-toggle:hover {
-            background: rgba(255,255,255,0.1);
+
+        .filter-select:hover {
             border-color: white;
         }
-        
-        .genre-dropdown-toggle::after {
-            content: '';
-            position: absolute;
-            right: 0.75rem;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 0;
-            height: 0;
-            border-left: 5px solid transparent;
-            border-right: 5px solid transparent;
-            border-top: 5px solid white;
-            transition: transform 0.2s;
-        }
-        
-        .genre-dropdown-toggle.active::after {
-            transform: translateY(-50%) rotate(180deg);
-        }
-        
-        .genre-dropdown {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            margin-top: 2px;
-            background: rgba(0,0,0,0.9);
-            border: 1px solid rgba(255,255,255,0.15);
-            min-width: 300px;
-            max-height: 450px;
-            overflow-y: auto;
-            display: none;
-            z-index: 1000;
-            border-radius: 2px;
-        }
-        
-        .genre-dropdown.active {
-            display: block;
-        }
-        
-        .genre-columns {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            padding: 1rem 0;
-        }
-        
-        .genre-item {
-            padding: 0.75rem 1.5rem;
-            cursor: pointer;
-            transition: background 0.2s;
-            font-size: 0.875rem;
-            color: #e5e5e5;
-        }
-        
-        .genre-item:hover {
-            background: rgba(255,255,255,0.1);
-            color: white;
-        }
-        
-        /* Contenido principal */
-        .browse-content {
-            position: relative;
-            z-index: 1;
-            margin-top: -200px;
-            padding-bottom: 4rem;
-        }
-        
-        /* Grid de películas más grande para browse */
-        .browse-row {
+
+        /* Secciones de género */
+        .genre-section {
             margin-bottom: 3rem;
             padding: 0 60px;
         }
-        
-        .row-header {
+
+        .genre-header {
             display: flex;
             align-items: center;
-            margin-bottom: 0.5rem;
+            justify-content: space-between;
+            margin-bottom: 1rem;
         }
-        
-        .row-title {
+
+        .genre-title {
             font-size: 1.4rem;
             font-weight: 600;
             color: #e5e5e5;
         }
-        
-        /* Grid especial para Top 10 */
-        .top10-row {
+
+        .see-all-btn {
+            color: #aaa;
+            text-decoration: none;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: color 0.2s;
+        }
+
+        .see-all-btn:hover {
+            color: white;
+        }
+
+        .see-all-btn i {
+            transition: transform 0.2s;
+        }
+
+        .see-all-btn:hover i {
+            transform: translateX(3px);
+        }
+
+        /* Carrusel de películas */
+        .genre-carousel {
+            position: relative;
+            margin: 0 -60px;
+            padding: 0 60px;
+        }
+
+        .genre-track {
             display: flex;
             gap: 0.5rem;
             overflow-x: auto;
-            padding-bottom: 1rem;
+            scroll-behavior: smooth;
             scrollbar-width: none;
+            -ms-overflow-style: none;
+            padding-bottom: 0.5rem;
         }
-        
-        .top10-row::-webkit-scrollbar {
+
+        .genre-track::-webkit-scrollbar {
             display: none;
         }
-        
-        .top10-item {
-            position: relative;
+
+        /* Card de película para carrusel */
+        .movie-card-carousel {
             flex: 0 0 auto;
-            width: 230px;
+            width: 200px;
             cursor: pointer;
+            transition: transform 0.3s ease;
+            position: relative;
         }
-        
-        .rank-number {
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 40%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 140px;
-            font-weight: 900;
-            color: black;
-            text-shadow: 
-                -4px -4px 0 #fff,
-                4px -4px 0 #fff,
-                -4px 4px 0 #fff,
-                4px 4px 0 #fff;
-            z-index: 1;
-            font-family: Arial Black, sans-serif;
+
+        .movie-card-carousel:hover {
+            transform: scale(1.05);
+            z-index: 10;
         }
-        
-        .top10-thumbnail {
-            width: 70%;
-            margin-left: 30%;
+
+        .movie-poster-carousel {
+            width: 100%;
             aspect-ratio: 2/3;
             object-fit: cover;
             border-radius: 4px;
         }
-        
-        /* Filtros adicionales */
-        .sort-selector {
+
+        /* Navegación del carrusel */
+        .carousel-nav {
             position: absolute;
-            top: 80px;
-            right: 60px;
-            z-index: 20;
-        }
-        
-        .sort-dropdown {
-            background: #141414;
-            border: 1px solid rgba(255,255,255,0.4);
-            color: white;
-            padding: 0.5rem 1rem;
-            font-size: 0.875rem;
+            top: 0;
+            bottom: 0;
+            width: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(20, 20, 20, 0.7);
             cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 2;
         }
-        
+
+        .genre-carousel:hover .carousel-nav {
+            opacity: 1;
+        }
+
+        .carousel-nav.prev {
+            left: 0;
+            background: linear-gradient(to right, rgba(20, 20, 20, 0.9), transparent);
+        }
+
+        .carousel-nav.next {
+            right: 0;
+            background: linear-gradient(to left, rgba(20, 20, 20, 0.9), transparent);
+        }
+
+        .carousel-nav i {
+            font-size: 2rem;
+            color: white;
+        }
+
+        /* Vista expandida de género */
+        .genre-expanded-view {
+            padding: 2rem 60px;
+        }
+
+        .back-to-browse {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #aaa;
+            text-decoration: none;
+            font-size: 0.875rem;
+            margin-bottom: 2rem;
+            transition: color 0.2s;
+        }
+
+        .back-to-browse:hover {
+            color: white;
+        }
+
+        .genre-expanded-header {
+            margin-bottom: 2rem;
+        }
+
+        .genre-expanded-title {
+            font-size: 2rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .genre-expanded-count {
+            color: #999;
+        }
+
+        /* Grid expandido */
+        .movies-expanded-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .movie-card-grid {
+            position: relative;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .movie-card-grid:hover {
+            transform: scale(1.05);
+            z-index: 10;
+        }
+
+        .movie-card-grid.hidden {
+            display: none;
+        }
+
+        .movie-poster-grid {
+            width: 100%;
+            aspect-ratio: 2/3;
+            object-fit: cover;
+        }
+
+        /* Botón cargar más */
+        .load-more-container {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .load-more-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 0.75rem 2rem;
+            font-size: 1rem;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .load-more-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        /* Sin resultados */
+        .no-movies {
+            text-align: center;
+            padding: 4rem;
+            color: #666;
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
-            .browse-hero {
-                height: 70vh;
+            .movies-hero {
+                height: 30vh;
+                min-height: 200px;
             }
-            
-            .secondary-nav {
-                top: 70px;
-                left: 20px;
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 1rem;
-            }
-            
-            .nav-title {
-                font-size: 2rem;
-            }
-            
-            .hero-content {
-                top: 45%;
+
+            .movies-hero-content {
                 left: 20px;
                 right: 20px;
-                max-width: 100%;
             }
-            
-            .hero-title {
-                font-size: 2rem;
+
+            .movies-hero-title {
+                font-size: 1.75rem;
             }
-            
-            .hero-subtitle {
-                font-size: 1.25rem;
+
+            .movies-nav {
+                padding: 1rem 20px;
+                flex-direction: column;
+                align-items: flex-start;
             }
-            
-            .hero-description {
-                font-size: 1rem;
+
+            .movies-nav-title {
+                font-size: 1.5rem;
+                margin-bottom: 1rem;
             }
-            
-            .browse-row {
+
+            .movies-filters {
+                width: 100%;
+                gap: 0.5rem;
+            }
+
+            .filter-select {
+                flex: 1;
+                min-width: 0;
+                font-size: 0.75rem;
+                padding: 0.5rem 1.5rem 0.5rem 0.75rem;
+            }
+
+            .genre-section {
                 padding: 0 20px;
+                margin-bottom: 2rem;
             }
-            
-            .top10-item {
-                width: 180px;
-            }
-            
-            .rank-number {
-                font-size: 100px;
-            }
-            
-            .sort-selector {
-                display: none;
-            }
-            
-            .content-carousel {
+
+            .genre-carousel {
                 margin: 0 -20px;
                 padding: 0 20px;
             }
-        }
-        
-        @media (max-width: 500px) {
-            .genre-columns {
-                grid-template-columns: repeat(2, 1fr);
+
+            .movie-card-carousel {
+                width: 140px;
             }
-            
-            .genre-dropdown {
-                min-width: 250px;
+
+            .genre-expanded-view {
+                padding: 1rem 20px;
+            }
+
+            .movies-expanded-grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 0.5rem;
+            }
+
+            .carousel-nav {
+                display: none;
+            }
+        }
+
+        @media (max-width: 500px) {
+            .movie-card-carousel {
+                width: 120px;
+            }
+
+            .genre-title {
+                font-size: 1.125rem;
+            }
+
+            .see-all-btn {
+                font-size: 0.75rem;
             }
         }
     </style>
-    
+
     <!-- Font Awesome -->
     <link rel="stylesheet" href="assets/fonts/font-awesome/css/all.min.css">
 </head>
+
 <body>
     <div class="portal-container">
         <!-- Header -->
@@ -437,7 +492,7 @@ try {
                     <?php else: ?>
                         <h1 class="company-name"><?php echo htmlspecialchars($companyConfig['company_name']); ?></h1>
                     <?php endif; ?>
-                    
+
                     <nav>
                         <ul class="nav-menu">
                             <li><a href="index.php">Inicio</a></li>
@@ -447,7 +502,7 @@ try {
                         </ul>
                     </nav>
                 </div>
-                
+
                 <div class="header-actions">
                     <button class="search-btn" aria-label="Buscar" onclick="Portal.toggleSearch()">
                         <i class="fas fa-search"></i>
@@ -455,170 +510,169 @@ try {
                 </div>
             </div>
         </header>
-        
-        <!-- Contenedor principal Browse -->
-        <div class="browse-container">
-            <!-- Hero Section -->
-            <section class="browse-hero">
-                <?php if (!empty($featuredMovies)): 
-                    $heroMovie = $featuredMovies[0];
+
+        <!-- Contenedor principal -->
+        <div class="movies-browse-container">
+
+            <?php if ($viewMode === 'browse'): ?>
+                <!-- VISTA DE NAVEGACIÓN (Browse) -->
+
+                <!-- Hero pequeño -->
+                <?php if (!empty($featuredMovies)):
+                    $heroMovie = $allMovies[array_rand($allMovies)];
                 ?>
-                    <div class="hero-featured">
-                        <img src="<?php echo $heroMovie['thumbnail_path'] ? CONTENT_URL . $heroMovie['thumbnail_path'] : CONTENT_URL . 'thumbnails/default-movie.jpg'; ?>" 
-                             alt="<?php echo htmlspecialchars($heroMovie['titulo']); ?>" 
-                             class="hero-backdrop">
-                        <div class="hero-gradient"></div>
-                        <div class="hero-bottom-gradient"></div>
-                    </div>
-                    
-                    <div class="hero-content">
-                        <h1 class="hero-title"><?php echo htmlspecialchars($heroMovie['titulo']); ?></h1>
-                        <?php if ($heroMovie['descripcion']): ?>
-                            <p class="hero-description">
-                                <?php echo htmlspecialchars(substr($heroMovie['descripcion'], 0, 200)); ?>...
-                            </p>
-                        <?php endif; ?>
-                        <div class="hero-buttons">
-                            <a href="player/video-player.php?id=<?php echo $heroMovie['id']; ?>" class="btn btn-primary">
-                                <i class="fas fa-play"></i> Reproducir
-                            </a>
-                            <button class="btn btn-secondary">
-                                <i class="fas fa-info-circle"></i> Más información
-                            </button>
+                    <section class="movies-hero">
+                        <img src="<?php echo $heroMovie['thumbnail_path'] ? CONTENT_URL . $heroMovie['thumbnail_path'] : CONTENT_URL . 'thumbnails/default-movie.jpg'; ?>"
+                            alt="<?php echo htmlspecialchars($heroMovie['titulo']); ?>"
+                            class="movies-hero-backdrop">
+                        <div class="movies-hero-gradient"></div>
+                        <div class="movies-hero-content">
+                            <h1 class="movies-hero-title">Películas</h1>
+                            <p>Explora nuestra colección completa</p>
                         </div>
-                    </div>
+                    </section>
                 <?php endif; ?>
-                
-                <!-- Navegación secundaria -->
-                <div class="secondary-nav">
-                    <h2 class="nav-title">Películas</h2>
-                    
-                    <div class="genre-selector-nav">
-                        <button class="genre-dropdown-toggle" onclick="toggleGenreDropdown()">
-                            Géneros
-                        </button>
-                        <div class="genre-dropdown" id="genreDropdown">
-                            <div class="genre-columns">
-                                <div class="genre-item" onclick="filterByGenre('')">Todas</div>
-                                <?php foreach ($genres as $genre): ?>
-                                    <div class="genre-item" onclick="filterByGenre('<?php echo htmlspecialchars($genre); ?>')">
-                                        <?php echo htmlspecialchars(ucfirst($genre)); ?>
-                                    </div>
-                                <?php endforeach; ?>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Selector de ordenamiento -->
-                <div class="sort-selector">
-                    <select class="sort-dropdown" onchange="sortMovies(this.value)">
-                        <option value="suggestions">Sugerencias para ti</option>
-                        <option value="year">Año de lanzamiento</option>
-                        <option value="az">A-Z</option>
-                        <option value="za">Z-A</option>
-                    </select>
-                </div>
-            </section>
-            
-            <!-- Contenido principal -->
-            <main class="browse-content">
-                <!-- Top 10 películas -->
-                <?php if (count($featuredMovies) >= 6): ?>
-                <section class="browse-row">
-                    <div class="row-header">
-                        <h3 class="row-title">Top 10 películas de hoy</h3>
-                    </div>
-                    <div class="top10-row">
-                        <?php for ($i = 0; $i < min(10, count($featuredMovies)); $i++): 
-                            $movie = $featuredMovies[$i];
-                        ?>
-                            <div class="top10-item" onclick="playMovie(<?php echo $movie['id']; ?>)">
-                                <div class="rank-number"><?php echo $i + 1; ?></div>
-                                <img src="<?php echo $movie['thumbnail_path'] ? CONTENT_URL . $movie['thumbnail_path'] : CONTENT_URL . 'thumbnails/default-movie.jpg'; ?>" 
-                                     alt="<?php echo htmlspecialchars($movie['titulo']); ?>" 
-                                     class="top10-thumbnail">
-                            </div>
-                        <?php endfor; ?>
-                    </div>
-                </section>
-                <?php endif; ?>
-                
-                <!-- Populares -->
-                <section class="browse-row">
-                    <div class="row-header">
-                        <h3 class="row-title">Populares en <?php echo htmlspecialchars($companyConfig['company_name']); ?></h3>
-                    </div>
-                    <div class="content-carousel">
-                        <div class="carousel-nav prev" onclick="scrollCarousel('popular-carousel', 'prev')">
-                            <i class="fas fa-chevron-left"></i>
-                        </div>
-                        <div class="carousel-track" id="popular-carousel">
-                            <?php foreach (array_slice($allMovies, 0, 20) as $movie): ?>
-                                <div class="content-card" onclick="playMovie(<?php echo $movie['id']; ?>)">
-                                    <img src="<?php echo $movie['thumbnail_path'] ? CONTENT_URL . $movie['thumbnail_path'] : CONTENT_URL . 'thumbnails/default-movie.jpg'; ?>" 
-                                         alt="<?php echo htmlspecialchars($movie['titulo']); ?>" 
-                                         class="card-thumbnail"
-                                         loading="lazy">
-                                    <div class="card-expanded-info">
-                                        <h4 class="card-title"><?php echo htmlspecialchars($movie['titulo']); ?></h4>
-                                        <div class="card-meta">
-                                            <span class="match-score"><?php echo rand(85, 99); ?>% para ti</span>
-                                            <?php if ($movie['anio_lanzamiento']): ?>
-                                                <span><?php echo $movie['anio_lanzamiento']; ?></span>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-                                </div>
+
+                <!-- Navegación y filtros -->
+                <div class="movies-nav">
+                    <h2 class="movies-nav-title">Todas las películas</h2>
+                    <div class="movies-filters">
+                        <select class="filter-select" id="genreFilter" onchange="filterByGenre(this.value)">
+                            <option value="">Géneros</option>
+                            <?php foreach ($genres as $genre): ?>
+                                <option value="<?php echo htmlspecialchars($genre); ?>"><?php echo htmlspecialchars(ucfirst($genre)); ?></option>
                             <?php endforeach; ?>
-                        </div>
-                        <div class="carousel-nav next" onclick="scrollCarousel('popular-carousel', 'next')">
-                            <i class="fas fa-chevron-right"></i>
-                        </div>
+                        </select>
+
+                        <select class="filter-select" id="yearFilter" onchange="filterByYear(this.value)">
+                            <option value="">Año</option>
+                            <?php foreach ($years as $year): ?>
+                                <option value="<?php echo $year; ?>"><?php echo $year; ?></option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
-                </section>
-                
-                <!-- Por géneros -->
-                <?php foreach ($genres as $genre): 
-                    $genreMovies = array_filter($allMovies, function($m) use ($genre) {
-                        return strcasecmp($m['genero'], $genre) === 0;
-                    });
-                    
-                    if (count($genreMovies) >= 3):
-                ?>
-                    <section class="browse-row genre-row" data-genre="<?php echo htmlspecialchars($genre); ?>">
-                        <div class="row-header">
-                            <h3 class="row-title"><?php echo htmlspecialchars(ucfirst($genre)); ?></h3>
+                </div>
+
+                <!-- Secciones por género -->
+                <?php if (!empty($featuredMovies)): ?>
+                    <!-- Top 10 -->
+                    <section class="genre-section">
+                        <div class="genre-header">
+                            <h3 class="genre-title">Top 10 de hoy</h3>
                         </div>
-                        <div class="content-carousel">
-                            <div class="carousel-nav prev" onclick="scrollCarousel('genre-<?php echo htmlspecialchars($genre); ?>', 'prev')">
+                        <div class="genre-carousel">
+                            <div class="carousel-nav prev" onclick="scrollCarousel('top10-carousel', 'prev')">
                                 <i class="fas fa-chevron-left"></i>
                             </div>
-                            <div class="carousel-track" id="genre-<?php echo htmlspecialchars($genre); ?>">
-                                <?php foreach (array_slice($genreMovies, 0, 20) as $movie): ?>
-                                    <div class="content-card" onclick="playMovie(<?php echo $movie['id']; ?>)">
-                                        <img src="<?php echo $movie['thumbnail_path'] ? CONTENT_URL . $movie['thumbnail_path'] : CONTENT_URL . 'thumbnails/default-movie.jpg'; ?>" 
-                                             alt="<?php echo htmlspecialchars($movie['titulo']); ?>" 
-                                             class="card-thumbnail"
-                                             loading="lazy">
-                                        <div class="card-expanded-info">
-                                            <h4 class="card-title"><?php echo htmlspecialchars($movie['titulo']); ?></h4>
-                                            <div class="card-meta">
-                                                <span class="match-score"><?php echo rand(85, 99); ?>% para ti</span>
-                                            </div>
-                                        </div>
+                            <div class="genre-track" id="top10-carousel">
+                                <?php foreach ($featuredMovies as $movie): ?>
+                                    <div class="movie-card-carousel" onclick="playMovie(<?php echo $movie['id']; ?>)">
+                                        <img src="<?php echo $movie['thumbnail_path'] ? CONTENT_URL . $movie['thumbnail_path'] : CONTENT_URL . 'thumbnails/default-movie.jpg'; ?>"
+                                            alt="<?php echo htmlspecialchars($movie['titulo']); ?>"
+                                            class="movie-poster-carousel"
+                                            loading="lazy">
                                     </div>
                                 <?php endforeach; ?>
                             </div>
-                            <div class="carousel-nav next" onclick="scrollCarousel('genre-<?php echo htmlspecialchars($genre); ?>', 'next')">
+                            <div class="carousel-nav next" onclick="scrollCarousel('top10-carousel', 'next')">
                                 <i class="fas fa-chevron-right"></i>
                             </div>
                         </div>
                     </section>
-                <?php endif; endforeach; ?>
-            </main>
+                <?php endif; ?>
+
+                <!-- Carruseles por género -->
+                <?php foreach ($moviesByGenre as $genre => $movies):
+                    if (count($movies) < 3) continue; // Solo mostrar géneros con 3+ películas
+                    $genreSlug = strtolower(str_replace(' ', '-', $genre));
+                ?>
+                    <section class="genre-section">
+                        <div class="genre-header">
+                            <h3 class="genre-title"><?php echo htmlspecialchars(ucfirst($genre)); ?></h3>
+                            <a href="?view=genre&g=<?php echo urlencode($genre); ?>" class="see-all-btn">
+                                Ver todo <i class="fas fa-chevron-right"></i>
+                            </a>
+                        </div>
+                        <div class="genre-carousel">
+                            <div class="carousel-nav prev" onclick="scrollCarousel('<?php echo $genreSlug; ?>-carousel', 'prev')">
+                                <i class="fas fa-chevron-left"></i>
+                            </div>
+                            <div class="genre-track" id="<?php echo $genreSlug; ?>-carousel">
+                                <?php
+                                $displayMovies = array_slice($movies, 0, 15); // Máximo 15 por carrusel
+                                foreach ($displayMovies as $movie):
+                                ?>
+                                    <div class="movie-card-carousel" onclick="playMovie(<?php echo $movie['id']; ?>)">
+                                        <img src="<?php echo $movie['thumbnail_path'] ? CONTENT_URL . $movie['thumbnail_path'] : CONTENT_URL . 'thumbnails/default-movie.jpg'; ?>"
+                                            alt="<?php echo htmlspecialchars($movie['titulo']); ?>"
+                                            class="movie-poster-carousel"
+                                            loading="lazy">
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                            <div class="carousel-nav next" onclick="scrollCarousel('<?php echo $genreSlug; ?>-carousel', 'next')">
+                                <i class="fas fa-chevron-right"></i>
+                            </div>
+                        </div>
+                    </section>
+                <?php endforeach; ?>
+
+            <?php else: ?>
+                <!-- VISTA EXPANDIDA DE GÉNERO -->
+                <?php
+                $genreMovies = $moviesByGenre[$selectedGenre] ?? [];
+                $totalMovies = count($genreMovies);
+                ?>
+
+                <div class="genre-expanded-view">
+                    <a href="movies.php" class="back-to-browse">
+                        <i class="fas fa-arrow-left"></i> Volver a películas
+                    </a>
+
+                    <div class="genre-expanded-header">
+                        <h1 class="genre-expanded-title"><?php echo htmlspecialchars(ucfirst($selectedGenre)); ?></h1>
+                        <p class="genre-expanded-count"><?php echo $totalMovies; ?> películas</p>
+                    </div>
+
+                    <?php if ($totalMovies > 0): ?>
+                        <div class="movies-expanded-grid" id="expandedGrid">
+                            <?php
+                            $counter = 0;
+                            foreach ($genreMovies as $movie):
+                                $isHidden = $counter >= 20 ? 'hidden' : '';
+                                $counter++;
+                            ?>
+                                <div class="movie-card-grid <?php echo $isHidden; ?>"
+                                    data-index="<?php echo $counter; ?>"
+                                    onclick="playMovie(<?php echo $movie['id']; ?>)">
+                                    <img src="<?php echo $movie['thumbnail_path'] ? CONTENT_URL . $movie['thumbnail_path'] : CONTENT_URL . 'thumbnails/default-movie.jpg'; ?>"
+                                        alt="<?php echo htmlspecialchars($movie['titulo']); ?>"
+                                        class="movie-poster-grid"
+                                        loading="lazy">
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+
+                        <?php if ($totalMovies > 20): ?>
+                            <div class="load-more-container" id="loadMoreContainer">
+                                <button class="load-more-btn" onclick="loadMoreMovies()">
+                                    Cargar más películas
+                                </button>
+                            </div>
+                        <?php endif; ?>
+
+                    <?php else: ?>
+                        <div class="no-movies">
+                            <i class="fas fa-film" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+                            <p>No hay películas en este género</p>
+                        </div>
+                    <?php endif; ?>
+                </div>
+
+            <?php endif; ?>
+
         </div>
-        
+
         <!-- Footer -->
         <footer class="portal-footer">
             <div class="footer-content">
@@ -626,11 +680,15 @@ try {
             </div>
         </footer>
     </div>
-    
+
     <!-- Scripts -->
     <script src="assets/js/portal-main.js"></script>
     <script src="assets/js/touch-controls.js"></script>
     <script>
+        // Variables globales
+        let moviesLoaded = 20;
+        const moviesPerPage = 20;
+
         // Inicializar
         document.addEventListener('DOMContentLoaded', function() {
             Portal.init({
@@ -638,71 +696,99 @@ try {
                 packageType: '<?php echo $companyConfig['package_type']; ?>',
                 adsEnabled: <?php echo $companyConfig['ads_enabled'] ? 'true' : 'false'; ?>
             });
-            
-            // Cerrar dropdown al hacer click fuera
-            document.addEventListener('click', function(e) {
-                if (!e.target.closest('.genre-selector-nav')) {
-                    document.getElementById('genreDropdown').classList.remove('active');
-                    document.querySelector('.genre-dropdown-toggle').classList.remove('active');
-                }
-            });
         });
-        
-        // Toggle dropdown de géneros
-        function toggleGenreDropdown() {
-            const dropdown = document.getElementById('genreDropdown');
-            const toggle = document.querySelector('.genre-dropdown-toggle');
-            
-            dropdown.classList.toggle('active');
-            toggle.classList.toggle('active');
-        }
-        
-        // Filtrar por género
-        function filterByGenre(genre) {
-            // Cerrar dropdown
-            document.getElementById('genreDropdown').classList.remove('active');
-            document.querySelector('.genre-dropdown-toggle').classList.remove('active');
-            
-            // Mostrar/ocultar filas según el género
-            const allRows = document.querySelectorAll('.genre-row');
-            
-            if (genre === '') {
-                // Mostrar todas
-                allRows.forEach(row => row.style.display = 'block');
-            } else {
-                // Mostrar solo el género seleccionado
-                allRows.forEach(row => {
-                    if (row.dataset.genre.toLowerCase() === genre.toLowerCase()) {
-                        row.style.display = 'block';
-                    } else {
-                        row.style.display = 'none';
-                    }
-                });
-            }
-        }
-        
-        // Ordenar películas
-        function sortMovies(sortType) {
-            console.log('Ordenar por:', sortType);
-            // Aquí implementarías la lógica de ordenamiento
-        }
-        
-        // Reproducir película
-        function playMovie(id) {
-            window.location.href = `player/video-player.php?id=${id}`;
-        }
-        
-        // Función para carrusel
+
+        // Scroll de carrusel
         function scrollCarousel(carouselId, direction) {
             const carousel = document.getElementById(carouselId);
             const scrollAmount = carousel.offsetWidth * 0.8;
-            
+
             if (direction === 'prev') {
                 carousel.scrollLeft -= scrollAmount;
             } else {
                 carousel.scrollLeft += scrollAmount;
             }
         }
+
+        // Cargar más películas en vista expandida
+        function loadMoreMovies() {
+            const hiddenCards = document.querySelectorAll('.movie-card-grid.hidden');
+            let shown = 0;
+
+            hiddenCards.forEach((card, index) => {
+                if (shown < moviesPerPage) {
+                    card.classList.remove('hidden');
+                    shown++;
+                }
+            });
+
+            moviesLoaded += shown;
+
+            // Ocultar botón si no hay más películas
+            if (hiddenCards.length <= moviesPerPage) {
+                document.getElementById('loadMoreContainer').style.display = 'none';
+            }
+        }
+
+        // Filtrar por año
+        function filterByYear(year) {
+            if (year) {
+                window.location.href = `movies.php?year=${year}`;
+            } else {
+                window.location.href = 'movies.php';
+            }
+        }
+
+        // Filtrar por género
+        function filterByGenre(genre) {
+            if (genre) {
+                window.location.href = `movies.php?view=genre&g=${encodeURIComponent(genre)}`;
+            } else {
+                window.location.href = 'movies.php';
+            }
+        }
+
+        // Ordenar películas
+        function sortMovies(sortType) {
+            // Para sistema offline, redirigir con parámetros
+            window.location.href = `movies.php?sort=${sortType}`;
+        }
+
+        // Reproducir película
+        function playMovie(id) {
+            window.location.href = `player/video-player.php?id=${id}`;
+        }
+
+        // Touch scroll para móvil
+        const tracks = document.querySelectorAll('.genre-track');
+        tracks.forEach(track => {
+            let isDown = false;
+            let startX;
+            let scrollLeft;
+
+            track.addEventListener('mousedown', (e) => {
+                isDown = true;
+                startX = e.pageX - track.offsetLeft;
+                scrollLeft = track.scrollLeft;
+            });
+
+            track.addEventListener('mouseleave', () => {
+                isDown = false;
+            });
+
+            track.addEventListener('mouseup', () => {
+                isDown = false;
+            });
+
+            track.addEventListener('mousemove', (e) => {
+                if (!isDown) return;
+                e.preventDefault();
+                const x = e.pageX - track.offsetLeft;
+                const walk = (x - startX) * 2;
+                track.scrollLeft = scrollLeft - walk;
+            });
+        });
     </script>
 </body>
+
 </html>
