@@ -65,9 +65,6 @@ $videoUrl = CONTENT_URL . $videoData['file_path'];
     <title><?php echo htmlspecialchars($videoData['title']); ?> - PLAYMI Player</title>    
     <link rel="stylesheet" href="../assets/css/player.css">
     <link rel="stylesheet" href="css/video-player.css">
-    <style>
-        
-    </style>
 </head>
 <body>
     <div class="video-container">
@@ -102,6 +99,13 @@ $videoUrl = CONTENT_URL . $videoData['file_path'];
             <source src="<?php echo $videoUrl; ?>" type="video/mp4">
             Tu navegador no soporta la reproducción de video HTML5.
         </video>
+        
+        <!-- Botón central de play/pause -->
+        <div class="center-play-container" id="centerPlayContainer">
+            <button class="center-play-btn" id="centerPlayBtn" onclick="togglePlayPause()">
+                <i class="fas fa-play"></i>
+            </button>
+        </div>
         
         <!-- Video de publicidad (oculto) -->
         <video id="adVideo" preload="none"></video>
@@ -178,191 +182,151 @@ $videoUrl = CONTENT_URL . $videoData['file_path'];
             midrollEnabled: <?php echo AD_MID_MOVIE_ENABLED ? 'true' : 'false'; ?>
         };
         
-        // Detectar dispositivo móvil y manejar orientación
-        function isMobileDevice() {
-            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        }
-        
-        // Forzar orientación landscape en móviles
-        async function handleMobileOrientation() {
-            if (!isMobileDevice()) return;
-            
-            try {
-                // Método 1: Screen Orientation API (más moderno)
-                if ('orientation' in screen && 'lock' in screen.orientation) {
-                    await screen.orientation.lock('landscape').catch(err => {
-                        console.log('No se pudo bloquear orientación:', err);
-                    });
-                }
+        // Clase para manejar orientación
+        class OrientationManager {
+            constructor() {
+                this.isPortrait = window.innerHeight > window.innerWidth;
+                this.isMobile = this.checkMobile();
+                this.userDismissed = false;
+                this.rotateOverlay = null;
                 
-                // Método 2: Fullscreen + Orientación
-                const videoContainer = document.querySelector('.video-container');
-                
-                // Solicitar pantalla completa automáticamente en móvil
-                if (videoContainer.requestFullscreen) {
-                    await videoContainer.requestFullscreen();
-                } else if (videoContainer.webkitRequestFullscreen) {
-                    await videoContainer.webkitRequestFullscreen();
-                } else if (videoContainer.mozRequestFullScreen) {
-                    await videoContainer.mozRequestFullScreen();
-                } else if (videoContainer.msRequestFullscreen) {
-                    await videoContainer.msRequestFullscreen();
-                }
-                
-                // Intentar bloquear orientación después de fullscreen
-                if ('orientation' in screen && 'lock' in screen.orientation) {
-                    await screen.orientation.lock('landscape').catch(() => {});
-                }
-                
-            } catch (error) {
-                console.log('Error al manejar orientación:', error);
-                
-                // Método 3: Mostrar mensaje para rotar dispositivo
-                showRotateMessage();
+                this.init();
             }
-        }
-        
-        // Mostrar mensaje de rotación si no se puede forzar
-        function showRotateMessage() {
-            if (window.innerHeight > window.innerWidth) {
-                const rotateMsg = document.createElement('div');
-                rotateMsg.id = 'rotateMessage';
-                rotateMsg.innerHTML = `
-                    <div style="
-                        position: fixed;
-                        top: 0;
-                        left: 0;
-                        right: 0;
-                        bottom: 0;
-                        background: rgba(0,0,0,0.95);
-                        display: flex;
-                        flex-direction: column;
-                        align-items: center;
-                        justify-content: center;
-                        z-index: 10000;
-                        color: white;
-                        text-align: center;
-                        padding: 20px;
-                    ">
-                        <div style="
-                            animation: rotate 2s linear infinite;
-                            margin-bottom: 20px;
-                        ">
+            
+            checkMobile() {
+                return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
+                    || (window.matchMedia && window.matchMedia("(max-width: 768px)").matches);
+            }
+            
+            init() {
+                if (!this.isMobile) return;
+                
+                // Escuchar cambios de orientación
+                window.addEventListener('orientationchange', () => this.handleOrientationChange());
+                window.addEventListener('resize', () => this.handleOrientationChange());
+                
+                // Verificar orientación inicial
+                this.checkOrientation();
+                
+                // Intentar entrar en fullscreen al reproducir
+                const video = document.getElementById('mainVideo');
+                video.addEventListener('play', () => {
+                    this.tryEnterFullscreen();
+                }, { once: true });
+            }
+            
+            checkOrientation() {
+                this.isPortrait = window.innerHeight > window.innerWidth;
+                
+                if (this.isMobile && this.isPortrait && !this.userDismissed) {
+                    this.showRotateOverlay();
+                } else {
+                    this.hideRotateOverlay();
+                }
+            }
+            
+            handleOrientationChange() {
+                // Pequeño delay para que el navegador actualice las dimensiones
+                setTimeout(() => {
+                    this.checkOrientation();
+                }, 100);
+            }
+            
+            showRotateOverlay() {
+                if (this.rotateOverlay) return;
+                
+                this.rotateOverlay = document.createElement('div');
+                this.rotateOverlay.className = 'rotate-overlay';
+                this.rotateOverlay.innerHTML = `
+                    <div class="rotate-content">
+                        <div class="rotate-icon">
                             <svg width="80" height="80" viewBox="0 0 24 24" fill="white">
                                 <path d="M7.34 6.41L0.86 12.9l6.49 6.48 6.49-6.48-6.5-6.49zM3.69 12.9l3.66-3.66L11 12.9l-3.66 3.66-3.65-3.66zm15.67-6.26C17.61 4.88 15.3 4 13 4V.76L8.76 5 13 9.24V6c1.79 0 3.58.68 4.95 2.05 2.73 2.73 2.73 7.17 0 9.9C16.58 19.32 14.79 20 13 20c-.97 0-1.94-.21-2.84-.61l-1.49 1.49C10.02 21.62 11.51 22 13 22c2.3 0 4.61-.88 6.36-2.64 3.52-3.51 3.52-9.21 0-12.72z"/>
                             </svg>
                         </div>
-                        <h2 style="font-size: 24px; margin-bottom: 10px;">
-                            Gira tu dispositivo
-                        </h2>
-                        <p style="font-size: 16px; opacity: 0.8;">
-                            Para una mejor experiencia, por favor gira tu dispositivo a modo horizontal
-                        </p>
-                        <button onclick="document.getElementById('rotateMessage').remove()" style="
-                            margin-top: 20px;
-                            padding: 10px 30px;
-                            background: var(--company-primary, #e50914);
-                            border: none;
-                            color: white;
-                            border-radius: 5px;
-                            font-size: 16px;
-                            cursor: pointer;
-                        ">
-                            Continuar de todos modos
-                        </button>
+                        <h2>Gira tu dispositivo</h2>
+                        <p>Para una mejor experiencia de visualización</p>
+                        <div class="rotate-actions">
+                            <button class="rotate-continue" onclick="orientationManager.continueInPortrait()">
+                                Continuar en vertical
+                            </button>
+                        </div>
                     </div>
-                    
-                    <style>
-                        @keyframes rotate {
-                            from { transform: rotate(0deg); }
-                            to { transform: rotate(90deg); }
-                        }
-                    </style>
                 `;
-                document.body.appendChild(rotateMsg);
-            }
-        }
-        
-        // Detectar cambios de orientación
-        function handleOrientationChange() {
-            const rotateMsg = document.getElementById('rotateMessage');
-            if (rotateMsg) {
-                if (window.innerWidth > window.innerHeight) {
-                    rotateMsg.remove();
+                
+                document.body.appendChild(this.rotateOverlay);
+                
+                // Pausar el video mientras se muestra el overlay
+                const video = document.getElementById('mainVideo');
+                if (!video.paused) {
+                    this.wasPlaying = true;
+                    video.pause();
                 }
-            } else if (isMobileDevice() && window.innerHeight > window.innerWidth) {
-                showRotateMessage();
             }
-        }
-        
-        // CSS para forzar aspecto landscape
-        if (isMobileDevice()) {
-            const style = document.createElement('style');
-            style.textContent = `
-                @media screen and (orientation: portrait) {
-                    .video-container {
-                        position: fixed;
-                        top: 0;
-                        left: 0;
-                        width: 100vh;
-                        height: 100vw;
-                        transform: rotate(90deg);
-                        transform-origin: left top;
-                    }
-                    
-                    .controls-overlay {
-                        width: 100vh !important;
-                    }
-                    
-                    /* Ajustar controles para rotación */
-                    .back-button {
-                        position: fixed;
-                        top: 20px;
-                        left: 20px;
-                    }
+            
+            hideRotateOverlay() {
+                if (!this.rotateOverlay) return;
+                
+                this.rotateOverlay.remove();
+                this.rotateOverlay = null;
+                
+                // Reanudar video si estaba reproduciéndose
+                if (this.wasPlaying) {
+                    const video = document.getElementById('mainVideo');
+                    video.play();
+                    this.wasPlaying = false;
                 }
                 
-                /* Mejorar experiencia fullscreen en móvil */
-                @media screen and (max-width: 768px) {
-                    .video-container:-webkit-full-screen {
-                        width: 100%;
-                        height: 100%;
+                // Si ahora está en landscape, intentar fullscreen
+                if (!this.isPortrait) {
+                    this.tryEnterFullscreen();
+                }
+            }
+            
+            continueInPortrait() {
+                this.userDismissed = true;
+                this.hideRotateOverlay();
+            }
+            
+            async tryEnterFullscreen() {
+                if (!this.isMobile || this.isPortrait) return;
+                
+                const container = document.querySelector('.video-container');
+                
+                try {
+                    if (container.requestFullscreen) {
+                        await container.requestFullscreen();
+                    } else if (container.webkitRequestFullscreen) {
+                        await container.webkitRequestFullscreen();
+                    } else if (container.mozRequestFullScreen) {
+                        await container.mozRequestFullScreen();
+                    } else if (container.msRequestFullscreen) {
+                        await container.msRequestFullscreen();
                     }
                     
-                    .video-container:fullscreen {
-                        width: 100%;
-                        height: 100%;
+                    // Intentar bloquear orientación después de fullscreen
+                    if ('orientation' in screen && 'lock' in screen.orientation) {
+                        await screen.orientation.lock('landscape').catch(() => {});
                     }
+                } catch (error) {
+                    console.log('Fullscreen no disponible:', error);
                 }
-            `;
-            document.head.appendChild(style);
+            }
         }
         
-        // Eventos
-        window.addEventListener('orientationchange', handleOrientationChange);
-        window.addEventListener('resize', handleOrientationChange);
+        // Inicializar el manager de orientación cuando el DOM esté listo
+        let orientationManager;
         
-        // Esperar a que el DOM esté listo
         document.addEventListener('DOMContentLoaded', function() {
-            // Intentar orientación landscape en móvil después de interacción
-            if (isMobileDevice()) {
-                // Mostrar mensaje inicial si está en portrait
-                if (window.innerHeight > window.innerWidth) {
-                    showRotateMessage();
-                }
-                
-                // Intentar fullscreen + landscape al hacer play
-                const mainVideo = document.getElementById('mainVideo');
-                mainVideo.addEventListener('play', function() {
-                    handleMobileOrientation();
-                }, { once: true });
-            }
+            orientationManager = new OrientationManager();
+            
+            // Hacer disponible globalmente para el botón
+            window.orientationManager = orientationManager;
         });
         
         // Depuración
         console.log('Video URL:', playerConfig.videoUrl);
         console.log('Video Config:', playerConfig);
-        console.log('Is Mobile:', isMobileDevice());
         
         // Manejar errores de carga del video
         const mainVideo = document.getElementById('mainVideo');
@@ -451,15 +415,47 @@ $videoUrl = CONTENT_URL . $videoData['file_path'];
             }
         }
         
-        // Actualizar ícono de fullscreen
+        // Mejorar la experiencia de fullscreen
         document.addEventListener('fullscreenchange', function() {
             const icon = document.getElementById('fullscreenIcon');
-            if (document.fullscreenElement) {
-                icon.className = 'fas fa-compress';
-            } else {
-                icon.className = 'fas fa-expand';
+            const isFullscreen = document.fullscreenElement !== null;
+            
+            if (icon) {
+                icon.className = isFullscreen ? 'fas fa-compress' : 'fas fa-expand';
+            }
+            
+            // Si salimos de fullscreen en móvil, verificar orientación
+            if (!isFullscreen && orientationManager) {
+                orientationManager.checkOrientation();
             }
         });
+        
+        // Manejar el botón de fullscreen mejorado
+        window.toggleFullscreen = function() {
+            const container = document.querySelector('.video-container');
+            
+            if (!document.fullscreenElement) {
+                // Entrar en fullscreen
+                container.requestFullscreen().then(() => {
+                    // En móvil, intentar forzar landscape
+                    if (orientationManager && orientationManager.isMobile) {
+                        if ('orientation' in screen && 'lock' in screen.orientation) {
+                            screen.orientation.lock('landscape').catch(() => {});
+                        }
+                    }
+                }).catch(err => {
+                    console.error('Error al entrar en pantalla completa:', err);
+                });
+            } else {
+                // Salir de fullscreen
+                document.exitFullscreen().then(() => {
+                    // Desbloquear orientación
+                    if ('orientation' in screen && 'unlock' in screen.orientation) {
+                        screen.orientation.unlock();
+                    }
+                });
+            }
+        };
         
         // Manejar visibilidad de controles y botón volver
         let controlsTimer;
@@ -505,8 +501,64 @@ $videoUrl = CONTENT_URL . $videoData['file_path'];
             controlsTimer = setTimeout(hideControls, 3000);
         });
         
+        // Controlar botón central de play/pause
+        const centerPlayContainer = document.getElementById('centerPlayContainer');
+        const centerPlayBtn = document.getElementById('centerPlayBtn');
+        
+        // Actualizar botón central cuando cambia el estado
+        mainVideo.addEventListener('play', () => {
+            centerPlayContainer.classList.add('playing');
+            centerPlayBtn.querySelector('i').className = 'fas fa-pause';
+        });
+        
+        mainVideo.addEventListener('pause', () => {
+            centerPlayContainer.classList.remove('playing');
+            centerPlayBtn.querySelector('i').className = 'fas fa-play';
+        });
+        
+        // Mostrar botón central al pausar
+        mainVideo.addEventListener('pause', () => {
+            centerPlayContainer.classList.add('visible');
+        });
+        
+        // Ocultar botón central al reproducir (después de un delay)
+        mainVideo.addEventListener('play', () => {
+            setTimeout(() => {
+                if (!mainVideo.paused) {
+                    centerPlayContainer.classList.remove('visible');
+                }
+            }, 800);
+        });
+        
+        // Click en el video para play/pause
+        mainVideo.addEventListener('click', (e) => {
+            e.preventDefault();
+            togglePlayPause();
+        });
+        
+        // Mostrar botón central con los controles
+        function showControlsWithCenter() {
+            showControls();
+            if (mainVideo.paused) {
+                centerPlayContainer.classList.add('visible');
+            }
+        }
+        
+        // Modificar eventos para incluir el botón central
+        videoContainer.addEventListener('mousemove', showControlsWithCenter);
+        videoContainer.addEventListener('mouseenter', showControlsWithCenter);
+        videoContainer.addEventListener('touchstart', showControlsWithCenter);
+        
         // Inicializar reproductor
         VideoPlayer.init(playerConfig);
+        
+        // Marcar cuando el video ha sido iniciado por primera vez
+        mainVideo.addEventListener('play', function() {
+            document.querySelector('.video-container').classList.add('video-started');
+        }, { once: true });
+        
+        // Mostrar botón central al inicio
+        centerPlayContainer.classList.add('visible');
         
         // Registrar inicio de reproducción
         fetch('../api/track-usage.php', {

@@ -1,395 +1,618 @@
 body {
-            margin: 0;
-            padding: 0;
-            background: #000;
-            overflow: hidden;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-        }
-        
-        .video-container {
-            position: relative;
-            width: 100%;
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        #mainVideo, #adVideo {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-        }
-        
-        #adVideo {
-            display: none;
-            position: absolute;
-            top: 0;
-            left: 0;
-            z-index: 10;
-        }
-        
-        .controls-overlay {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            padding: 20px;
-            background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 100%);
-            transition: all 0.3s ease;
-        }
-        
-        .controls-overlay.hidden {
-            opacity: 0;
-            transform: translateY(100px);
-            pointer-events: none;
-        }
-        
-        .video-title {
-            position: absolute;
-            top: 20px;
-            left: 60px;
-            color: white;
-            font-size: 1.5rem;
-            font-weight: 600;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-        
-        .controls-overlay:not(.hidden) ~ .video-title {
-            opacity: 1;
-        }
-        
-        .video-controls {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-bottom: 10px;
-        }
-        
-        .control-btn {
-            background: none;
-            border: none;
-            color: white;
-            font-size: 20px;
-            cursor: pointer;
-            padding: 10px;
-            border-radius: 50%;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .control-btn:hover {
-            background: rgba(255,255,255,0.2);
-            transform: scale(1.1);
-        }
-        
-        .play-pause-btn {
-            font-size: 24px;
-            width: 50px;
-            height: 50px;
-        }
-        
-        .progress-bar {
-            flex: 1;
-            height: 4px;
-            background: rgba(255,255,255,0.3);
-            border-radius: 2px;
-            cursor: pointer;
-            position: relative;
-            overflow: visible;
-            transition: height 0.2s;
-        }
-        
-        .progress-bar:hover {
-            height: 6px;
-        }
-        
-        .progress-fill {
-            height: 100%;
-            background: var(--company-primary, #e50914);
-            border-radius: 2px;
-            width: 0%;
-            position: relative;
-        }
-        
-        .progress-buffered {
-            position: absolute;
-            top: 0;
-            left: 0;
-            height: 100%;
-            background: rgba(255,255,255,0.2);
-            border-radius: 2px;
-            width: 0%;
-        }
-        
-        .progress-handle {
-            position: absolute;
-            right: -6px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 12px;
-            height: 12px;
-            background: white;
-            border-radius: 50%;
-            opacity: 0;
-            transition: opacity 0.2s;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        }
-        
-        .progress-bar:hover .progress-handle {
-            opacity: 1;
-        }
-        
-        .time-display {
-            color: white;
-            font-size: 14px;
-            font-family: Arial, sans-serif;
-            min-width: 100px;
-            text-align: center;
-        }
-        
-        .volume-control {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .volume-slider {
-            width: 100px;
-            height: 4px;
-            background: rgba(255,255,255,0.3);
-            border-radius: 2px;
-            cursor: pointer;
-            position: relative;
-        }
-        
-        .volume-fill {
-            height: 100%;
-            background: white;
-            border-radius: 2px;
-            width: 100%;
-        }
-        
-        /* Overlay de publicidad */
-        .ad-overlay {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.95);
-            padding: 40px;
-            border-radius: 10px;
-            text-align: center;
-            color: white;
-            z-index: 20;
-            display: none;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.8);
-        }
-        
-        .ad-overlay.active {
-            display: block;
-        }
-        
-        .ad-countdown {
-            font-size: 64px;
-            font-weight: bold;
-            margin: 20px 0;
-            color: var(--company-primary, #e50914);
-        }
-        
-        .ad-message {
-            font-size: 24px;
-            margin-bottom: 10px;
-        }
-        
-        .skip-button {
-            display: none;
-            margin-top: 20px;
-            padding: 12px 24px;
-            background: rgba(255,255,255,0.2);
-            border: 1px solid white;
-            color: white;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: all 0.2s;
-        }
-        
-        .skip-button:hover {
-            background: rgba(255,255,255,0.3);
-            transform: translateY(-2px);
-        }
-        
-        .back-button {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            background: rgba(0,0,0,0.7);
-            border: 1px solid rgba(255,255,255,0.2);
-            color: white;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            z-index: 30;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            opacity: 0;
-            pointer-events: none;
-        }
-        
-        .back-button.visible {
-            opacity: 1;
-            pointer-events: auto;
-        }
-        
-        .back-button:hover {
-            background: rgba(0,0,0,0.9);
-            transform: translateX(-5px);
-        }
-        
-        /* Loading spinner */
-        .loading-spinner {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 60px;
-            height: 60px;
-            border: 3px solid rgba(255,255,255,0.1);
-            border-top-color: var(--company-primary, #e50914);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            display: none;
-        }
-        
-        .loading-spinner.active {
-            display: block;
-        }
-        
-        @keyframes spin {
-            to { transform: translate(-50%, -50%) rotate(360deg); }
-        }
-        
-        /* Error message */
-        .error-container {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-            color: white;
-            display: none;
-        }
-        
-        .error-container.active {
-            display: block;
-        }
-        
-        .error-icon {
-            font-size: 48px;
-            color: #e50914;
-            margin-bottom: 20px;
-        }
-        
-        .error-message {
-            font-size: 18px;
-            margin-bottom: 20px;
-        }
-        
-        .retry-button {
-            padding: 10px 30px;
-            background: var(--company-primary, #e50914);
-            border: none;
-            color: white;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        
-        /* Botones de skip estilo Netflix */
-        .skip-button-container {
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 48px;
-            height: 48px;
-        }
-        
-        .skip-10 {
-            /* background: rgba(255,255,255,0.1);
+  margin: 0;
+  padding: 0;
+  background: #000;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial,
+    sans-serif;
+}
+
+.video-container {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#mainVideo,
+#adVideo {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+#adVideo {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 10;
+}
+
+.controls-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 20px;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.9) 0%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  transition: all 0.3s ease;
+}
+
+.controls-overlay.hidden {
+  opacity: 0;
+  transform: translateY(100px);
+  pointer-events: none;
+}
+
+.video-title {
+  position: absolute;
+  top: 20px;
+  left: 60px;
+  color: white;
+  font-size: 1.5rem;
+  font-weight: 600;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.controls-overlay:not(.hidden) ~ .video-title {
+  opacity: 1;
+}
+
+.video-controls {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 10px;
+}
+
+.control-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 10px;
+  border-radius: 50%;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.control-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.1);
+}
+
+.play-pause-btn {
+  font-size: 24px;
+  width: 50px;
+  height: 50px;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+  cursor: pointer;
+  position: relative;
+  overflow: visible;
+  transition: height 0.2s;
+}
+
+.progress-bar:hover {
+  height: 6px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--company-primary, #e50914);
+  border-radius: 2px;
+  width: 0%;
+  position: relative;
+}
+
+.progress-buffered {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  width: 0%;
+}
+
+.progress-handle {
+  position: absolute;
+  right: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 12px;
+  background: white;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.2s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.progress-bar:hover .progress-handle {
+  opacity: 1;
+}
+
+.time-display {
+  color: white;
+  font-size: 14px;
+  font-family: Arial, sans-serif;
+  min-width: 100px;
+  text-align: center;
+}
+
+.volume-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.volume-slider {
+  width: 100px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+  cursor: pointer;
+  position: relative;
+}
+
+.volume-fill {
+  height: 100%;
+  background: white;
+  border-radius: 2px;
+  width: 100%;
+}
+
+/* Overlay de publicidad */
+.ad-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.95);
+  padding: 40px;
+  border-radius: 10px;
+  text-align: center;
+  color: white;
+  z-index: 20;
+  display: none;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+}
+
+.ad-overlay.active {
+  display: block;
+}
+
+.ad-countdown {
+  font-size: 64px;
+  font-weight: bold;
+  margin: 20px 0;
+  color: var(--company-primary, #e50914);
+}
+
+.ad-message {
+  font-size: 24px;
+  margin-bottom: 10px;
+}
+
+.skip-button {
+  display: none;
+  margin-top: 20px;
+  padding: 12px 24px;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid white;
+  color: white;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.2s;
+}
+
+.skip-button:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+}
+
+.back-button {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  z-index: 30;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.back-button.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.back-button:hover {
+  background: rgba(0, 0, 0, 0.9);
+  transform: translateX(-5px);
+}
+
+/* Loading spinner */
+.loading-spinner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 60px;
+  height: 60px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top-color: var(--company-primary, #e50914);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  display: none;
+}
+
+.loading-spinner.active {
+  display: block;
+}
+
+@keyframes spin {
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+/* Error message */
+.error-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: white;
+  display: none;
+}
+
+.error-container.active {
+  display: block;
+}
+
+.error-icon {
+  font-size: 48px;
+  color: #e50914;
+  margin-bottom: 20px;
+}
+
+.error-message {
+  font-size: 18px;
+  margin-bottom: 20px;
+}
+
+.retry-button {
+  padding: 10px 30px;
+  background: var(--company-primary, #e50914);
+  border: none;
+  color: white;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+/* Botones de skip estilo Netflix */
+.skip-button-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+}
+
+.skip-10 {
+  /* background: rgba(255,255,255,0.1);
             border: 2px solid rgba(255,255,255,0.3); */
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            position: relative;
-            font-size: 12px;
-            font-weight: 600;
-            transition: all 0.2s;
-        }
-        
-        .skip-10:hover {
-            background: rgba(255,255,255,0.2);
-            border-color: rgba(255,255,255,0.5);
-            transform: scale(1.1);
-        }
-        
-        .skip-10 span {
-            position: absolute;
-            bottom: -2px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 10px;
-            letter-spacing: -0.5px;
-        }
-        
-        .skip-10 i {
-            font-size: 16px;
-        }
-        
-        /* Responsive */
-        @media (max-width: 768px) {
-            .video-title {
-                font-size: 1.125rem;
-                left: 60px;
-            }
-            
-            .control-btn {
-                font-size: 16px;
-                padding: 8px;
-            }
-            
-            .play-pause-btn {
-                font-size: 20px;
-                width: 40px;
-                height: 40px;
-            }
-            
-            .skip-10 {
-                width: 40px;
-                height: 40px;
-            }
-            
-            .skip-10 i {
-                font-size: 14px;
-            }
-            
-            .skip-10 span {
-                font-size: 9px;
-            }
-            
-            .volume-control {
-                display: none;
-            }
-            
-            .back-button {
-                padding: 8px 16px;
-                font-size: 14px;
-            }
-        }
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  position: relative;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.skip-10:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: scale(1.1);
+}
+
+.skip-10 span {
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  letter-spacing: -0.5px;
+}
+
+.skip-10 i {
+  font-size: 16px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .video-title {
+    font-size: 1.125rem;
+    left: 60px;
+  }
+
+  .control-btn {
+    font-size: 16px;
+    padding: 8px;
+  }
+
+  .play-pause-btn {
+    font-size: 20px;
+    width: 40px;
+    height: 40px;
+  }
+
+  .skip-10 {
+    width: 40px;
+    height: 40px;
+  }
+
+  .skip-10 i {
+    font-size: 14px;
+  }
+
+  .skip-10 span {
+    font-size: 9px;
+  }
+
+  .volume-control {
+    display: none;
+  }
+
+  .back-button {
+    padding: 8px 16px;
+    font-size: 14px;
+  }
+}
+
+
+
+/* Estilos para el overlay de rotación */
+.rotate-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    animation: fadeIn 0.3s ease;
+}
+
+.rotate-content {
+    text-align: center;
+    color: white;
+    padding: 2rem;
+}
+
+.rotate-icon {
+    margin-bottom: 1.5rem;
+    animation: rotateIcon 2s ease-in-out infinite;
+}
+
+.rotate-content h2 {
+    font-size: 1.75rem;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.rotate-content p {
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 2rem;
+}
+
+.rotate-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+
+.rotate-continue {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 0.75rem 2rem;
+    border-radius: 4px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.rotate-continue:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes rotateIcon {
+    0%, 100% { transform: rotate(-90deg); }
+    50% { transform: rotate(0deg); }
+}
+
+/* Mejoras para video en portrait */
+@media screen and (orientation: portrait) and (max-width: 768px) {
+    .video-container video {
+        width: 100%;
+        height: auto;
+        max-height: 100vh;
+        object-fit: contain;
+    }
+    
+    .controls-overlay {
+        background: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.8) 70%);
+    }
+    
+    /* Ajustar controles para portrait */
+    .video-controls {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .volume-control {
+        display: none;
+    }
+    
+    .time-display {
+        order: -1;
+        width: 100%;
+        text-align: center;
+        margin-bottom: 0.5rem;
+    }
+}
+
+/* Mejoras para landscape */
+@media screen and (orientation: landscape) and (max-width: 768px) {
+    .video-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+    }
+    
+    .video-container video {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
+    
+    /* Ocultar automáticamente el overlay de rotación en landscape */
+    .rotate-overlay {
+        display: none !important;
+    }
+}
+
+
+/* Botón central de play/pause */
+.center-play-container {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 15;
+    transition: opacity 0.3s ease;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.center-play-container.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Ocultar cuando está reproduciendo */
+.center-play-container.playing {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.center-play-btn {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.7);
+    border: 3px solid rgba(255, 255, 255, 0.5);
+    color: white;
+    font-size: 30px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.center-play-btn:hover {
+    background: rgba(0, 0, 0, 0.8);
+    border-color: rgba(255, 255, 255, 0.8);
+    transform: scale(1.1);
+}
+
+.center-play-btn:active {
+    transform: scale(0.95);
+}
+
+.center-play-btn i {
+    margin-left: 3px; /* Ajuste visual para centrar el ícono play */
+}
+
+.center-play-btn i.fa-pause {
+    margin-left: 0; /* El pause no necesita ajuste */
+}
+
+/* Animación de aparición */
+@keyframes popIn {
+    0% {
+        transform: translate(-50%, -50%) scale(0.8);
+        opacity: 0;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+    }
+}
+
+.center-play-container.visible {
+    animation: popIn 0.3s ease-out forwards;
+}
+
+/* En móvil, hacerlo un poco más pequeño */
+@media (max-width: 768px) {
+    .center-play-btn {
+        width: 60px;
+        height: 60px;
+        font-size: 24px;
+        border-width: 2px;
+    }
+}
+
+/* Estado inicial - mostrar play al cargar */
+.video-container:not(.video-started) .center-play-container {
+    opacity: 1;
+    pointer-events: auto;
+}
