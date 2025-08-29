@@ -1,4 +1,5 @@
 <?php
+
 /**
  * passenger-portal/player/game-launcher.php
  * Lanzador de juegos HTML5 con sandbox seguro
@@ -18,24 +19,24 @@ $errorMessage = '';
 
 try {
     $db = Database::getInstance()->getConnection();
-    
+
     // Obtener información del juego
     $sql = "SELECT id, titulo, descripcion, archivo_path, categoria, metadata 
             FROM contenido 
             WHERE id = ? AND tipo = 'juego' AND estado = 'activo'
             LIMIT 1";
-    
+
     $stmt = $db->prepare($sql);
     $stmt->execute([$gameId]);
     $game = $stmt->fetch(PDO::FETCH_ASSOC);
-    
+
     if ($game) {
         // Extraer el nombre del archivo sin la extensión .zip
         $gameFileName = basename($game['archivo_path'], '.zip');
-        
+
         // Verificar que el juego extraído existe
         $extractedDir = dirname(dirname(__DIR__)) . '/content/games/extracted/' . $gameFileName;
-        
+
         if (!is_dir($extractedDir)) {
             error_log("Error: El juego no está extraído en: " . $extractedDir);
             $error = true;
@@ -44,14 +45,14 @@ try {
             // Buscar el archivo HTML principal
             $htmlFile = null;
             $possibleFiles = ['index.html', 'game.html', 'main.html', 'index.htm'];
-            
+
             foreach ($possibleFiles as $file) {
                 if (file_exists($extractedDir . '/' . $file)) {
                     $htmlFile = $file;
                     break;
                 }
             }
-            
+
             if (!$htmlFile) {
                 // Si no encuentra archivos HTML estándar, buscar cualquier archivo .html
                 $files = glob($extractedDir . '/*.html');
@@ -63,11 +64,11 @@ try {
                     $errorMessage = "El juego no tiene un archivo principal válido.";
                 }
             }
-            
+
             if (!$error) {
                 $metadata = json_decode($game['metadata'], true) ?? [];
                 $extractedPath = 'games/extracted/' . $gameFileName . '/' . $htmlFile;
-                
+
                 $gameData = [
                     'id' => $game['id'],
                     'title' => $game['titulo'],
@@ -77,7 +78,7 @@ try {
                     'game_path' => $extractedPath,
                     'controls' => $metadata['controls'] ?? ['keyboard', 'mouse', 'touch']
                 ];
-                
+
                 // Debug
                 error_log("Game ZIP path: " . $game['archivo_path']);
                 error_log("Game extracted path: " . $extractedPath);
@@ -88,7 +89,6 @@ try {
         $error = true;
         $errorMessage = "Juego no encontrado";
     }
-    
 } catch (Exception $e) {
     $error = true;
     $errorMessage = "Error al cargar el juego: " . $e->getMessage();
@@ -106,571 +106,33 @@ $gameUrl = CONTENT_URL . $gameData['game_path'];
 ?>
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"> -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title><?php echo htmlspecialchars($gameData['title']); ?> - PLAYMI Games</title>
-    
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-            -webkit-touch-callout: none;
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
-            user-select: none;
-        }
-        
-        html, body {
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            position: fixed;
-            background: #000;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Netflix Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            color: white;
-            touch-action: none;
-        }
-        
-        /* Contenedor principal */
-        .game-wrapper {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: #000;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        /* Overlay de controles estilo Netflix */
-        .controls-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            z-index: 100;
-            background: linear-gradient(to bottom, 
-                rgba(0,0,0,0.8) 0%, 
-                rgba(0,0,0,0) 20%, 
-                rgba(0,0,0,0) 80%, 
-                rgba(0,0,0,0.8) 100%);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            pointer-events: none;
-        }
-        
-        .controls-overlay.visible {
-            opacity: 1;
-            pointer-events: auto;
-        }
-        
-        /* Header minimalista */
-        .game-header {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            padding: env(safe-area-inset-top, 15px) 15px 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            z-index: 101;
-        }
-        
-        .game-title-section {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .back-button {
-            width: 36px;
-            height: 36px;
-            background: rgba(0,0,0,0.5);
-            backdrop-filter: blur(10px);
-            border: none;
-            border-radius: 50%;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            cursor: pointer;
-        }
-        
-        .game-title {
-            font-size: 16px;
-            font-weight: 600;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            max-width: 150px;
-        }
-        
-        .header-actions {
-            display: flex;
-            gap: 8px;
-        }
-        
-        .action-button {
-            width: 36px;
-            height: 36px;
-            background: rgba(0,0,0,0.5);
-            backdrop-filter: blur(10px);
-            border: none;
-            border-radius: 50%;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .action-button:active {
-            transform: scale(0.9);
-            background: rgba(255,255,255,0.2);
-        }
-        
-        /* Contenedor del juego */
-        .game-container {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #000;
-        }
-        
-        #gameFrame {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            border: none;
-            background: #000;
-        }
-        
-        /* Controles de juego - Bottom */
-        .game-controls {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            padding: 15px;
-            padding-bottom: env(safe-area-inset-bottom, 15px);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 20px;
-            z-index: 101;
-        }
-        
-        .control-button {
-            width: 60px;
-            height: 60px;
-            background: rgba(255,255,255,0.1);
-            backdrop-filter: blur(20px);
-            border: 2px solid rgba(255,255,255,0.2);
-            border-radius: 50%;
-            color: white;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 2px;
-            font-size: 20px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .control-button.primary {
-            width: 80px;
-            height: 80px;
-            background: var(--company-primary, #e50914);
-            border-color: var(--company-primary, #e50914);
-            font-size: 24px;
-        }
-        
-        .control-button:active {
-            transform: scale(0.9);
-            background: rgba(255,255,255,0.3);
-        }
-        
-        .control-button.primary:active {
-            background: var(--company-primary, #e50914);
-            opacity: 0.8;
-        }
-        
-        .control-label {
-            font-size: 9px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-top: 2px;
-        }
-        
-        /* Pantalla de carga estilo Netflix */
-        .loading-screen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #000;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 200;
-        }
-        
-        .loading-screen.hidden {
-            display: none;
-        }
-        
-        .loading-content {
-            text-align: center;
-        }
-        
-        .game-logo {
-            width: 80px;
-            height: 80px;
-            background: var(--company-primary, #e50914);
-            border-radius: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 40px;
-            margin: 0 auto 20px;
-        }
-        
-        .loading-bar {
-            width: 200px;
-            height: 3px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 3px;
-            overflow: hidden;
-            margin: 20px auto;
-        }
-        
-        .loading-progress {
-            height: 100%;
-            background: var(--company-primary, #e50914);
-            border-radius: 3px;
-            animation: loading 2s ease-in-out infinite;
-        }
-        
-        @keyframes loading {
-            0% { width: 0%; }
-            50% { width: 80%; }
-            100% { width: 100%; }
-        }
-        
-        .loading-text {
-            font-size: 14px;
-            color: #999;
-        }
-        
-        /* Error screen estilo Netflix */
-        .error-screen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #000;
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            z-index: 200;
-        }
-        
-        .error-screen.active {
-            display: flex;
-        }
-        
-        .error-icon {
-            font-size: 60px;
-            color: var(--company-primary, #e50914);
-            margin-bottom: 20px;
-        }
-        
-        .error-message {
-            font-size: 18px;
-            margin-bottom: 10px;
-            text-align: center;
-        }
-        
-        .error-submessage {
-            font-size: 14px;
-            color: #999;
-            margin-bottom: 30px;
-            text-align: center;
-        }
-        
-        .error-actions {
-            display: flex;
-            gap: 15px;
-        }
-        
-        .error-button {
-            padding: 12px 24px;
-            background: var(--company-primary, #e50914);
-            border: none;
-            border-radius: 4px;
-            color: white;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-        }
-        
-        .error-button.secondary {
-            background: transparent;
-            border: 1px solid #666;
-        }
-        
-        /* Modal de pausa */
-        .pause-modal {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.9);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 150;
-        }
-        
-        .pause-modal.active {
-            display: flex;
-        }
-        
-        .pause-content {
-            text-align: center;
-            padding: 30px;
-        }
-        
-        .pause-icon {
-            font-size: 60px;
-            color: white;
-            margin-bottom: 20px;
-        }
-        
-        .pause-title {
-            font-size: 24px;
-            margin-bottom: 30px;
-        }
-        
-        .pause-actions {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            max-width: 250px;
-            margin: 0 auto;
-        }
-        
-        .pause-button {
-            padding: 15px 30px;
-            background: rgba(255,255,255,0.1);
-            border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 50px;
-            color: white;
-            font-size: 16px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .pause-button.primary {
-            background: var(--company-primary, #e50914);
-            border-color: var(--company-primary, #e50914);
-        }
-        
-        .pause-button:active {
-            transform: scale(0.95);
-        }
-        
-        /* Indicador táctil */
-        .touch-indicator {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 60px;
-            color: white;
-            opacity: 0;
-            pointer-events: none;
-            z-index: 110;
-        }
-        
-        .touch-indicator.show {
-            animation: touchFeedback 0.6s ease-out;
-        }
-        
-        @keyframes touchFeedback {
-            0% {
-                opacity: 0;
-                transform: translate(-50%, -50%) scale(0.5);
-            }
-            50% {
-                opacity: 1;
-                transform: translate(-50%, -50%) scale(1.2);
-            }
-            100% {
-                opacity: 0;
-                transform: translate(-50%, -50%) scale(1.5);
-            }
-        }
-        
-        /* Orientación - Mensaje mejorado */
-        .orientation-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #000;
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 300;
-            padding: 20px;
-        }
-        
-        .orientation-overlay.show {
-            display: flex;
-        }
-        
-        .rotate-device {
-            width: 100px;
-            height: 60px;
-            border: 3px solid var(--company-primary, #e50914);
-            border-radius: 10px;
-            position: relative;
-            animation: rotateDevice 2s ease-in-out infinite;
-            margin-bottom: 30px;
-        }
-        
-        .rotate-device::after {
-            content: '';
-            position: absolute;
-            width: 10px;
-            height: 10px;
-            background: var(--company-primary, #e50914);
-            border-radius: 50%;
-            right: 5px;
-            top: 50%;
-            transform: translateY(-50%);
-        }
-        
-        @keyframes rotateDevice {
-            0%, 100% { transform: rotate(0deg); }
-            50% { transform: rotate(90deg); }
-        }
-        
-        .orientation-text {
-            font-size: 18px;
-            margin-bottom: 10px;
-        }
-        
-        .orientation-subtext {
-            font-size: 14px;
-            color: #999;
-            margin-bottom: 20px;
-        }
-        
-        .continue-portrait-btn {
-            padding: 10px 20px;
-            background: transparent;
-            border: 1px solid #666;
-            border-radius: 4px;
-            color: white;
-            font-size: 14px;
-            cursor: pointer;
-        }
-        
-        /* Ajustes responsive */
-        @media screen and (orientation: landscape) {
-            .orientation-overlay {
-                display: none !important;
-            }
-            
-            .game-controls {
-                flex-direction: row;
-                padding: 10px 20px;
-            }
-            
-            .control-button {
-                width: 50px;
-                height: 50px;
-                font-size: 18px;
-            }
-            
-            .control-button.primary {
-                width: 60px;
-                height: 60px;
-                font-size: 20px;
-            }
-        }
-        
-        @media screen and (min-height: 812px) {
-            /* iPhone X y posteriores */
-            .game-header {
-                padding-top: max(env(safe-area-inset-top), 20px);
-            }
-            
-            .game-controls {
-                padding-bottom: max(env(safe-area-inset-bottom), 20px);
-            }
-        }
-        
-        /* Desactivar selección y zoom */
-        * {
-            -webkit-touch-callout: none;
-            -webkit-text-size-adjust: 100%;
-        }
-        
-        input, textarea, select {
-            font-size: 16px !important;
-        }
-    </style>
-    
     <!-- Font Awesome local -->
     <link rel="stylesheet" href="../assets/fonts/font-awesome/css/all.min.css">
+    <link rel="stylesheet" href="css/game-launcher.css">
 </head>
+
 <body>
     <div class="game-wrapper">
         <!-- Contenedor del juego -->
         <div class="game-container">
-            <iframe 
+            <iframe
                 id="gameFrame"
                 src=""
-                sandbox="allow-scripts allow-same-origin allow-pointer-lock allow-forms allow-orientation-lock"
                 allow="autoplay; fullscreen; accelerometer; gyroscope"
                 scrolling="no"
                 frameborder="0">
             </iframe>
         </div>
-        
+
         <!-- Overlay de controles -->
         <div class="controls-overlay" id="controlsOverlay">
             <!-- Header -->
@@ -681,7 +143,7 @@ $gameUrl = CONTENT_URL . $gameData['game_path'];
                     </button>
                     <h1 class="game-title"><?php echo htmlspecialchars($gameData['title']); ?></h1>
                 </div>
-                
+
                 <div class="header-actions">
                     <button class="action-button" onclick="toggleSound()" id="soundBtn">
                         <i class="fas fa-volume-up"></i>
@@ -691,36 +153,36 @@ $gameUrl = CONTENT_URL . $gameData['game_path'];
                     </button>
                 </div>
             </div>
-            
+
             <!-- Controles del juego -->
             <div class="game-controls">
                 <button class="control-button" onclick="gameAction('left')">
                     <i class="fas fa-chevron-left"></i>
                     <span class="control-label">Izq</span>
                 </button>
-                
+
                 <button class="control-button primary" onclick="gameAction('action')">
                     <i class="fas fa-hand-pointer"></i>
                     <span class="control-label">Acción</span>
                 </button>
-                
+
                 <button class="control-button" onclick="gameAction('right')">
                     <i class="fas fa-chevron-right"></i>
                     <span class="control-label">Der</span>
                 </button>
-                
+
                 <button class="control-button" onclick="pauseGame()">
                     <i class="fas fa-pause"></i>
                     <span class="control-label">Pausa</span>
                 </button>
             </div>
         </div>
-        
+
         <!-- Indicador táctil -->
         <div class="touch-indicator" id="touchIndicator">
             <i class="fas fa-hand-pointer"></i>
         </div>
-        
+
         <!-- Pantalla de carga -->
         <div class="loading-screen" id="loadingScreen">
             <div class="loading-content">
@@ -733,7 +195,7 @@ $gameUrl = CONTENT_URL . $gameData['game_path'];
                 <p class="loading-text">Cargando juego...</p>
             </div>
         </div>
-        
+
         <!-- Pantalla de error -->
         <div class="error-screen" id="errorScreen">
             <div class="error-icon">
@@ -746,7 +208,7 @@ $gameUrl = CONTENT_URL . $gameData['game_path'];
                 <button class="error-button secondary" onclick="exitGame()">Salir</button>
             </div>
         </div>
-        
+
         <!-- Modal de pausa -->
         <div class="pause-modal" id="pauseModal">
             <div class="pause-content">
@@ -767,7 +229,7 @@ $gameUrl = CONTENT_URL . $gameData['game_path'];
                 </div>
             </div>
         </div>
-        
+
         <!-- Overlay de orientación -->
         <div class="orientation-overlay" id="orientationOverlay">
             <div class="rotate-device"></div>
@@ -778,7 +240,7 @@ $gameUrl = CONTENT_URL . $gameData['game_path'];
             </button>
         </div>
     </div>
-    
+
     <script>
         // Variables globales
         const gameFrame = document.getElementById('gameFrame');
@@ -788,13 +250,13 @@ $gameUrl = CONTENT_URL . $gameData['game_path'];
         const pauseModal = document.getElementById('pauseModal');
         const orientationOverlay = document.getElementById('orientationOverlay');
         const touchIndicator = document.getElementById('touchIndicator');
-        
+
         let soundEnabled = true;
         let isFullscreen = false;
         let isPaused = false;
         let controlsTimer = null;
         let lastInteraction = Date.now();
-        
+
         // Configuración
         const gameConfig = {
             id: <?php echo $gameData['id']; ?>,
@@ -802,35 +264,37 @@ $gameUrl = CONTENT_URL . $gameData['game_path'];
             path: '<?php echo $gameUrl; ?>',
             companyId: <?php echo $companyConfig['company_id']; ?>
         };
-        
+
         // Detectar dispositivo
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
         const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-        
+
         // Inicializar
         function init() {
             console.log('Iniciando juego:', gameConfig.path);
-            
+
             // Verificar orientación
             checkOrientation();
             window.addEventListener('orientationchange', checkOrientation);
             window.addEventListener('resize', checkOrientation);
-            
+
             // Configurar controles
             setupControls();
-            
+
             // Cargar juego
             loadGame();
-            
+
             // Prevenir scroll y zoom
             preventDefaultGestures();
-            
+
             // Auto fullscreen en móvil
             if (isMobile) {
-                document.addEventListener('touchstart', tryFullscreen, { once: true });
+                document.addEventListener('touchstart', tryFullscreen, {
+                    once: true
+                });
             }
         }
-        
+
         // Cargar juego
         function loadGame() {
             gameFrame.onload = () => {
@@ -838,7 +302,7 @@ $gameUrl = CONTENT_URL . $gameData['game_path'];
                 setTimeout(() => {
                     loadingScreen.classList.add('hidden');
                     showControls();
-                    
+
                     // Enviar configuración inicial
                     try {
                         gameFrame.contentWindow.postMessage({
@@ -854,76 +318,76 @@ $gameUrl = CONTENT_URL . $gameData['game_path'];
                     }
                 }, 1500);
             };
-            
+
             gameFrame.onerror = () => {
                 console.error('Error al cargar el juego');
                 showError();
             };
-            
+
             // Cargar el juego
             gameFrame.src = gameConfig.path;
         }
-        
+
         // Verificar orientación
         function checkOrientation() {
             const isPortrait = window.innerHeight > window.innerWidth;
-            
+
             if (isMobile && isPortrait && !isFullscreen) {
                 orientationOverlay.classList.add('show');
             } else {
                 orientationOverlay.classList.remove('show');
             }
         }
-        
+
         // Continuar en portrait
         function continueInPortrait() {
             orientationOverlay.classList.remove('show');
         }
-        
+
         // Configurar controles
         function setupControls() {
             // Auto-ocultar controles
             document.addEventListener('touchstart', showControls);
             document.addEventListener('touchmove', showControls);
             document.addEventListener('click', showControls);
-            
+
             // Escuchar mensajes del juego
             window.addEventListener('message', handleGameMessage);
-            
+
             // Detectar inactividad
             setInterval(checkInactivity, 1000);
         }
-        
+
         // Mostrar controles
         function showControls() {
             lastInteraction = Date.now();
             controlsOverlay.classList.add('visible');
-            
+
             clearTimeout(controlsTimer);
             controlsTimer = setTimeout(hideControls, 3000);
         }
-        
+
         // Ocultar controles
         function hideControls() {
             if (!isPaused && Date.now() - lastInteraction > 2500) {
                 controlsOverlay.classList.remove('visible');
             }
         }
-        
+
         // Verificar inactividad
         function checkInactivity() {
             if (!isPaused && Date.now() - lastInteraction > 3000) {
                 hideControls();
             }
         }
-        
+
         // Acciones del juego
         function gameAction(action) {
             console.log('Acción:', action);
-            
+
             // Mostrar indicador táctil
             showTouchFeedback();
-            
+
             // Enviar comando al juego
             try {
                 gameFrame.contentWindow.postMessage({
@@ -931,62 +395,62 @@ $gameUrl = CONTENT_URL . $gameData['game_path'];
                     action: action
                 }, '*');
             } catch (e) {}
-            
+
             // Vibración táctil
             if ('vibrate' in navigator) {
                 navigator.vibrate(10);
             }
         }
-        
+
         // Mostrar feedback táctil
         function showTouchFeedback() {
             touchIndicator.classList.remove('show');
             void touchIndicator.offsetWidth; // Force reflow
             touchIndicator.classList.add('show');
         }
-        
+
         // Pausar juego
         function pauseGame() {
             isPaused = true;
             pauseModal.classList.add('active');
-            
+
             try {
                 gameFrame.contentWindow.postMessage({
                     type: 'pause'
                 }, '*');
             } catch (e) {}
         }
-        
+
         // Reanudar juego
         function resumeGame() {
             isPaused = false;
             pauseModal.classList.remove('active');
             showControls();
-            
+
             try {
                 gameFrame.contentWindow.postMessage({
                     type: 'resume'
                 }, '*');
             } catch (e) {}
         }
-        
+
         // Reiniciar juego
         function restartGame() {
             pauseModal.classList.remove('active');
             loadingScreen.classList.remove('hidden');
-            
+
             gameFrame.src = '';
             setTimeout(() => {
                 gameFrame.src = gameConfig.path;
             }, 100);
         }
-        
+
         // Toggle sonido
         function toggleSound() {
             soundEnabled = !soundEnabled;
             const icon = document.querySelector('#soundBtn i');
             icon.className = soundEnabled ? 'fas fa-volume-up' : 'fas fa-volume-mute';
-            
+
             try {
                 gameFrame.contentWindow.postMessage({
                     type: 'sound',
@@ -994,7 +458,7 @@ $gameUrl = CONTENT_URL . $gameData['game_path'];
                 }, '*');
             } catch (e) {}
         }
-        
+
         // Toggle fullscreen
         function toggleFullscreen() {
             if (!document.fullscreenElement) {
@@ -1003,15 +467,15 @@ $gameUrl = CONTENT_URL . $gameData['game_path'];
                 exitFullscreen();
             }
         }
-        
+
         // Intentar fullscreen
         function tryFullscreen() {
             const wrapper = document.querySelector('.game-wrapper');
             const promise = wrapper.requestFullscreen ||
-                           wrapper.webkitRequestFullscreen ||
-                           wrapper.mozRequestFullScreen ||
-                           wrapper.msRequestFullscreen;
-            
+                wrapper.webkitRequestFullscreen ||
+                wrapper.mozRequestFullScreen ||
+                wrapper.msRequestFullscreen;
+
             if (promise) {
                 promise.call(wrapper).then(() => {
                     isFullscreen = true;
@@ -1022,7 +486,7 @@ $gameUrl = CONTENT_URL . $gameData['game_path'];
                 });
             }
         }
-        
+
         // Salir de fullscreen
         function exitFullscreen() {
             if (document.exitFullscreen) {
@@ -1034,11 +498,11 @@ $gameUrl = CONTENT_URL . $gameData['game_path'];
             } else if (document.msExitFullscreen) {
                 document.msExitFullscreen();
             }
-            
+
             isFullscreen = false;
             document.querySelector('#fullscreenBtn i').className = 'fas fa-expand';
         }
-        
+
         // Salir del juego
         function exitGame() {
             if (confirm('¿Salir del juego?')) {
@@ -1048,25 +512,25 @@ $gameUrl = CONTENT_URL . $gameData['game_path'];
                 window.location.href = '../games.php';
             }
         }
-        
+
         // Mostrar error
         function showError() {
             loadingScreen.classList.add('hidden');
             errorScreen.classList.add('active');
         }
-        
+
         // Reintentar
         function retryGame() {
             errorScreen.classList.remove('active');
             loadingScreen.classList.remove('hidden');
             loadGame();
         }
-        
+
         // Manejar mensajes del juego
         function handleGameMessage(event) {
             const data = event.data;
-            
-            switch(data.type) {
+
+            switch (data.type) {
                 case 'gameOver':
                     handleGameOver(data);
                     break;
@@ -1078,7 +542,7 @@ $gameUrl = CONTENT_URL . $gameData['game_path'];
                     break;
             }
         }
-        
+
         // Manejar fin del juego
         function handleGameOver(data) {
             if (confirm(`¡Juego terminado!\nPuntuación: ${data.score || 0}\n\n¿Jugar de nuevo?`)) {
@@ -1087,14 +551,16 @@ $gameUrl = CONTENT_URL . $gameData['game_path'];
                 exitGame();
             }
         }
-        
+
         // Prevenir gestos por defecto
         function preventDefaultGestures() {
             // Prevenir scroll
             document.addEventListener('touchmove', (e) => {
                 e.preventDefault();
-            }, { passive: false });
-            
+            }, {
+                passive: false
+            });
+
             // Prevenir zoom con doble tap
             let lastTouchEnd = 0;
             document.addEventListener('touchend', (e) => {
@@ -1104,26 +570,72 @@ $gameUrl = CONTENT_URL . $gameData['game_path'];
                 }
                 lastTouchEnd = now;
             }, false);
-            
+
             // Prevenir menú contextual
             document.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
             });
         }
-        
+
+        function adjustGameScale() {
+            const gameFrame = document.getElementById('gameFrame');
+            const container = document.querySelector('.game-container');
+
+            // Obtener dimensiones
+            const containerWidth = container.offsetWidth;
+            const containerHeight = container.offsetHeight;
+
+            // Resetear escala
+            gameFrame.style.transform = 'scale(1)';
+
+            // Para juegos que esperan un tamaño específico
+            if (gameConfig.expectedWidth && gameConfig.expectedHeight) {
+                const scaleX = containerWidth / gameConfig.expectedWidth;
+                const scaleY = containerHeight / gameConfig.expectedHeight;
+                const scale = Math.min(scaleX, scaleY);
+
+                gameFrame.style.width = gameConfig.expectedWidth + 'px';
+                gameFrame.style.height = gameConfig.expectedHeight + 'px';
+                gameFrame.style.transform = `scale(${scale})`;
+            }
+        }
+
+        // Llamar cuando cargue
+        window.addEventListener('resize', adjustGameScale);
+        gameFrame.onload = function() {
+            adjustGameScale();
+        };
+
+
+        gameFrame.onload = function() {
+            try {
+                const doc = gameFrame.contentDocument;
+                let viewport = doc.querySelector('meta[name="viewport"]');
+
+                if (!viewport) {
+                    viewport = doc.createElement('meta');
+                    viewport.name = 'viewport';
+                    viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+                    doc.head.appendChild(viewport);
+                }
+            } catch (e) {
+                console.log('No se puede modificar el viewport del juego');
+            }
+        };
+
         // Detectar cambios de fullscreen
         document.addEventListener('fullscreenchange', () => {
             isFullscreen = !!document.fullscreenElement;
             checkOrientation();
         });
-        
+
         // Manejar visibilidad
         document.addEventListener('visibilitychange', () => {
             if (document.hidden && !isPaused) {
                 pauseGame();
             }
         });
-        
+
         // Iniciar cuando el DOM esté listo
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', init);
@@ -1132,4 +644,5 @@ $gameUrl = CONTENT_URL . $gameData['game_path'];
         }
     </script>
 </body>
+
 </html>

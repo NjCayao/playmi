@@ -1,7 +1,8 @@
 <?php
+
 /**
  * passenger-portal/music.php
- * Página de música estilo Spotify mejorada
+ * Catálogo de música estilo Spotify/Netflix
  */
 
 define('PORTAL_ACCESS', true);
@@ -10,433 +11,370 @@ require_once '../admin/config/database.php';
 
 $companyConfig = getCompanyConfig();
 
-// Obtener estadísticas de música
-$musicStats = ['total' => 0, 'albums' => 0, 'artists' => 0];
+// Variables
+$allMusic = [];
+$genres = [];
+$featuredMusic = [];
+
 try {
     $db = Database::getInstance()->getConnection();
-    $sql = "SELECT COUNT(*) as total FROM contenido WHERE tipo = 'musica' AND estado = 'activo'";
+
+    // Obtener toda la música activa
+    $sql = "SELECT id, titulo, descripcion, tipo, duracion, anio_lanzamiento, 
+            calificacion, genero, categoria, archivo_path, thumbnail_path, created_at,
+            metadata
+            FROM contenido 
+            WHERE tipo = 'musica' AND estado = 'activo' 
+            ORDER BY created_at DESC";
+
     $stmt = $db->prepare($sql);
     $stmt->execute();
-    $result = $stmt->fetch(PDO::FETCH_ASSOC);
-    $musicStats['total'] = $result['total'];
+    $allMusic = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Procesar música
+    foreach ($allMusic as &$song) {
+        // Decodificar metadata
+        if ($song['metadata']) {
+            $song['metadata'] = json_decode($song['metadata'], true);
+        }
+
+        // Determinar si es video o audio
+        $extension = strtolower(pathinfo($song['archivo_path'], PATHINFO_EXTENSION));
+        $song['is_video'] = in_array($extension, ['mp4', 'webm', 'mov']);
+
+        // Extraer géneros
+        if (!empty($song['genero']) && !in_array($song['genero'], $genres)) {
+            $genres[] = $song['genero'];
+        }
+    }
+
+    sort($genres);
+
+    // Música destacada (primeras 10)
+    $featuredMusic = array_slice($allMusic, 0, 10);
 } catch (Exception $e) {
-    // Continuar sin estadísticas
+    error_log("Error loading music: " . $e->getMessage());
 }
 ?>
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Música - <?php echo htmlspecialchars($companyConfig['company_name']); ?></title>
-    
+
     <!-- CSS -->
     <link rel="stylesheet" href="assets/css/netflix-style.css">
     <link rel="stylesheet" href="assets/css/mobile.css">
-    <link rel="stylesheet" href="assets/css/catalog.css">
-    
-    <!-- CSS personalizado -->
+
+    <!-- CSS específico -->
     <style>
         :root {
             --company-primary: <?php echo $companyConfig['primary_color']; ?>;
-            --company-secondary: <?php echo $companyConfig['secondary_color']; ?>;
-            --music-gradient: linear-gradient(180deg, #1a1a1a 0%, var(--bg-primary) 100%);
+            --spotify-green: #1db954;
+            --spotify-black: #191414;
+            --spotify-dark: #121212;
         }
-        
-        /* Hero mejorado */
+
+        body {
+            background: var(--spotify-dark);
+            color: white;
+        }
+
+        /* Contenedor principal */
+        .music-container {
+            min-height: 100vh;
+            padding-top: 68px;
+        }
+
+        /* Hero Section */
         .music-hero {
-            background: var(--music-gradient);
-            padding: 3rem 4% 2rem;
-            margin-top: 68px;
+            background: linear-gradient(to bottom, #1a1a1a 0%, var(--spotify-dark) 100%);
+            padding: 3rem 4%;
+            text-align: center;
         }
-        
-        .hero-content {
-            max-width: 1400px;
-            margin: 0 auto;
+
+        .hero-title {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
         }
-        
-        .hero-stats {
-            display: flex;
-            gap: 2rem;
+
+        .hero-subtitle {
+            font-size: 1.25rem;
+            color: #b3b3b3;
             margin-bottom: 2rem;
+        }
+
+        /* Botones de acción */
+        .hero-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-bottom: 2rem;
+        }
+
+        .btn-hero {
+            padding: 12px 32px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: var(--spotify-green);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1ed760;
+            transform: scale(1.05);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: white;
+            border: 1px solid white;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Filtros */
+        .filters-section {
+            padding: 1.5rem 4%;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            gap: 1rem;
+            align-items: center;
             flex-wrap: wrap;
         }
-        
-        .stat-item {
-            color: var(--text-secondary);
-        }
-        
-        .stat-number {
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--text-primary);
-            display: block;
-        }
-        
-        /* Navegación de categorías */
-        .music-nav {
-            background: rgba(0,0,0,0.5);
-            padding: 1rem 4%;
-            position: sticky;
-            top: 68px;
-            z-index: 100;
-            backdrop-filter: blur(10px);
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
-        
-        .nav-tabs {
-            display: flex;
-            gap: 2rem;
-            max-width: 1400px;
-            margin: 0 auto;
-            overflow-x: auto;
-            scrollbar-width: none;
-        }
-        
-        .nav-tabs::-webkit-scrollbar {
-            display: none;
-        }
-        
-        .nav-tab {
-            color: var(--text-secondary);
-            text-decoration: none;
-            padding: 0.5rem 0;
-            border-bottom: 2px solid transparent;
+
+        .filter-chip {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            cursor: pointer;
             transition: all 0.3s;
-            white-space: nowrap;
-            font-weight: 500;
+            font-size: 0.9rem;
         }
-        
-        .nav-tab.active,
-        .nav-tab:hover {
-            color: var(--text-primary);
-            border-color: var(--company-primary);
+
+        .filter-chip:hover,
+        .filter-chip.active {
+            background: var(--spotify-green);
         }
-        
-        /* Secciones */
-        .music-section {
+
+        /* Vista de contenido */
+        .content-view {
             padding: 2rem 4%;
-            max-width: 1400px;
-            margin: 0 auto;
         }
-        
-        .section-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+
+        .section-title {
+            font-size: 1.75rem;
+            font-weight: 700;
             margin-bottom: 1.5rem;
         }
-        
-        .section-title {
-            font-size: 1.5rem;
-            font-weight: 600;
-        }
-        
-        /* Grid de álbumes */
-        .albums-grid {
+
+        /* Grid de música */
+        .music-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
             gap: 1.5rem;
             margin-bottom: 3rem;
         }
-        
-        .album-card {
-            background: var(--bg-card);
+
+        /* Card de música */
+        .music-card {
+            background: #181818;
             border-radius: 8px;
             padding: 1rem;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.3s;
             position: relative;
             overflow: hidden;
         }
-        
-        .album-card:hover {
-            background: var(--hover-bg);
-            transform: translateY(-4px);
-            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+
+        .music-card:hover {
+            background: #282828;
         }
-        
-        .album-cover {
+
+        .music-card-cover {
+            position: relative;
             width: 100%;
             aspect-ratio: 1;
-            object-fit: cover;
+            margin-bottom: 1rem;
+            overflow: hidden;
             border-radius: 4px;
-            margin-bottom: 0.75rem;
-            position: relative;
         }
-        
+
+        .music-card-cover img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Play button overlay */
         .play-button-overlay {
             position: absolute;
             bottom: 8px;
             right: 8px;
             width: 48px;
             height: 48px;
-            background: var(--company-primary);
+            background: var(--spotify-green);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             opacity: 0;
             transform: translateY(10px);
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            transition: all 0.3s;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
         }
-        
-        .album-card:hover .play-button-overlay {
+
+        .music-card:hover .play-button-overlay {
             opacity: 1;
             transform: translateY(0);
         }
-        
+
         .play-button-overlay i {
             color: white;
-            font-size: 20px;
+            font-size: 18px;
             margin-left: 2px;
         }
-        
-        .album-title {
+
+        /* Badge para videos */
+        .media-type-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: #e50914;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        /* Info de la canción */
+        .music-card-title {
             font-weight: 600;
             margin-bottom: 0.25rem;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
-        
-        .album-artist {
-            color: var(--text-secondary);
+
+        .music-card-artist {
+            color: #b3b3b3;
             font-size: 0.875rem;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
-        
-        /* Lista de canciones */
-        .songs-list {
-            background: var(--bg-card);
-            border-radius: 8px;
-            overflow: hidden;
-        }
-        
-        .list-header {
-            padding: 1rem 1.5rem;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            display: grid;
-            grid-template-columns: 50px 1fr 200px 100px;
-            gap: 1rem;
-            color: var(--text-secondary);
-            font-size: 0.875rem;
-        }
-        
-        .song-row {
-            display: grid;
-            grid-template-columns: 50px 1fr 200px 100px;
-            gap: 1rem;
-            padding: 0.75rem 1.5rem;
-            align-items: center;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        
-        .song-row:hover {
-            background: rgba(255,255,255,0.05);
-        }
-        
-        .song-number {
-            text-align: center;
-            color: var(--text-secondary);
-        }
-        
-        .song-row:hover .song-number {
-            display: none;
-        }
-        
-        .song-row .play-icon {
-            display: none;
-            text-align: center;
-            color: var(--company-primary);
-        }
-        
-        .song-row:hover .play-icon {
-            display: block;
-        }
-        
-        .song-info {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            min-width: 0;
-        }
-        
-        .song-thumb {
-            width: 40px;
-            height: 40px;
-            border-radius: 4px;
-            object-fit: cover;
-            flex-shrink: 0;
-        }
-        
-        .song-details {
-            min-width: 0;
-        }
-        
-        .song-name {
-            font-weight: 500;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        
-        .song-artist {
-            color: var(--text-secondary);
-            font-size: 0.875rem;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        
-        .song-album {
-            color: var(--text-secondary);
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        
-        .song-duration {
-            color: var(--text-secondary);
-            text-align: right;
-        }
-        
+
         /* Botón cargar más */
-        .load-more {
+        .load-more-section {
             text-align: center;
             padding: 2rem;
         }
-        
+
         .load-more-btn {
             background: transparent;
-            border: 1px solid var(--text-secondary);
-            color: var(--text-primary);
-            padding: 0.75rem 2rem;
+            border: 1px solid white;
+            color: white;
+            padding: 12px 32px;
             border-radius: 50px;
             cursor: pointer;
+            font-weight: 600;
             transition: all 0.3s;
-            font-size: 1rem;
         }
-        
+
         .load-more-btn:hover {
-            background: var(--company-primary);
-            border-color: var(--company-primary);
+            background: rgba(255, 255, 255, 0.1);
         }
-        
+
         /* Responsive */
         @media (max-width: 768px) {
-            .music-hero {
-                padding: 2rem 4% 1rem;
+            .hero-title {
+                font-size: 2rem;
             }
-            
-            .hero-stats {
-                gap: 1rem;
+
+            .hero-actions {
+                flex-direction: column;
+                width: 100%;
+                max-width: 300px;
+                margin: 0 auto;
             }
-            
-            .stat-number {
-                font-size: 1.5rem;
+
+            .btn-hero {
+                width: 100%;
             }
-            
-            .albums-grid {
-                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-                gap: 1rem;
+
+            .music-grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 0.5rem;
             }
-            
-            .album-card {
-                padding: 0.75rem;
+
+            .music-card {
+                padding: 0.8rem;
             }
-            
-            .list-header {
-                display: none;
+
+            .music-card-artist {
+                font-size: 0.7rem;                
             }
-            
-            .song-row {
-                grid-template-columns: 40px 1fr 60px;
-                padding: 0.75rem 1rem;
+
+            .music-card-title {
+                font-size: 0.8rem;                
             }
-            
-            .song-album {
-                display: none;
+
+            .play-button-overlay {
+                width: 36px;                
+                height: 36px;
             }
-            
-            .nav-tabs {
-                gap: 1rem;
-            }
-            
-            .nav-tab {
-                font-size: 0.875rem;
+
+            .filters-section {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
             }
         }
-        
-        /* Loading skeleton */
-        .skeleton-album {
-            background: var(--bg-card);
-            border-radius: 8px;
-            padding: 1rem;
-        }
-        
-        .skeleton-cover {
-            width: 100%;
-            aspect-ratio: 1;
-            background: linear-gradient(90deg, #2a2a2a 25%, #333 50%, #2a2a2a 75%);
-            background-size: 200% 100%;
-            animation: loading 1.5s infinite;
-            border-radius: 4px;
-            margin-bottom: 0.75rem;
-        }
-        
-        .skeleton-text {
-            height: 16px;
-            background: linear-gradient(90deg, #2a2a2a 25%, #333 50%, #2a2a2a 75%);
-            background-size: 200% 100%;
-            animation: loading 1.5s infinite;
-            border-radius: 4px;
-            margin-bottom: 0.5rem;
-        }
-        
-        .skeleton-text.small {
-            width: 60%;
-            height: 14px;
-        }
-        
-        @keyframes loading {
-            0% { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
-        }
-        
-        /* Sin resultados */
-        .no-results {
+
+        /* Sin contenido */
+        .no-content {
             text-align: center;
-            padding: 4rem 2rem;
-            color: var(--text-secondary);
+            padding: 4rem;
+            color: #b3b3b3;
         }
-        
-        .no-results i {
+
+        .no-content i {
             font-size: 4rem;
             margin-bottom: 1rem;
             opacity: 0.5;
         }
     </style>
-    
+
     <!-- Font Awesome -->
     <link rel="stylesheet" href="assets/fonts/font-awesome/css/all.min.css">
 </head>
+
 <body>
-    <div class="portal-container">
+    <div class="music-container">
         <!-- Header -->
-        <header class="portal-header scrolled" id="portalHeader">
+        <header class="portal-header scrolled">
             <div class="header-content">
                 <div class="logo-section">
                     <?php if ($companyConfig['logo_url']): ?>
                         <img src="<?php echo $companyConfig['logo_url']; ?>" alt="Logo" class="company-logo">
                     <?php else: ?>
-                        <h1 class="company-name"><?php echo htmlspecialchars($companyConfig['company_name']); ?></h1>
+                        <h1 class="company-name">PLAYMI</h1>
                     <?php endif; ?>
-                    
+
                     <nav>
                         <ul class="nav-menu">
                             <li><a href="index.php">Inicio</a></li>
@@ -446,7 +384,7 @@ try {
                         </ul>
                     </nav>
                 </div>
-                
+
                 <div class="header-actions">
                     <button class="search-btn" aria-label="Buscar">
                         <i class="fas fa-search"></i>
@@ -454,371 +392,209 @@ try {
                 </div>
             </div>
         </header>
-        
+
         <!-- Hero Section -->
         <section class="music-hero">
-            <div class="hero-content">
-                <h1 style="font-size: 2.5rem; margin-bottom: 1rem;">Música</h1>
-                <div class="hero-stats">
-                    <div class="stat-item">
-                        <span class="stat-number"><?php echo $musicStats['total']; ?></span>
-                        <span>Canciones</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-number" id="albumCount">0</span>
-                        <span>Álbumes</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-number" id="artistCount">0</span>
-                        <span>Artistas</span>
-                    </div>
-                </div>
-                <p style="color: var(--text-secondary); max-width: 600px;">
-                    Disfruta de la mejor música durante tu viaje. Desde los éxitos del momento hasta los clásicos de siempre.
-                </p>
+            <h1 class="hero-title">Música para tu viaje</h1>
+            <p class="hero-subtitle">
+                <?php echo count($allMusic); ?> canciones y videos musicales disponibles
+            </p>
+
+            <div class="hero-actions">
+                <button class="btn-hero btn-primary" onclick="playRandom()">
+                    <i class="fas fa-play"></i> Reproducir aleatorio
+                </button>
+                <button class="btn-hero btn-secondary" onclick="showAllMusic()">
+                    <i class="fas fa-music"></i> Ver toda la música
+                </button>
             </div>
         </section>
-        
-        <!-- Navegación por categorías -->
-        <nav class="music-nav">
-            <div class="nav-tabs">
-                <a href="#albums" class="nav-tab active" data-section="albums">Álbumes</a>
-                <a href="#playlists" class="nav-tab" data-section="playlists">Playlists</a>
-                <a href="#artists" class="nav-tab" data-section="artists">Artistas</a>
-                <a href="#songs" class="nav-tab" data-section="songs">Todas las canciones</a>
-                <a href="#genres" class="nav-tab" data-section="genres">Géneros</a>
-            </div>
-        </nav>
-        
-        <!-- Contenido principal -->
-        <main class="main-content">
-            <!-- Álbumes populares -->
-            <section class="music-section" id="albums-section">
-                <div class="section-header">
-                    <h2 class="section-title">Álbumes populares</h2>
-                    <button class="filter-dropdown">
-                        Todos los géneros <i class="fas fa-chevron-down"></i>
-                    </button>
-                </div>
-                
-                <div class="albums-grid" id="albumsGrid">
-                    <!-- Loading skeletons -->
-                    <?php for($i = 0; $i < 8; $i++): ?>
-                    <div class="skeleton-album">
-                        <div class="skeleton-cover"></div>
-                        <div class="skeleton-text"></div>
-                        <div class="skeleton-text small"></div>
+
+        <!-- Filtros -->
+        <section class="filters-section">
+            <button class="filter-chip active" onclick="filterContent('all')">
+                Todos
+            </button>
+            <button class="filter-chip" onclick="filterContent('video')">
+                <i class="fas fa-video"></i> Videos
+            </button>
+            <button class="filter-chip" onclick="filterContent('audio')">
+                <i class="fas fa-headphones"></i> Audio
+            </button>
+            <?php foreach ($genres as $genre): ?>
+                <button class="filter-chip" onclick="filterByGenre('<?php echo $genre; ?>')">
+                    <?php echo ucfirst($genre); ?>
+                </button>
+            <?php endforeach; ?>
+        </section>
+
+        <!-- Contenido -->
+        <div class="content-view">
+            <?php if (!empty($featuredMusic)): ?>
+                <!-- Destacados -->
+                <section>
+                    <h2 class="section-title">Lo más escuchado</h2>
+                    <div class="music-grid">
+                        <?php foreach ($featuredMusic as $item): ?>
+                            <div class="music-card"
+                                data-id="<?php echo $item['id']; ?>"
+                                data-type="<?php echo $item['is_video'] ? 'video' : 'audio'; ?>"
+                                data-genre="<?php echo $item['genero']; ?>"
+                                onclick="playMedia(<?php echo $item['id']; ?>)">
+
+                                <div class="music-card-cover">
+                                    <img src="<?php echo CONTENT_URL . ($item['thumbnail_path'] ?? 'thumbnails/default-music.jpg'); ?>"
+                                        alt="<?php echo htmlspecialchars($item['titulo']); ?>">
+
+                                    <?php if ($item['is_video']): ?>
+                                        <span class="media-type-badge">VIDEO</span>
+                                    <?php endif; ?>
+
+                                    <div class="play-button-overlay">
+                                        <i class="fas fa-play"></i>
+                                    </div>
+                                </div>
+
+                                <h3 class="music-card-title"><?php echo htmlspecialchars($item['titulo']); ?></h3>
+                                <p class="music-card-artist">
+                                    <?php echo htmlspecialchars($item['metadata']['artist'] ?? 'Artista'); ?>
+                                </p>
+                            </div>
+                        <?php endforeach; ?>
                     </div>
-                    <?php endfor; ?>
-                </div>
-            </section>
-            
-            <!-- Lista de todas las canciones -->
-            <section class="music-section" id="songs-section" style="display: none;">
-                <div class="section-header">
-                    <h2 class="section-title">Todas las canciones</h2>
-                    <button class="play-all-btn" onclick="playAllSongs()">
-                        <i class="fas fa-play"></i> Reproducir todo
-                    </button>
-                </div>
-                
-                <div class="songs-list">
-                    <div class="list-header">
-                        <div>#</div>
-                        <div>TÍTULO</div>
-                        <div>ÁLBUM</div>
-                        <div>DURACIÓN</div>
+                </section>
+
+                <!-- Toda la música -->
+                <section id="allMusicSection" style="display: none;">
+                    <h2 class="section-title">Toda la música</h2>
+                    <div class="music-grid" id="allMusicGrid">
+                        <!-- Se carga dinámicamente -->
                     </div>
-                    <div id="songsList">
-                        <!-- Canciones cargadas dinámicamente -->
+
+                    <div class="load-more-section" id="loadMoreSection" style="display: none;">
+                        <button class="load-more-btn" onclick="loadMore()">
+                            Cargar más
+                        </button>
                     </div>
+                </section>
+
+            <?php else: ?>
+                <div class="no-content">
+                    <i class="fas fa-music"></i>
+                    <h3>No hay música disponible</h3>
+                    <p>Vuelve más tarde para disfrutar de nuestra colección</p>
                 </div>
-                
-                <div class="load-more" id="loadMoreSection" style="display: none;">
-                    <button class="load-more-btn" onclick="loadMoreSongs()">
-                        Cargar más canciones
-                    </button>
-                </div>
-            </section>
-            
-            <!-- Sección sin resultados -->
-            <section class="no-results" id="noResults" style="display: none;">
-                <i class="fas fa-music"></i>
-                <h3>No hay música disponible</h3>
-                <p>Parece que no hay canciones en esta categoría</p>
-            </section>
-        </main>
-        
-        <!-- Footer -->
-        <footer class="portal-footer">
-            <div class="footer-content">
-                <p>&copy; <?php echo date('Y'); ?> <?php echo htmlspecialchars($companyConfig['company_name']); ?>. Powered by PLAYMI Entertainment.</p>
-            </div>
-        </footer>
+            <?php endif; ?>
+        </div>
     </div>
-    
-    <!-- Scripts -->
-    <script src="assets/js/portal-main.js"></script>
+
     <script>
-        // Estado de la aplicación
-        let currentView = 'albums';
-        let allSongs = [];
-        let displayedSongs = 0;
-        const songsPerPage = 30;
-        
-        document.addEventListener('DOMContentLoaded', function() {
-            // Inicializar portal
-            Portal.init({
-                companyId: <?php echo $companyConfig['company_id']; ?>,
-                packageType: '<?php echo $companyConfig['package_type']; ?>',
-                adsEnabled: <?php echo $companyConfig['ads_enabled'] ? 'true' : 'false'; ?>
+        // Variables globales
+        let allMusicData = <?php echo json_encode($allMusic); ?>;
+        let currentFilter = 'all';
+        let currentGenre = '';
+        let displayedItems = 10;
+
+        // Filtrar contenido
+        function filterContent(type) {
+            currentFilter = type;
+            currentGenre = '';
+
+            // Actualizar botones
+            document.querySelectorAll('.filter-chip').forEach(btn => {
+                btn.classList.remove('active');
             });
-            
-            // Configurar navegación
-            setupNavigation();
-            
-            // Cargar contenido inicial
-            loadAlbums();
-            loadAllSongs();
-        });
-        
-        // Configurar navegación entre secciones
-        function setupNavigation() {
-            document.querySelectorAll('.nav-tab').forEach(tab => {
-                tab.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    
-                    // Actualizar tabs activos
-                    document.querySelector('.nav-tab.active').classList.remove('active');
-                    this.classList.add('active');
-                    
-                    // Cambiar sección
-                    const section = this.dataset.section;
-                    switchSection(section);
-                });
-            });
-        }
-        
-        // Cambiar entre secciones
-        function switchSection(section) {
-            // Ocultar todas las secciones
-            document.querySelectorAll('.music-section').forEach(s => {
-                s.style.display = 'none';
-            });
-            
-            // Mostrar sección correspondiente
-            switch(section) {
-                case 'albums':
-                    document.getElementById('albums-section').style.display = 'block';
-                    if (!document.querySelector('.album-card:not(.skeleton-album)')) {
-                        loadAlbums();
-                    }
-                    break;
-                    
-                case 'songs':
-                    document.getElementById('songs-section').style.display = 'block';
-                    if (displayedSongs === 0) {
-                        displaySongs();
-                    }
-                    break;
-                    
-                case 'playlists':
-                    // TODO: Implementar playlists
-                    showComingSoon('Playlists');
-                    break;
-                    
-                case 'artists':
-                    // TODO: Implementar artistas
-                    showComingSoon('Artistas');
-                    break;
-                    
-                case 'genres':
-                    // TODO: Implementar géneros
-                    showComingSoon('Géneros');
-                    break;
-            }
-            
-            currentView = section;
-        }
-        
-        // Cargar álbumes (simulado como agrupaciones)
-        async function loadAlbums() {
-            try {
-                const response = await fetch('api/get-content.php?type=music&limit=24');
-                const data = await response.json();
-                
-                if (data.success && data.data.length > 0) {
-                    // Simular álbumes agrupando canciones
-                    const albums = groupSongsIntoAlbums(data.data);
-                    renderAlbums(albums);
-                    
-                    // Actualizar contadores
-                    document.getElementById('albumCount').textContent = albums.length;
-                    document.getElementById('artistCount').textContent = getUniqueArtists(data.data).length;
+            event.target.classList.add('active');
+
+            // Filtrar cards
+            document.querySelectorAll('.music-card').forEach(card => {
+                if (type === 'all') {
+                    card.style.display = 'block';
                 } else {
-                    showNoResults();
-                }
-            } catch (error) {
-                console.error('Error loading albums:', error);
-            }
-        }
-        
-        // Cargar todas las canciones
-        async function loadAllSongs() {
-            try {
-                const response = await fetch('api/get-content.php?type=music&limit=200');
-                const data = await response.json();
-                
-                if (data.success) {
-                    allSongs = data.data || [];
-                }
-            } catch (error) {
-                console.error('Error loading songs:', error);
-            }
-        }
-        
-        // Agrupar canciones en álbumes simulados
-        function groupSongsIntoAlbums(songs) {
-            const albums = [];
-            const albumSize = 12; // Canciones por álbum
-            
-            for (let i = 0; i < songs.length; i += albumSize) {
-                const albumSongs = songs.slice(i, i + albumSize);
-                if (albumSongs.length > 0) {
-                    albums.push({
-                        id: `album-${i}`,
-                        title: `Álbum ${Math.floor(i / albumSize) + 1}`,
-                        artist: albumSongs[0].metadata?.artist || 'Varios Artistas',
-                        cover: albumSongs[0].thumbnail_path,
-                        songs: albumSongs,
-                        year: new Date().getFullYear()
-                    });
-                }
-            }
-            
-            return albums;
-        }
-        
-        // Obtener artistas únicos
-        function getUniqueArtists(songs) {
-            const artists = new Set();
-            songs.forEach(song => {
-                if (song.metadata?.artist) {
-                    artists.add(song.metadata.artist);
+                    const cardType = card.dataset.type;
+                    card.style.display = cardType === type ? 'block' : 'none';
                 }
             });
-            return Array.from(artists);
         }
-        
-        // Renderizar álbumes
-        function renderAlbums(albums) {
-            const grid = document.getElementById('albumsGrid');
-            
-            grid.innerHTML = albums.map(album => `
-                <div class="album-card" onclick="playAlbum('${album.id}')">
-                    <div class="album-cover">
-                        <img src="${Portal.getThumbnailUrl(album.songs[0])}" 
-                             alt="${album.title}" 
-                             style="width: 100%; height: 100%; object-fit: cover; border-radius: 4px;"
-                             loading="lazy">
-                        <div class="play-button-overlay">
-                            <i class="fas fa-play"></i>
-                        </div>
+
+        // Filtrar por género
+        function filterByGenre(genre) {
+            currentGenre = genre;
+
+            document.querySelectorAll('.music-card').forEach(card => {
+                const cardGenre = card.dataset.genre;
+                card.style.display = cardGenre === genre ? 'block' : 'none';
+            });
+        }
+
+        // Reproducir media - TODO LLEVA A music-player.php
+        function playMedia(id) {
+            window.location.href = `player/music-player.php?id=${id}`;
+        }
+
+        // Reproducir aleatorio
+        function playRandom() {
+            if (allMusicData.length > 0) {
+                const randomIndex = Math.floor(Math.random() * allMusicData.length);
+                const item = allMusicData[randomIndex];
+                window.location.href = `player/music-player.php?id=${item.id}`;
+            }
+        }
+
+        // Mostrar toda la música
+        function showAllMusic() {
+            document.getElementById('allMusicSection').style.display = 'block';
+            loadMore();
+
+            // Scroll suave
+            document.getElementById('allMusicSection').scrollIntoView({
+                behavior: 'smooth'
+            });
+        }
+
+        // Cargar más items
+        function loadMore() {
+            const grid = document.getElementById('allMusicGrid');
+            const endIndex = Math.min(displayedItems + 20, allMusicData.length);
+
+            for (let i = displayedItems; i < endIndex; i++) {
+                const item = allMusicData[i];
+                const card = createMusicCard(item);
+                grid.appendChild(card);
+            }
+
+            displayedItems = endIndex;
+
+            // Mostrar/ocultar botón cargar más
+            const loadMoreBtn = document.getElementById('loadMoreSection');
+            loadMoreBtn.style.display = displayedItems < allMusicData.length ? 'block' : 'none';
+        }
+
+        // Crear card de música
+        function createMusicCard(item) {
+            const div = document.createElement('div');
+            div.className = 'music-card';
+            div.dataset.id = item.id;
+            div.dataset.type = item.is_video ? 'video' : 'audio';
+            div.dataset.genre = item.genero;
+            div.onclick = () => playMedia(item.id);
+
+            div.innerHTML = `
+                <div class="music-card-cover">
+                    <img src="<?php echo CONTENT_URL; ?>${item.thumbnail_path || 'thumbnails/default-music.jpg'}" 
+                         alt="${item.titulo}">
+                    ${item.is_video ? '<span class="media-type-badge">VIDEO</span>' : ''}
+                    <div class="play-button-overlay">
+                        <i class="fas fa-play"></i>
                     </div>
-                    <h3 class="album-title">${album.title}</h3>
-                    <p class="album-artist">${album.artist}</p>
                 </div>
-            `).join('');
-        }
-        
-        // Mostrar canciones con paginación
-        function displaySongs() {
-            const songsList = document.getElementById('songsList');
-            const startIdx = displayedSongs;
-            const endIdx = Math.min(startIdx + songsPerPage, allSongs.length);
-            
-            const songsHTML = allSongs.slice(startIdx, endIdx).map((song, idx) => `
-                <div class="song-row" onclick="playSong(${song.id})">
-                    <div class="song-number">${startIdx + idx + 1}</div>
-                    <div class="play-icon"><i class="fas fa-play"></i></div>
-                    <div class="song-info">
-                        <img src="${Portal.getThumbnailUrl(song)}" 
-                             alt="${song.titulo}" 
-                             class="song-thumb"
-                             loading="lazy">
-                        <div class="song-details">
-                            <div class="song-name">${song.titulo}</div>
-                            <div class="song-artist">${song.metadata?.artist || 'Artista'}</div>
-                        </div>
-                    </div>
-                    <div class="song-album">${song.metadata?.album || 'Álbum'}</div>
-                    <div class="song-duration">${song.duracion_formato || '3:45'}</div>
-                </div>
-            `).join('');
-            
-            if (displayedSongs === 0) {
-                songsList.innerHTML = songsHTML;
-            } else {
-                songsList.insertAdjacentHTML('beforeend', songsHTML);
-            }
-            
-            displayedSongs = endIdx;
-            
-            // Mostrar/ocultar botón de cargar más
-            const loadMoreSection = document.getElementById('loadMoreSection');
-            if (displayedSongs < allSongs.length) {
-                loadMoreSection.style.display = 'block';
-            } else {
-                loadMoreSection.style.display = 'none';
-            }
-        }
-        
-        // Cargar más canciones
-        function loadMoreSongs() {
-            displaySongs();
-            
-            // Hacer scroll suave al final de las canciones nuevas
-            setTimeout(() => {
-                const lastSong = document.querySelector('.song-row:last-child');
-                if (lastSong) {
-                    lastSong.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-            }, 100);
-        }
-        
-        // Funciones de reproducción
-        function playAlbum(albumId) {
-            // TODO: Implementar playlist del álbum
-            window.location.href = `player/music-player.php?album=${albumId}`;
-        }
-        
-        function playSong(songId) {
-            window.location.href = `player/music-player.php?id=${songId}`;
-        }
-        
-        function playAllSongs() {
-            // Reproducir todas las canciones en orden
-            if (allSongs.length > 0) {
-                window.location.href = `player/music-player.php?playlist=all`;
-            }
-        }
-        
-        // Mostrar "Próximamente"
-        function showComingSoon(section) {
-            const noResults = document.getElementById('noResults');
-            noResults.innerHTML = `
-                <i class="fas fa-clock"></i>
-                <h3>Próximamente</h3>
-                <p>${section} estará disponible pronto</p>
+                <h3 class="music-card-title">${item.titulo}</h3>
+                <p class="music-card-artist">${item.metadata?.artist || 'Artista'}</p>
             `;
-            noResults.style.display = 'block';
-        }
-        
-        // Mostrar sin resultados
-        function showNoResults() {
-            document.getElementById('albumsGrid').style.display = 'none';
-            document.getElementById('noResults').style.display = 'block';
+
+            return div;
         }
     </script>
 </body>
+
 </html>

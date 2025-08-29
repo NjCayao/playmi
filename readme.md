@@ -1,3 +1,5 @@
+admin
+password
 # PLAYMI SISTEMA 
 ACTUALIZAR XAMPP php.ini:
 ini; Configuración para archivos grandes
