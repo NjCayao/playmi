@@ -1,0 +1,200 @@
+{
+    "_comment": "PLAYMI - Configuración específica de empresa para Raspberry Pi",
+    "_version": "1.0.0",
+    "_generated": "2024-08-12T10:30:00Z",
+    
+    "company_info": {
+        "id": "company_123",
+        "name": "Transportes ABC S.A.",
+        "ruc": "12345678901",
+        "service_name": "EntretenimientoABC",
+        "contact_email": "soporte@transportesabc.com",
+        "contact_phone": "+51 999 888 777",
+        "support_url": "https://transportesabc.com/soporte"
+    },
+    
+    "pi_info": {
+        "id": "pi_abc123def456",
+        "bus_number": "001",
+        "bus_plate": "ABC-123",
+        "location": "Lima - Arequipa",
+        "installation_date": "2024-08-01",
+        "hardware_model": "Raspberry Pi 5",
+        "storage_size": "32GB"
+    },
+    
+    "wifi_settings": {
+        "ssid": "TransportesABC_WiFi",
+        "password": "ABC123456789",
+        "channel": 6,
+        "hidden": false,
+        "max_connections": 70,
+        "security_type": "WPA2",
+        "country_code": "PE",
+        "enable_5ghz": false
+    },
+    
+    "portal_settings": {
+        "company_name": "Transportes ABC",
+        "primary_color": "#FF6B35",
+        "secondary_color": "#F7931E",
+        "background_color": "#141414",
+        "text_color": "#FFFFFF",
+        "logo_path": "/assets/company/logo-abc.png",
+        "hero_banner_path": "/assets/company/hero-abc.jpg",
+        "welcome_message": "¡Bienvenido a bordo de Transportes ABC!",
+        "footer_text": "© 2024 Transportes ABC - Todos los derechos reservados",
+        "theme": "dark",
+        "language": "es",
+        "timezone": "America/Lima"
+    },
+    
+    "content_settings": {
+        "movies_enabled": true,
+        "music_enabled": true,
+        "games_enabled": true,
+        "adult_content_filter": true,
+        "content_rating_limit": "PG-13",
+        "default_video_quality": "720p",
+        "auto_play_trailers": false,
+        "shuffle_content": true,
+        "featured_content_ids": ["movie_123", "movie_456", "music_789"],
+        "max_concurrent_streams": 10,
+        "bandwidth_limit_per_user": 2048
+    },
+    
+    "advertising_settings": {
+        "show_ads": true,
+        "ad_frequency": "low",
+        "video_ads": {
+            "enabled": true,
+            "pre_roll": true,
+            "mid_roll": false,
+            "duration_limit": 30,
+            "skip_after_seconds": 5
+        },
+        "banner_ads": {
+            "enabled": true,
+            "positions": ["header", "footer"],
+            "rotation_interval": 30
+        },
+        "sponsored_content": {
+            "enabled": false,
+            "label": "Contenido Patrocinado"
+        }
+    },
+    
+    "system_settings": {
+        "auto_start": true,
+        "sync_enabled": true,
+        "sync_interval": 3600,
+        "sync_on_wifi_only": true,
+        "auto_update": true,
+        "update_channel": "stable",
+        "analytics_enabled": true,
+        "anonymous_analytics": true,
+        "debug_mode": false,
+        "log_level": "INFO",
+        "maintenance_hour": 3,
+        "reboot_schedule": "weekly"
+    },
+    
+    "performance_settings": {
+        "max_cpu_usage": 80,
+        "max_memory_usage": 85,
+        "thermal_throttle_temp": 70,
+        "enable_hardware_acceleration": true,
+        "video_buffer_size": 10485760,
+        "audio_buffer_size": 524288,
+        "cache_size": 104857600,
+        "prefetch_content": true,
+        "compression_enabled": true
+    },
+    
+    "security_settings": {
+        "enable_firewall": true,
+        "ssh_enabled": false,
+        "ssh_port": 22022,
+        "allowed_ssh_ips": ["192.168.1.0/24"],
+        "portal_auth_required": false,
+        "api_rate_limit": 100,
+        "block_external_requests": true,
+        "content_encryption": false
+    },
+    
+    "qr_settings": {
+        "qr_codes": [
+            {
+                "bus_number": "001",
+                "qr_data": "WIFI:T:WPA;S:TransportesABC_WiFi;P:ABC123456789;H:false;;",
+                "portal_url": "http://192.168.4.1",
+                "deep_link": "playmi://connect/abc001",
+                "generated_date": "2024-08-01"
+            }
+        ]
+    },
+    
+    "license": {
+        "type": "premium",
+        "license_key": "PLAYMI-ABC-2024-PREMIUM-001",
+        "start_date": "2024-08-01",
+        "expiry_date": "2025-07-31",
+        "max_devices": 50,
+        "features": [
+            "unlimited_content",
+            "premium_games",
+            "no_watermark",
+            "priority_support",
+            "custom_branding",
+            "analytics_dashboard"
+        ]
+    },
+    
+    "sync_settings": {
+        "server_url": "https://sync.playmi.com",
+        "api_key": "sk_live_abc123def456ghi789",
+        "device_token": "dt_pi_abc123def456",
+        "sync_content": true,
+        "sync_analytics": true,
+        "sync_logs": false,
+        "delta_sync": true,
+        "compression": "gzip",
+        "max_retry_attempts": 3,
+        "retry_delay": 300,
+        "bandwidth_limit": 0
+    },
+    
+    "monitoring": {
+        "health_check_interval": 300,
+        "report_interval": 3600,
+        "alert_email": "alertas@transportesabc.com",
+        "alert_thresholds": {
+            "temperature": 75,
+            "cpu_usage": 90,
+            "memory_usage": 90,
+            "disk_usage": 90,
+            "error_rate": 10
+        },
+        "remote_monitoring": true,
+        "send_diagnostics": true
+    },
+    
+    "custom_settings": {
+        "company_specific_1": "valor1",
+        "company_specific_2": "valor2",
+        "experimental_features": {
+            "ai_recommendations": false,
+            "voice_search": false,
+            "offline_games": true,
+            "social_features": false
+        }
+    },
+    
+    "metadata": {
+        "config_version": "1.0",
+        "last_updated": "2024-08-12T10:30:00Z",
+        "updated_by": "admin",
+        "checksum": "abc123def456",
+        "notes": "Configuración inicial para flota Lima-Arequipa"
+    }
+}

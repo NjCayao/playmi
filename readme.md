@@ -66,3 +66,34 @@ Diseño del adhesivo para el bus:
  │   └── company-branding.php     # Obtener personalización
  └── config/
      └── portal-config.php        # Configuración del portal
+
+# falta desarollar 
+
+FASE 7: SISTEMA DE SINCRONIZACIÓN
+
+# Flujo de Uso:
+
+Preparación de SD nueva:
+bash# En tu PC de desarrollo
+1. Escribir imagen base de Raspberry Pi OS
+2. Copiar todos los scripts de /pi-system/
+3. Ejecutar sudo ./setup.sh
+4. Copiar contenido multimedia
+5. SD lista para usar
+
+Instalación en bus:
+bash1. Apagar Pi (si está encendido)
+2. Cambiar SD
+3. Encender Pi
+4. Sistema inicia automáticamente en ~3 minutos
+
+Monitoreo:
+
+Health check cada 5 minutos
+Logs en /var/log/playmi/
+Estado en tiempo real en /opt/playmi/status/health-status.json
+
+# Raspberry
+anfitrion: pi.local
+usuario: playmi
+contraseña: playmi25

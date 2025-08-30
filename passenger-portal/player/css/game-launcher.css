@@ -38,32 +38,7 @@ body {
   flex-direction: column;
 }
 
-/* Overlay de controles estilo Netflix */
-.controls-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 100;
-  background: linear-gradient(
-    to bottom,
-    rgba(0, 0, 0, 0.8) 0%,
-    rgba(0, 0, 0, 0) 20%,
-    rgba(0, 0, 0, 0) 80%,
-    rgba(0, 0, 0, 0.8) 100%
-  );
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  pointer-events: none;
-}
-
-.controls-overlay.visible {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-/* Header minimalista */
+/* Header con controles del sistema */
 .game-header {
   position: absolute;
   top: 0;
@@ -73,7 +48,20 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  z-index: 101;
+  z-index: 100;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.8) 0%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  opacity: 0;
+  transform: translateY(-100%);
+  transition: all 0.3s ease;
+}
+
+.game-header.visible {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .game-title-section {
@@ -128,6 +116,10 @@ body {
   transition: all 0.2s;
 }
 
+.action-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
 .action-button:active {
   transform: scale(0.9);
   background: rgba(255, 255, 255, 0.2);
@@ -135,107 +127,356 @@ body {
 
 /* Contenedor del juego */
 .game-container {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: #000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
 }
 
 #gameFrame {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 150%; /* Hacer el iframe más grande */
-    height: 150%;
-    transform: translate(-25%, -25%) scale(0.67); /* Centrar y reducir */
-    transform-origin: center center;
-    border: none;
-    background: #000;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #000;
 }
 
-/* Para dispositivos móviles - ajustar valores */
-@media (max-width: 768px) {
-    #gameFrame {
-        width: 200%;
-        height: 200%;
-        transform: translate(-25%, -25%) scale(0.50);
-    }
+@media screen and (max-width: 768px) {
+  .is-mobile #gameFrame {
+    width: 200%;
+    height: 200%;
+    transform: translate(-25%, -25%) scale(0.5);
+  }
 }
 
-/* Para pantallas muy pequeñas */
-@media (max-width: 480px) {
-    #gameFrame {
-        width: 130%;
-        height: 130%;
-        transform: translate(-15%, -15%) scale(0.77);
-    }
-}
-
-/* Controles de juego - Bottom */
-.game-controls {
+/* Controles táctiles - Solo en móvil */
+.touch-controls {
+  display: none;
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 15px;
-  padding-bottom: env(safe-area-inset-bottom, 15px);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 20px;
-  z-index: 101;
+  pointer-events: none;
+  z-index: 90;
 }
 
-.control-button {
+.is-mobile .touch-controls {
+  display: block;
+}
+
+/* D-Pad (lado izquierdo) */
+.dpad-container {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  pointer-events: auto;
+}
+
+.dpad {
+  position: relative;
+  width: 150px;
+  height: 150px;
+}
+
+.dpad-btn {
+  position: absolute;
+  width: 50px;
+  height: 50px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+
+.dpad-btn:active,
+.dpad-btn.active {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(0.95);
+}
+
+.dpad-up {
+  top: 0;
+  left: 50px;
+  border-radius: 10px 10px 0 0;
+}
+
+.dpad-right {
+  top: 50px;
+  right: 0;
+  border-radius: 0 10px 10px 0;
+}
+
+.dpad-down {
+  bottom: 0;
+  left: 50px;
+  border-radius: 0 0 10px 10px;
+}
+
+.dpad-left {
+  top: 50px;
+  left: 0;
+  border-radius: 10px 0 0 10px;
+}
+
+.dpad-center {
+  position: absolute;
+  top: 50px;
+  left: 50px;
+  width: 50px;
+  height: 50px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* Botones de acción (lado derecho) */
+.action-buttons-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  pointer-events: auto;
+}
+
+.action-buttons {
+  position: relative;
+  width: 150px;
+  height: 150px;
+}
+
+.action-btn {
+  position: absolute;
   width: 60px;
   height: 60px;
   background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(20px);
+  backdrop-filter: blur(10px);
   border: 2px solid rgba(255, 255, 255, 0.2);
   border-radius: 50%;
   color: white;
+  font-size: 24px;
+  font-weight: bold;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+
+.action-btn:active,
+.action-btn.active {
+  transform: scale(0.9);
+}
+
+.btn-triangle {
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(34, 139, 34, 0.3);
+  border-color: rgba(34, 139, 34, 0.5);
+}
+
+.btn-triangle:active,
+.btn-triangle.active {
+  background: rgba(34, 139, 34, 0.6);
+}
+
+.btn-circle {
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(220, 20, 60, 0.3);
+  border-color: rgba(220, 20, 60, 0.5);
+}
+
+.btn-circle:active,
+.btn-circle.active {
+  background: rgba(220, 20, 60, 0.6);
+}
+
+.btn-x {
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(70, 130, 180, 0.3);
+  border-color: rgba(70, 130, 180, 0.5);
+}
+
+.btn-x:active,
+.btn-x.active {
+  background: rgba(70, 130, 180, 0.6);
+}
+
+.btn-square {
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(218, 112, 214, 0.3);
+  border-color: rgba(218, 112, 214, 0.5);
+}
+
+.btn-square:active,
+.btn-square.active {
+  background: rgba(218, 112, 214, 0.6);
+}
+
+/* Ocultar controles táctiles en desktop */
+.is-desktop .touch-controls {
+  display: none !important;
+}
+
+/* Modal de configuración */
+.settings-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.9);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 20px;
+}
+
+.settings-modal.active {
+  display: flex;
+}
+
+.modal-content {
+  background: #1a1a1a;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 400px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.modal-header h2 {
   font-size: 20px;
+  font-weight: 600;
+}
+
+.close-modal {
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.close-modal:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.settings-option {
+  margin-bottom: 20px;
+}
+
+.settings-button {
+  width: 100%;
+  padding: 15px 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  color: white;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
-.control-button.primary {
-  width: 80px;
-  height: 80px;
-  background: var(--company-primary, #e50914);
-  border-color: var(--company-primary, #e50914);
-  font-size: 24px;
+.settings-button:hover {
+  background: rgba(255, 255, 255, 0.15);
 }
 
-.control-button:active {
-  transform: scale(0.9);
-  background: rgba(255, 255, 255, 0.3);
+.settings-button:active {
+  transform: scale(0.98);
 }
 
-.control-button.primary:active {
-  background: var(--company-primary, #e50914);
-  opacity: 0.8;
+.settings-button i {
+  font-size: 20px;
+  width: 24px;
+  text-align: center;
 }
 
-.control-label {
-  font-size: 9px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-top: 2px;
+.settings-button.danger {
+  background: rgba(220, 20, 60, 0.2);
+  border-color: rgba(220, 20, 60, 0.4);
 }
 
-/* Pantalla de carga estilo Netflix */
+.settings-button.danger:hover {
+  background: rgba(220, 20, 60, 0.3);
+}
+
+.settings-label {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: white;
+  font-size: 16px;
+}
+
+.settings-label input[type="range"] {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.2);
+  outline: none;
+  cursor: pointer;
+}
+
+.settings-label input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: white;
+  cursor: pointer;
+}
+
+#volumeValue {
+  text-align: right;
+  font-size: 14px;
+  color: #999;
+}
+
+/* Pantalla de carga */
 .loading-screen {
   position: absolute;
   top: 0;
@@ -247,7 +488,7 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  z-index: 200;
+  z-index: 300;
 }
 
 .loading-screen.hidden {
@@ -290,11 +531,9 @@ body {
   0% {
     width: 0%;
   }
-
   50% {
     width: 80%;
   }
-
   100% {
     width: 100%;
   }
@@ -305,7 +544,7 @@ body {
   color: #999;
 }
 
-/* Error screen estilo Netflix */
+/* Error screen */
 .error-screen {
   position: absolute;
   top: 0;
@@ -318,7 +557,7 @@ body {
   align-items: center;
   justify-content: center;
   padding: 20px;
-  z-index: 200;
+  z-index: 300;
 }
 
 .error-screen.active {
@@ -365,103 +604,7 @@ body {
   border: 1px solid #666;
 }
 
-/* Modal de pausa */
-.pause-modal {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.9);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 150;
-}
-
-.pause-modal.active {
-  display: flex;
-}
-
-.pause-content {
-  text-align: center;
-  padding: 30px;
-}
-
-.pause-icon {
-  font-size: 60px;
-  color: white;
-  margin-bottom: 20px;
-}
-
-.pause-title {
-  font-size: 24px;
-  margin-bottom: 30px;
-}
-
-.pause-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  max-width: 250px;
-  margin: 0 auto;
-}
-
-.pause-button {
-  padding: 15px 30px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 50px;
-  color: white;
-  font-size: 16px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.pause-button.primary {
-  background: var(--company-primary, #e50914);
-  border-color: var(--company-primary, #e50914);
-}
-
-.pause-button:active {
-  transform: scale(0.95);
-}
-
-/* Indicador táctil */
-.touch-indicator {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 60px;
-  color: white;
-  opacity: 0;
-  pointer-events: none;
-  z-index: 110;
-}
-
-.touch-indicator.show {
-  animation: touchFeedback 0.6s ease-out;
-}
-
-@keyframes touchFeedback {
-  0% {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(0.5);
-  }
-
-  50% {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1.2);
-  }
-
-  100% {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(1.5);
-  }
-}
-
-/* Orientación - Mensaje mejorado */
+/* Orientación */
 .orientation-overlay {
   position: fixed;
   top: 0;
@@ -473,7 +616,7 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  z-index: 300;
+  z-index: 350;
   padding: 20px;
 }
 
@@ -508,7 +651,6 @@ body {
   100% {
     transform: rotate(0deg);
   }
-
   50% {
     transform: rotate(90deg);
   }
@@ -540,33 +682,68 @@ body {
   .orientation-overlay {
     display: none !important;
   }
+}
 
-  .game-controls {
-    flex-direction: row;
-    padding: 10px 20px;
+/* Ajustes para pantallas pequeñas */
+@media screen and (max-width: 480px) {
+  .dpad-container {
+    bottom: 10px;
+    left: 10px;
   }
 
-  .control-button {
+  .action-buttons-container {
+    bottom: 10px;
+    right: 10px;
+  }
+
+  .dpad,
+  .action-buttons {
+    width: 120px;
+    height: 120px;
+  }
+
+  .dpad-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+  }
+
+  .dpad-up,
+  .dpad-down {
+    left: 40px;
+  }
+
+  .dpad-left,
+  .dpad-right {
+    top: 40px;
+  }
+
+  .dpad-center {
+    top: 40px;
+    left: 40px;
+    width: 40px;
+    height: 40px;
+  }
+
+  .action-btn {
     width: 50px;
     height: 50px;
-    font-size: 18px;
-  }
-
-  .control-button.primary {
-    width: 60px;
-    height: 60px;
     font-size: 20px;
   }
 }
 
+/* Safe areas para iPhone X y posteriores */
 @media screen and (min-height: 812px) {
-  /* iPhone X y posteriores */
   .game-header {
     padding-top: max(env(safe-area-inset-top), 20px);
   }
 
-  .game-controls {
-    padding-bottom: max(env(safe-area-inset-bottom), 20px);
+  .dpad-container {
+    bottom: max(20px, env(safe-area-inset-bottom));
+  }
+
+  .action-buttons-container {
+    bottom: max(20px, env(safe-area-inset-bottom));
   }
 }
 
